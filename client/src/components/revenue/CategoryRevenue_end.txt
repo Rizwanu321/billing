@@ -1,0 +1,166 @@
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                  {filteredCategories.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Info className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                      <p className="text-slate-500 text-sm">No categories selected</p>
+                    </div>
+                  ) : (
+                    <>
+                      {filteredCategories.map((category, index) => (
+                        <div
+                          key={category._id}
+                          className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors border border-slate-200"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-3 h-3 rounded-full"
+                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                              />
+                              <h4 className="font-semibold text-slate-900">
+                                {category.categoryName}
+                              </h4>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-slate-600">Total Revenue</span>
+                              <span className="font-semibold text-slate-900">
+                                {formatCurrency(category.totalRevenue)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className=" text-green-600">Received</span>
+                              <span className="font-semibold text-green-700">
+                                {formatCurrency(category.actualReceived)}
+                              </span>
+                            </div>
+                            {category.dueAmount > 0 && (
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-orange-600">Due</span>
+                                <span className="font-semibold text-orange-700">
+                                  {formatCurrency(category.dueAmount)}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t">
+                              <span>{category.invoiceCount} invoices</span>
+                              <span>{category.quantity.toFixed(2)} units</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {filteredTotals && filteredCategories.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-slate-700">Total Revenue</span>
+                              <span className="text-lg font-bold text-slate-900">{formatCurrency(filteredTotals.totalRevenue)}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-green-700">Actual Received</span>
+                              <span className="text-lg font-bold text-green-800">{formatCurrency(filteredTotals.actualReceived)}</span>
+                            </div>
+                            {filteredTotals.dueAmount > 0 && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium text-orange-700">Pending Dues</span>
+                                <span className="text-lg font-bold text-orange-800">{formatCurrency(filteredTotals.dueAmount)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {filteredCategories.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-slate-100">
+                <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-600" />
+                  Category Insights
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(() => {
+                    const topCategory = [...filteredCategories].sort((a, b) => b.totalRevenue - a.totalRevenue)[0];
+                    return (
+                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="w-5 h-5 text-green-600" />
+                          <h4 className="font-semibold text-green-900">Top Performer</h4>
+                        </div>
+                        <p className="text-lg font-bold text-green-800 mb-1">{topCategory.categoryName}</p>
+                        <p className="text-sm text-green-700">{formatCurrency(topCategory.totalRevenue)} revenue</p>
+                        <p className="text-xs text-green-600 mt-1">{topCategory.invoiceCount} invoices • {topCategory.quantity.toFixed(2)} units</p>
+                      </div>
+                    );
+                  })()}
+
+                  {(() => {
+                    const bestPayment = [...filteredCategories].sort((a, b) => b.receivedPercentage - a.receivedPercentage)[0];
+                    return (
+                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CreditCard className="w-5 h-5 text-blue-600" />
+                          <h4 className="font-semibold text-blue-900">Best Collection</h4>
+                        </div>
+                        <p className="text-lg font-bold text-blue-800 mb-1">{bestPayment.categoryName}</p>
+                        <p className="text-sm text-blue-700">{bestPayment.receivedPercentage.toFixed(1)}% collected</p>
+                        <p className="text-xs text-blue-600 mt-1">{formatCurrency(bestPayment.actualReceived)} received</p>
+                      </div>
+                    );
+                  })()}
+
+                  {(() => {
+                    const highestDue = [...filteredCategories].sort((a, b) => b.dueAmount - a.dueAmount)[0];
+                    return highestDue.dueAmount > 0 ? (
+                      <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-5 h-5 text-orange-600" />
+                          <h4 className="font-semibold text-orange-900">Highest Pending</h4>
+                        </div>
+                        <p className="text-lg font-bold text-orange-800 mb-1">{highestDue.categoryName}</p>
+                        <p className="text-sm text-orange-700">{formatCurrency(highestDue.dueAmount)} pending</p>
+                        <p className="text-xs text-orange-600 mt-1">{highestDue.duePercentage.toFixed(1)}% of category revenue</p>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-green-50 rounded-xl border border-green-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <h4 className="font-semibold text-green-900">Excellent!</h4>
+                        </div>
+                        <p className="text-sm text-green-700">No pending dues across selected categories</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default CategoryRevenue;
