@@ -20,6 +20,7 @@ import {
   UserCircle,
   Activity,
   PieChart,
+  RotateCcw,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -127,6 +128,11 @@ const Sidebar = ({
           label: "Comparison",
           path: "/revenue/comparison",
         },
+        {
+          icon: RotateCcw,
+          label: "Product Returns",
+          path: "/revenue/returns",
+        },
       ],
     },
     {
@@ -212,18 +218,16 @@ const Sidebar = ({
                   onClick={handleNavClick}
                   className={({ isActive }) => `
                     flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200
-                    ${
-                      isActive
-                        ? "bg-blue-50 text-blue-700 shadow-sm"
-                        : "text-gray-700 hover:bg-gray-100"
+                    ${isActive
+                      ? "bg-blue-50 text-blue-700 shadow-sm"
+                      : "text-gray-700 hover:bg-gray-100"
                     }
                   `}
                 >
                   <item.icon
                     size={20}
-                    className={`${
-                      collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
-                    } flex-shrink-0`}
+                    className={`${collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
+                      } flex-shrink-0`}
                   />
                   {(!collapsed || isMobileOpen) && <span>{item.label}</span>}
                 </NavLink>
@@ -233,19 +237,17 @@ const Sidebar = ({
                     onClick={() => toggleSubmenu(item.id)}
                     className={`
                       w-full flex items-center justify-between px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-200
-                      ${
-                        expandedMenu === item.id
-                          ? "bg-gray-100 text-gray-900"
-                          : "text-gray-700 hover:bg-gray-100"
+                      ${expandedMenu === item.id
+                        ? "bg-gray-100 text-gray-900"
+                        : "text-gray-700 hover:bg-gray-100"
                       }
                     `}
                   >
                     <div className="flex items-center min-w-0">
                       <item.icon
                         size={20}
-                        className={`${
-                          collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
-                        } flex-shrink-0`}
+                        className={`${collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
+                          } flex-shrink-0`}
                       />
                       {(!collapsed || isMobileOpen) && (
                         <span className="truncate">{item.label}</span>
@@ -254,9 +256,8 @@ const Sidebar = ({
                     {(!collapsed || isMobileOpen) && (
                       <ChevronRight
                         size={16}
-                        className={`transform transition-transform duration-200 flex-shrink-0 ml-2 ${
-                          expandedMenu === item.id ? "rotate-90" : ""
-                        }`}
+                        className={`transform transition-transform duration-200 flex-shrink-0 ml-2 ${expandedMenu === item.id ? "rotate-90" : ""
+                          }`}
                       />
                     )}
                   </button>
@@ -271,10 +272,9 @@ const Sidebar = ({
                           onClick={handleNavClick}
                           className={({ isActive }) => `
                             flex items-center pl-9 pr-3 py-2 text-sm rounded-lg transition-all duration-200
-                            ${
-                              isActive
-                                ? "bg-blue-50 text-blue-700 font-medium"
-                                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                            ${isActive
+                              ? "bg-blue-50 text-blue-700 font-medium"
+                              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                             }
                           `}
                         >
@@ -307,9 +307,8 @@ const Sidebar = ({
         >
           <UserCircle
             size={20}
-            className={`${
-              collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
-            } flex-shrink-0`}
+            className={`${collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
+              } flex-shrink-0`}
           />
           {(!collapsed || isMobileOpen) && <span>Profile</span>}
         </button>
@@ -319,9 +318,8 @@ const Sidebar = ({
         >
           <LogOut
             size={20}
-            className={`${
-              collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
-            } flex-shrink-0`}
+            className={`${collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
+              } flex-shrink-0`}
           />
           {(!collapsed || isMobileOpen) && <span>Logout</span>}
         </button>

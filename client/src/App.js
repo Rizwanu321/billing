@@ -44,6 +44,7 @@ import {
   RevenueAnalytics,
   RevenueComparison,
   RevenueByProducts,
+  ProductReturns,
 } from "./components/revenue";
 import CustomerStats from "./components/CustomerStats";
 
@@ -110,6 +111,7 @@ const App = () => {
               path="/revenue/by-products"
               element={<RevenueByProducts />}
             />
+            <Route path="/revenue/returns" element={<ProductReturns />} />
           </Route>
 
           <Route

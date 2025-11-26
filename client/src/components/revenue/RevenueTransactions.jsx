@@ -14,6 +14,7 @@ import {
   Info,
   Clock,
   FileText,
+  IndianRupee,
 } from "lucide-react";
 import { fetchRevenueTransactions } from "../../api/revenue";
 import toast, { Toaster } from 'react-hot-toast';
@@ -283,10 +284,10 @@ const RevenueTransactions = () => {
           {summary && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
               <StatCard
-                icon={Receipt}
-                title="NET REVENUE"
-                value={formatCurrency(summary.netRevenue || 0)}
-                subtitle={`Gross: ${formatCurrency(summary.totalRevenue || 0)}`}
+                icon={IndianRupee}
+                title="TOTAL REVENUE"
+                value={formatCurrency(summary.totalRevenue || 0)}
+                subtitle="Gross Sales"
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
               <StatCard

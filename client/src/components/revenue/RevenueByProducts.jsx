@@ -1,6 +1,6 @@
 // components/revenue/RevenueByProducts.jsx
 
-import React, { useState, useEffect, useRef, Fragment } from "react";
+import React, { useState, useEffect, useRef, Fragment, useMemo } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -15,6 +15,15 @@ import {
   Search,
   Clock,
   CreditCard,
+  Wallet,
+  HandCoins,
+  Calendar,
+  ChevronDown,
+  Activity,
+  Infinity,
+  PieChart as PieChartIcon,
+  TrendingUp as TrendIcon,
+  RotateCcw,
 } from "lucide-react";
 
 import {
@@ -45,6 +54,7 @@ const RevenueByProducts = () => {
   const [productSearchTerm, setProductSearchTerm] = useState("");
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedPeriod, setSelectedPeriod] = useState("month");
   const productDropdownRef = useRef(null);
   const isInitialMount = useRef(true); // Track initial mount
 
@@ -59,9 +69,27 @@ const RevenueByProducts = () => {
     sortOrder: "desc",
     minRevenue: "",
     maxRevenue: "",
+    returnsFilter: "all", // all, withReturns, withoutReturns
   });
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
+
+  // Add state for raw product data from API
+  const [rawProductData, setRawProductData] = useState([]);
+
+  // Apply returns filter using useMemo
+  const filteredProductData = useMemo(() => {
+    if (filters.returnsFilter === "all") {
+      return rawProductData;
+    } else if (filters.returnsFilter === "withReturns") {
+      return rawProductData.filter((p) => p.returnValue > 0);
+    } else if (filters.returnsFilter === "withoutReturns") {
+      return rawProductData.filter((p) => p.returnValue === 0 || !p.returnValue);
+    }
+    return rawProductData;
+  }, [rawProductData, filters.returnsFilter]);
+
+
 
   // Initial data load
   useEffect(() => {
@@ -99,6 +127,11 @@ const RevenueByProducts = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Update productData when filtered data changes
+  useEffect(() => {
+    setProductData(filteredProductData);
+  }, [filteredProductData]);
+
   const fetchCategories = async () => {
     try {
       const response = await api.get("/categories");
@@ -121,9 +154,27 @@ const RevenueByProducts = () => {
           <p className="font-semibold text-gray-900 mb-2">{label}</p>
           <div className="space-y-1 text-sm">
             <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Revenue:</span>
+              <span className="text-gray-600">Gross Revenue:</span>
               <span className="font-medium text-gray-900">
                 {formatCurrency(data.revenue)}
+              </span>
+            </div>
+            {data.returnValue > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-red-600">Returns:</span>
+                <span className="font-medium text-red-700">
+                  -{formatCurrency(data.returnValue)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between gap-4 border-b border-gray-100 pb-1 mb-1">
+              <span className="text-emerald-600 font-medium">Net Revenue:</span>
+              <span className="font-bold text-emerald-700">
+                {formatCurrency(
+                  data.netRevenue !== undefined
+                    ? data.netRevenue
+                    : data.revenue - (data.returnValue || 0)
+                )}
               </span>
             </div>
             {data.actualReceived !== undefined && (
@@ -169,6 +220,9 @@ const RevenueByProducts = () => {
       const data = await fetchRevenueByProducts(filters);
       console.log("Revenue data received:", data);
 
+      // Store raw data for filtering
+      setRawProductData(data.products || []);
+      // Set filtered data immediately
       setProductData(data.products || []);
       setSummary(
         data.summary || {
@@ -190,6 +244,7 @@ const RevenueByProducts = () => {
       setRevenueTrend(data.revenueTrend || []);
     } catch (error) {
       console.error("Error fetching product revenue:", error);
+      setRawProductData([]);
       setProductData([]);
       setSummary({
         totalProducts: 0,
@@ -229,17 +284,21 @@ const RevenueByProducts = () => {
       sortOrder: "desc",
       minRevenue: "",
       maxRevenue: "",
+      returnsFilter: "all",
     });
     setProductSearchTerm("");
     setSelectedProduct(null);
+    setSelectedPeriod("month");
   };
+
 
   const hasActiveFilters = () => {
     return (
       filters.categoryId !== "all" ||
       filters.productId !== "all" ||
       filters.minRevenue ||
-      filters.maxRevenue
+      filters.maxRevenue ||
+      filters.returnsFilter !== "all"
     );
   };
 
@@ -312,6 +371,78 @@ const RevenueByProducts = () => {
     setFilters((prev) => ({ ...prev, productId: "all" }));
   };
 
+  // Time period filter configuration (excluding custom)
+  const PREDEFINED_RANGES = [
+    { label: "Today", value: "today", icon: Calendar },
+    { label: "Week", value: "week", icon: Activity },
+    { label: "Month", value: "month", icon: BarChart3 },
+    { label: "Quarter", value: "quarter", icon: TrendIcon },
+    { label: "Year", value: "year", icon: PieChartIcon },
+    { label: "All Time", value: "all", icon: Infinity },
+  ];
+
+  // Handle time period changes
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+    const today = new Date();
+    let startDate, endDate;
+
+    today.setHours(0, 0, 0, 0);
+
+    switch (period) {
+      case "today":
+        startDate = new Date(today);
+        endDate = new Date(today);
+        break;
+      case "week":
+        const dayOfWeek = today.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - diffToMonday);
+        endDate = new Date(today);
+        break;
+      case "month":
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today);
+        break;
+      case "quarter":
+        const currentQuarter = Math.floor(today.getMonth() / 3);
+        startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
+        const quarterEndMonth = currentQuarter * 3 + 2;
+        endDate = new Date(today.getFullYear(), quarterEndMonth + 1, 0);
+        if (endDate > today) {
+          endDate = new Date(today);
+        }
+        break;
+      case "year":
+        startDate = new Date(today.getFullYear(), 0, 1);
+        endDate = new Date(today);
+        break;
+      case "all":
+        startDate = null;
+        endDate = new Date(today);
+        break;
+      default:
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today);
+    }
+
+    const formatDate = (date) => {
+      if (!date) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    setFilters((prev) => ({
+      ...prev,
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+    }));
+  };
+
+
   const StatCard = ({ icon: Icon, title, value, subtitle, color, trend }) => (
     <div className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-all">
       <div className="flex items-center justify-between mb-4">
@@ -320,9 +451,8 @@ const RevenueByProducts = () => {
         </div>
         {trend !== undefined && (
           <div
-            className={`flex items-center text-sm font-medium ${
-              trend >= 0 ? "text-green-600" : "text-red-600"
-            }`}
+            className={`flex items-center text-sm font-medium ${trend >= 0 ? "text-green-600" : "text-red-600"
+              }`}
           >
             {trend >= 0 ? (
               <TrendingUp className="w-3 h-3 mr-1" />
@@ -355,7 +485,9 @@ const RevenueByProducts = () => {
     const headers = [
       "Product",
       "Category",
-      "Total Revenue",
+      "Gross Revenue",
+      "Returns (Value)",
+      "Net Revenue",
       "Received",
       "Credit Used",
       "Pending Due",
@@ -373,6 +505,8 @@ const RevenueByProducts = () => {
       product.productName,
       product.categoryName,
       product.totalRevenue.toFixed(2),
+      (product.returnValue || 0).toFixed(2),
+      (product.netRevenue || 0).toFixed(2),
       product.actualReceived.toFixed(2),
       product.creditUsed.toFixed(2),
       product.dueAmount.toFixed(2),
@@ -386,8 +520,8 @@ const RevenueByProducts = () => {
       product.totalRevenue > (summary?.avgRevenuePerProduct || 0) * 1.5
         ? "High"
         : product.totalRevenue < (summary?.avgRevenuePerProduct || 0) * 0.5
-        ? "Low"
-        : "Average",
+          ? "Low"
+          : "Average",
     ]);
 
     const csv = [
@@ -399,9 +533,8 @@ const RevenueByProducts = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `product-revenue-${
-      new Date().toISOString().split("T")[0]
-    }.csv`;
+    a.download = `product-revenue-${new Date().toISOString().split("T")[0]
+      }.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -464,6 +597,37 @@ const RevenueByProducts = () => {
               </button>
             </div>
           )}
+
+          {/* Time Period Selector */}
+          <div className="mt-4 bg-white rounded-2xl shadow-sm border border-slate-100 p-2">
+            <div className="overflow-x-auto">
+              <div className="flex sm:grid sm:grid-cols-6 gap-1 min-w-max sm:min-w-0">
+                {PREDEFINED_RANGES.map((range) => {
+                  const Icon = range.icon;
+                  const isSelected = selectedPeriod === range.value;
+                  return (
+                    <button
+                      key={range.value}
+                      onClick={() => handlePeriodChange(range.value)}
+                      className={`
+                        flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 text-sm whitespace-nowrap
+                        ${isSelected
+                          ? "bg-slate-900 text-white shadow-md"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        }
+                      `}
+                    >
+                      <Icon
+                        className={`w-4 h-4 ${isSelected ? "text-blue-400" : "text-slate-400"
+                          }`}
+                      />
+                      <span>{range.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Summary Stats Cards */}
@@ -471,62 +635,42 @@ const RevenueByProducts = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
             <StatCard
               icon={IndianRupee}
-              title="Total Revenue"
-              value={formatCurrency(summary.totalRevenue)}
-              subtitle={
-                summary.totalProducts > 0
-                  ? `From ${summary.totalProducts} product${
-                      summary.totalProducts !== 1 ? "s" : ""
-                    }`
-                  : "No products"
-              }
+              title="Gross Revenue"
+              value={formatCurrency(summary.totalRevenue || 0)}
+              subtitle="Total Sales"
               color="bg-gradient-to-br from-blue-500 to-blue-600"
             />
 
             <StatCard
-              icon={TrendingUp}
-              title="Actual Received"
-              value={formatCurrency(summary.actualReceived)}
-              subtitle={`${summary.collectionRate.toFixed(1)}% collection rate`}
-              color="bg-gradient-to-br from-green-500 to-green-600"
+              icon={RotateCcw}
+              title="Returns"
+              value={formatCurrency(summary.totalReturns || 0)}
+              subtitle="Product Returns"
+              color="bg-gradient-to-br from-red-500 to-red-600"
             />
 
             <StatCard
-              icon={CreditCard}
-              title="Credit Used"
-              value={formatCurrency(summary.totalCreditUsed)}
-              subtitle={
-                summary.totalRevenue > 0
-                  ? `${(
-                      (summary.totalCreditUsed / summary.totalRevenue) *
-                      100
-                    ).toFixed(1)}% of revenue`
-                  : "0%"
-              }
+              icon={Wallet}
+              title="Net Revenue"
+              value={formatCurrency(summary.netRevenue || 0)}
+              subtitle="Gross - Returns"
+              color="bg-gradient-to-br from-emerald-500 to-emerald-600"
+            />
+
+            <StatCard
+              icon={HandCoins}
+              title="Total Collected"
+              value={formatCurrency(summary.totalCollected || 0)}
+              subtitle="Cash + Online + Due Payments"
               color="bg-gradient-to-br from-indigo-500 to-indigo-600"
             />
 
             <StatCard
               icon={Clock}
               title="Pending Dues"
-              value={formatCurrency(summary.totalDue)}
-              subtitle={
-                summary.totalRevenue > 0
-                  ? `${(
-                      (summary.totalDue / summary.totalRevenue) *
-                      100
-                    ).toFixed(1)}% pending`
-                  : "0%"
-              }
+              value={formatCurrency(summary.totalDue || 0)}
+              subtitle="Outstanding Amount"
               color="bg-gradient-to-br from-orange-500 to-orange-600"
-            />
-
-            <StatCard
-              icon={Package}
-              title="Products"
-              value={summary.totalProducts}
-              subtitle={`${summary.totalQuantitySold.toFixed(2)} units sold`}
-              color="bg-gradient-to-br from-purple-500 to-purple-600"
             />
           </div>
         )}
@@ -559,10 +703,10 @@ const RevenueByProducts = () => {
                     <p className="text-xs text-gray-500">
                       {summary.totalProducts > 0
                         ? `${(
-                            (performanceBreakdown.highPerformers /
-                              summary.totalProducts) *
-                            100
-                          ).toFixed(1)}%`
+                          (performanceBreakdown.highPerformers /
+                            summary.totalProducts) *
+                          100
+                        ).toFixed(1)}%`
                         : "0%"}
                     </p>
                   </div>
@@ -587,10 +731,10 @@ const RevenueByProducts = () => {
                     <p className="text-xs text-gray-500">
                       {summary.totalProducts > 0
                         ? `${(
-                            (performanceBreakdown.averagePerformers /
-                              summary.totalProducts) *
-                            100
-                          ).toFixed(1)}%`
+                          (performanceBreakdown.averagePerformers /
+                            summary.totalProducts) *
+                          100
+                        ).toFixed(1)}%`
                         : "0%"}
                     </p>
                   </div>
@@ -615,12 +759,20 @@ const RevenueByProducts = () => {
                     <p className="text-xs text-gray-500">
                       {summary.totalProducts > 0
                         ? `${(
-                            (performanceBreakdown.lowPerformers /
-                              summary.totalProducts) *
-                            100
-                          ).toFixed(1)}%`
+                          (performanceBreakdown.lowPerformers /
+                            summary.totalProducts) *
+                          100
+                        ).toFixed(1)}%`
                         : "0%"}
                     </p>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Total Returns Impact:</span>
+                    <span className="font-semibold text-red-600">
+                      -{formatCurrency(summary.totalReturns)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -644,7 +796,19 @@ const RevenueByProducts = () => {
                     />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip formatter={(value) => formatCurrency(value)} />
-                    <Bar dataKey="totalRevenue" fill="#3b82f6" name="Revenue" />
+                    <Legend />
+                    <Bar
+                      dataKey="netRevenue"
+                      stackId="a"
+                      fill="#10b981"
+                      name="Net Revenue"
+                    />
+                    <Bar
+                      dataKey="returnValue"
+                      stackId="a"
+                      fill="#ef4444"
+                      name="Returns"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -662,7 +826,10 @@ const RevenueByProducts = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Payment Status Overview
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div
+              className={`grid grid-cols-1 md:grid-cols-2 ${summary.totalReturns > 0 ? "lg:grid-cols-3" : ""
+                } gap-6`}
+            >
               {/* Collection Rate */}
               <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                 <div className="flex items-center gap-2 mb-3">
@@ -697,45 +864,6 @@ const RevenueByProducts = () => {
                 </div>
               </div>
 
-              {/* Credit Usage */}
-              <div className="p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <CreditCard className="w-5 h-5 text-indigo-600" />
-                  <h4 className="font-semibold text-gray-900">Credit Usage</h4>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">
-                      Credit Applied
-                    </span>
-                    <span className="font-medium text-indigo-600">
-                      {formatCurrency(summary.totalCreditUsed)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">% of Revenue</span>
-                    <span className="font-medium text-gray-900">
-                      {summary.totalRevenue > 0
-                        ? `${(
-                            (summary.totalCreditUsed / summary.totalRevenue) *
-                            100
-                          ).toFixed(1)}%`
-                        : "0%"}
-                    </span>
-                  </div>
-                  <div className="pt-2 border-t border-indigo-200">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-semibold text-gray-900">
-                        Products
-                      </span>
-                      <span className="text-lg font-bold text-indigo-600">
-                        {productData.filter((p) => p.creditUsed > 0).length}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* Outstanding Dues */}
               <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
                 <div className="flex items-center gap-2 mb-3">
@@ -756,9 +884,9 @@ const RevenueByProducts = () => {
                     <span className="font-medium text-gray-900">
                       {summary.totalRevenue > 0
                         ? `${(
-                            (summary.totalDue / summary.totalRevenue) *
-                            100
-                          ).toFixed(1)}%`
+                          (summary.totalDue / summary.totalRevenue) *
+                          100
+                        ).toFixed(1)}%`
                         : "0%"}
                     </span>
                   </div>
@@ -774,6 +902,51 @@ const RevenueByProducts = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Returns Impact - Added */}
+              {summary.totalReturns > 0 && (
+                <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <RotateCcw className="w-5 h-5 text-red-600" />
+                    <h4 className="font-semibold text-gray-900">
+                      Returns Impact
+                    </h4>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">
+                        Total Returns
+                      </span>
+                      <span className="font-medium text-red-600">
+                        {formatCurrency(summary.totalReturns)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">
+                        % of Revenue
+                      </span>
+                      <span className="font-medium text-gray-900">
+                        {summary.totalRevenue > 0
+                          ? `${(
+                            (summary.totalReturns / summary.totalRevenue) *
+                            100
+                          ).toFixed(1)}%`
+                          : "0%"}
+                      </span>
+                    </div>
+                    <div className="pt-2 border-t border-red-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-gray-900">
+                          Products
+                        </span>
+                        <span className="text-lg font-bold text-red-600">
+                          {productData.filter((p) => p.returnValue > 0).length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -803,6 +976,10 @@ const RevenueByProducts = () => {
                   <div className="w-3 h-3 bg-orange-500 rounded"></div>
                   <span className="text-gray-600">Due</span>
                 </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-red-500 rounded"></div>
+                  <span className="text-gray-600">Returns</span>
+                </div>
               </div>
             </div>
 
@@ -828,6 +1005,7 @@ const RevenueByProducts = () => {
                 <Bar dataKey="revenue" fill="#3b82f6" name="Total Revenue" />
                 <Bar dataKey="actualReceived" fill="#10b981" name="Received" />
                 <Bar dataKey="dueAmount" fill="#f59e0b" name="Due Amount" />
+                <Bar dataKey="returnValue" fill="#ef4444" name="Returns" />
               </BarChart>
             </ResponsiveContainer>
 
@@ -852,9 +1030,25 @@ const RevenueByProducts = () => {
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Revenue:</span>
+                        <span className="text-gray-600">Gross Revenue:</span>
                         <span className="font-medium text-gray-900">
                           {formatCurrency(item.revenue)}
+                        </span>
+                      </div>
+                      {item.returnValue > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-red-600">Returns:</span>
+                          <span className="font-medium text-red-700">
+                            -{formatCurrency(item.returnValue)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between border-b border-gray-100 pb-1 mb-1">
+                        <span className="text-emerald-600 font-medium">
+                          Net Revenue:
+                        </span>
+                        <span className="font-bold text-emerald-700">
+                          {formatCurrency(item.netRevenue)}
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -875,9 +1069,9 @@ const RevenueByProducts = () => {
                           <span className="font-medium text-blue-600">
                             {item.revenue > 0
                               ? `${(
-                                  (item.actualReceived / item.revenue) *
-                                  100
-                                ).toFixed(1)}%`
+                                (item.actualReceived / item.revenue) *
+                                100
+                              ).toFixed(1)}%`
                               : "0%"}
                           </span>
                         </div>
@@ -892,268 +1086,351 @@ const RevenueByProducts = () => {
 
         {/* Filters Section */}
         {showFilters && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Filters
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Date Range */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      startDate: e.target.value,
-                    }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, endDate: e.target.value }))
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* Category Filter - FIXED */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category
-                </label>
-                <select
-                  value={filters.categoryId}
-                  onChange={(e) => {
-                    const selectedCategoryId = e.target.value;
-                    console.log("Category changed to:", selectedCategoryId);
-
-                    setFilters((prev) => ({
-                      ...prev,
-                      categoryId: selectedCategoryId,
-                      productId: "all",
-                    }));
-
-                    setProductSearchTerm("");
-                    setSelectedProduct(null);
-                    setShowProductDropdown(false);
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-300 relative z-20">
+            <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 relative overflow-visible">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                    <Filter className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">
+                      Advanced Filters
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Refine your revenue analysis
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={clearFilters}
+                  className="group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
                 >
-                  <option value="all">All Categories</option>
-                  {categories.map((category) => (
-                    <option key={category._id} value={category._id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-
-                <p className="text-xs text-gray-500 mt-1">
-                  Selected:{" "}
-                  {filters.categoryId === "all"
-                    ? "All Categories"
-                    : categories.find((c) => c._id === filters.categoryId)
-                        ?.name || filters.categoryId}
-                </p>
+                  <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                  Reset Filters
+                </button>
               </div>
 
-              {/* Product Search */}
-              <div className="relative" ref={productDropdownRef}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product
-                </label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    value={productSearchTerm}
-                    onChange={handleProductSearchChange}
-                    onFocus={() => setShowProductDropdown(true)}
-                    placeholder="Search products..."
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  {selectedProduct && (
-                    <button
-                      onClick={clearProductSelection}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Date Range Group */}
+                <div className="space-y-4 relative z-40">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <Calendar className="w-3 h-3" />
+                    Time Period
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-600 ml-1">Start Date</label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={filters.startDate}
+                          onChange={(e) =>
+                            setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+                          }
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-600 ml-1">End Date</label>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={filters.endDate}
+                          onChange={(e) =>
+                            setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+                          }
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {showProductDropdown && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                    {filteredProductsList.length > 0 ? (
-                      <div className="p-2">
-                        <button
-                          onClick={() => {
-                            clearProductSelection();
-                            setShowProductDropdown(false);
-                          }}
-                          className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700"
+                {/* Product & Category Group */}
+                <div className="space-y-4 relative z-30">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <Package className="w-3 h-3" />
+                    Product Details
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5 relative z-50">
+                      <label className="text-xs font-medium text-slate-600 ml-1">Category</label>
+                      <div className="relative">
+                        <select
+                          value={filters.categoryId}
+                          onChange={(e) =>
+                            setFilters((prev) => ({ ...prev, categoryId: e.target.value }))
+                          }
+                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10"
                         >
-                          All Products ({filteredProductsList.length})
-                        </button>
-                        {filteredProductsList.map((product) => {
-                          const categoryName =
-                            product.category?.name ||
-                            categories.find((c) => c._id === product.category)
-                              ?.name ||
-                            "Uncategorized";
+                          <option value="all">All Categories</option>
+                          {categories.map((category) => (
+                            <option key={category._id} value={category._id}>
+                              {category.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
 
-                          return (
-                            <button
-                              key={product._id}
-                              onClick={() => handleProductSelect(product)}
-                              className={`w-full text-left px-3 py-2 hover:bg-blue-50 rounded-lg text-sm ${
-                                selectedProduct?._id === product._id
-                                  ? "bg-blue-50 text-blue-700 font-medium"
-                                  : "text-gray-700"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span>{product.name}</span>
-                                <span className="text-xs text-gray-500">
-                                  {categoryName}
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
+                    {/* Custom Product Search Dropdown */}
+                    <div className="relative space-y-1.5 z-40" ref={productDropdownRef}>
+                      <label className="text-xs font-medium text-slate-600 ml-1">Product Search</label>
+                      <div className="relative group">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                        <input
+                          type="text"
+                          value={productSearchTerm}
+                          onChange={handleProductSearchChange}
+                          onFocus={() => setShowProductDropdown(true)}
+                          placeholder="Search by name..."
+                          className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                        />
+                        {selectedProduct && (
+                          <button
+                            onClick={clearProductSelection}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
                       </div>
-                    ) : (
-                      <div className="p-4 text-center text-gray-500 text-sm">
-                        {productSearchTerm
-                          ? `No products found matching "${productSearchTerm}"`
-                          : filters.categoryId !== "all"
-                          ? "No products in selected category"
-                          : "No products available"}
+
+                      {/* Dropdown Menu */}
+                      {showProductDropdown && (
+                        <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl shadow-slate-400/20 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                          {filteredProductsList.length > 0 ? (
+                            <div className="p-1.5">
+                              <button
+                                onClick={() => {
+                                  clearProductSelection();
+                                  setShowProductDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2.5 hover:bg-slate-50 rounded-lg text-sm font-medium text-slate-600 transition-colors mb-1"
+                              >
+                                All Products ({filteredProductsList.length})
+                              </button>
+                              {filteredProductsList.map((product) => {
+                                const categoryName =
+                                  product.category?.name ||
+                                  categories.find((c) => c._id === product.category)
+                                    ?.name ||
+                                  "Uncategorized";
+
+                                return (
+                                  <button
+                                    key={product._id}
+                                    onClick={() => handleProductSelect(product)}
+                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 mb-0.5 ${selectedProduct?._id === product._id
+                                      ? "bg-blue-50 text-blue-700 font-medium ring-1 ring-blue-100"
+                                      : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <span className="truncate mr-2">{product.name}</span>
+                                      <span className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
+                                        {categoryName}
+                                      </span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center">
+                              <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                              <p className="text-sm text-slate-500">No products found</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financials Group */}
+                <div className="space-y-4 relative z-20">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <IndianRupee className="w-3 h-3" />
+                    Revenue Range
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-600 ml-1">Min Amount</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
+                        <input
+                          type="number"
+                          value={filters.minRevenue}
+                          onChange={(e) =>
+                            setFilters((prev) => ({ ...prev, minRevenue: e.target.value }))
+                          }
+                          placeholder="0"
+                          className="w-full pl-6 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                        />
                       </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-600 ml-1">Max Amount</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
+                        <input
+                          type="number"
+                          value={filters.maxRevenue}
+                          onChange={(e) =>
+                            setFilters((prev) => ({ ...prev, maxRevenue: e.target.value }))
+                          }
+                          placeholder="Any"
+                          className="w-full pl-6 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analysis Group */}
+                <div className="space-y-4 relative z-10">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    <BarChart3 className="w-3 h-3" />
+                    Analysis
+                  </div>
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-600 ml-1">Return Status</label>
+                      <div className="relative">
+                        <select
+                          value={filters.returnsFilter}
+                          onChange={(e) =>
+                            setFilters((prev) => ({ ...prev, returnsFilter: e.target.value }))
+                          }
+                          className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10 ${filters.returnsFilter !== "all"
+                            ? "bg-red-50 border-red-200 text-red-700 font-medium"
+                            : "bg-slate-50 border-slate-200 text-slate-700 focus:bg-white focus:border-blue-500"
+                            }`}
+                        >
+                          <option value="all">All Products</option>
+                          <option value="withReturns">With Returns Only</option>
+                          <option value="withoutReturns">Without Returns Only</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-slate-600 ml-1">Sort By</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <select
+                            value={filters.sortBy}
+                            onChange={(e) =>
+                              setFilters((prev) => ({ ...prev, sortBy: e.target.value }))
+                            }
+                            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10"
+                          >
+                            <option value="totalRevenue">Revenue</option>
+                            <option value="totalQuantity">Quantity</option>
+                            <option value="avgPrice">Avg Price</option>
+                            <option value="productName">Name</option>
+                            <option value="profitMargin">Profit Margin</option>
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+                        <button
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              sortOrder: prev.sortOrder === "desc" ? "asc" : "desc",
+                            }))
+                          }
+                          className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:border-blue-300 hover:shadow-sm transition-all duration-200 text-slate-600"
+                          title={filters.sortOrder === "desc" ? "Descending" : "Ascending"}
+                        >
+                          {filters.sortOrder === "desc" ? (
+                            <TrendingDown className="w-4 h-4" />
+                          ) : (
+                            <TrendingUp className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Filters Summary */}
+              {hasActiveFilters() && (
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">
+                      Active:
+                    </span>
+
+                    {filters.categoryId !== "all" && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold border border-blue-100 shadow-sm animate-in fade-in zoom-in-95">
+                        Category: {categories.find((c) => c._id === filters.categoryId)?.name}
+                        <button
+                          onClick={() => setFilters(prev => ({ ...prev, categoryId: "all" }))}
+                          className="hover:bg-blue-100 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+
+                    {filters.productId !== "all" && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-100 shadow-sm animate-in fade-in zoom-in-95">
+                        Product: {selectedProduct?.name}
+                        <button
+                          onClick={clearProductSelection}
+                          className="hover:bg-emerald-100 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+
+                    {filters.minRevenue && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full text-xs font-semibold border border-violet-100 shadow-sm animate-in fade-in zoom-in-95">
+                        Min: ₹{filters.minRevenue}
+                        <button
+                          onClick={() => setFilters(prev => ({ ...prev, minRevenue: "" }))}
+                          className="hover:bg-violet-100 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+
+                    {filters.maxRevenue && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full text-xs font-semibold border border-violet-100 shadow-sm animate-in fade-in zoom-in-95">
+                        Max: ₹{filters.maxRevenue}
+                        <button
+                          onClick={() => setFilters(prev => ({ ...prev, maxRevenue: "" }))}
+                          className="hover:bg-violet-100 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+
+                    {filters.returnsFilter !== "all" && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 rounded-full text-xs font-semibold border border-red-100 shadow-sm animate-in fade-in zoom-in-95">
+                        Returns: {filters.returnsFilter === "withReturns" ? "With Returns" : "Without Returns"}
+                        <button
+                          onClick={() => setFilters(prev => ({ ...prev, returnsFilter: "all" }))}
+                          className="hover:bg-red-100 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
-
-              {/* Revenue Range */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Min Revenue (₹)
-                </label>
-                <input
-                  type="number"
-                  value={filters.minRevenue}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      minRevenue: e.target.value,
-                    }))
-                  }
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Revenue (₹)
-                </label>
-                <input
-                  type="number"
-                  value={filters.maxRevenue}
-                  onChange={(e) =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      maxRevenue: e.target.value,
-                    }))
-                  }
-                  placeholder="No limit"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* Sort Options */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sort By
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={filters.sortBy}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        sortBy: e.target.value,
-                      }))
-                    }
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="totalRevenue">Revenue</option>
-                    <option value="totalQuantity">Quantity</option>
-                    <option value="avgPrice">Avg Price</option>
-                    <option value="productName">Name</option>
-                    <option value="profitMargin">Profit Margin</option>
-                  </select>
-                  <button
-                    onClick={() =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        sortOrder: prev.sortOrder === "desc" ? "asc" : "desc",
-                      }))
-                    }
-                    className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    title={`Sort ${
-                      filters.sortOrder === "desc" ? "Ascending" : "Descending"
-                    }`}
-                  >
-                    {filters.sortOrder === "desc" ? "↓" : "↑"}
-                  </button>
                 </div>
-              </div>
-            </div>
-
-            {/* Filter Summary */}
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Active filters:</span>{" "}
-                {filters.categoryId !== "all" && (
-                  <span className="inline-block mr-2 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                    Category:{" "}
-                    {categories.find((c) => c._id === filters.categoryId)?.name}
-                  </span>
-                )}
-                {filters.productId !== "all" && (
-                  <span className="inline-block mr-2 px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
-                    Product: {selectedProduct?.name}
-                  </span>
-                )}
-                {filters.minRevenue && (
-                  <span className="inline-block mr-2 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
-                    Min: ₹{filters.minRevenue}
-                  </span>
-                )}
-                {filters.maxRevenue && (
-                  <span className="inline-block mr-2 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
-                    Max: ₹{filters.maxRevenue}
-                  </span>
-                )}
-                {!hasActiveFilters() && (
-                  <span className="text-gray-500">None</span>
-                )}
-              </p>
+              )}
             </div>
           </div>
         )}
@@ -1166,9 +1443,8 @@ const RevenueByProducts = () => {
             </h3>
             <p className="text-sm text-gray-600 mt-1">
               {productData.length > 0
-                ? `Showing ${productData.length} product${
-                    productData.length !== 1 ? "s" : ""
-                  }`
+                ? `Showing ${productData.length} product${productData.length !== 1 ? "s" : ""
+                }`
                 : "No products found"}
             </p>
           </div>
@@ -1196,7 +1472,13 @@ const RevenueByProducts = () => {
                         Category
                       </th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                        Revenue
+                        Gross Revenue
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                        Returns
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                        Net Revenue
                       </th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
                         Quantity Sold
@@ -1220,7 +1502,7 @@ const RevenueByProducts = () => {
                     {productData.length === 0 ? (
                       <tr>
                         <td
-                          colSpan="8"
+                          colSpan="10"
                           className="py-12 text-center text-gray-500"
                         >
                           <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
@@ -1286,6 +1568,23 @@ const RevenueByProducts = () => {
                                 </div>
                               </div>
                             </td>
+                            <td className="py-3 px-4 text-right">
+                              {product.returnValue > 0 ? (
+                                <div>
+                                  <p className="text-red-600 font-medium">
+                                    {formatCurrency(product.returnValue)}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {product.returnQuantity.toFixed(2)} qty
+                                  </p>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right font-bold text-gray-900">
+                              {formatCurrency(product.netRevenue)}
+                            </td>
                             <td className="py-3 px-4 text-right text-gray-900 font-medium">
                               {product.totalQuantity.toFixed(2)}
                             </td>
@@ -1297,57 +1596,19 @@ const RevenueByProducts = () => {
                                 {product.transactionCount}
                               </span>
                             </td>
-                            <td className="py-3 px-4">
-                              {/* Payment Status Progress Bar */}
-                              <div className="space-y-1">
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                  <div className="h-full flex">
-                                    <div
-                                      className="bg-green-500"
-                                      style={{
-                                        width: `${product.receivedPercentage}%`,
-                                      }}
-                                    ></div>
-                                    {product.creditUsed > 0 && (
-                                      <div
-                                        className="bg-indigo-500"
-                                        style={{
-                                          width: `${product.creditPercentage}%`,
-                                        }}
-                                      ></div>
-                                    )}
-                                    {product.dueAmount > 0 && (
-                                      <div
-                                        className="bg-orange-500"
-                                        style={{
-                                          width: `${product.duePercentage}%`,
-                                        }}
-                                      ></div>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex gap-2 text-xs justify-center">
-                                  <span className="text-green-600 font-medium">
-                                    {product.receivedPercentage.toFixed(0)}%
-                                  </span>
-                                  {product.dueAmount > 0 && (
-                                    <span className="text-orange-600 font-medium">
-                                      {product.duePercentage.toFixed(0)}% due
-                                    </span>
-                                  )}
-                                </div>
-                                {getPerformanceBadge(
-                                  product.totalRevenue,
-                                  summary?.avgRevenuePerProduct || 0
-                                )}
-                              </div>
+                            <td className="py-3 px-4 text-center">
+                              {/* Performance Badge Only */}
+                              {getPerformanceBadge(
+                                product.totalRevenue,
+                                summary?.avgRevenuePerProduct || 0
+                              )}
                             </td>
 
-                            {/* In table body, add after Performance column */}
+                            {/* Payment Status Column */}
                             <td className="py-3 px-4">
-                              <div className="space-y-1">
+                              <div className="space-y-2">
                                 {/* Progress Bar */}
-                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                                   <div className="h-full flex">
                                     <div
                                       className="bg-green-500"
@@ -1384,7 +1645,7 @@ const RevenueByProducts = () => {
                                 </div>
 
                                 {/* Status Text */}
-                                <div className="flex gap-2 text-xs">
+                                <div className="flex gap-2 text-xs justify-center">
                                   <span className="text-green-600 font-medium">
                                     ✓ {product.receivedPercentage.toFixed(1)}%
                                   </span>
@@ -1412,100 +1673,104 @@ const RevenueByProducts = () => {
               {/* Table Footer with Summary */}
               {productData.length > 0 && (
                 <div className="bg-gray-50 border-t border-gray-200 p-4 sm:p-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 text-sm">
-                    <div className="p-3 bg-white rounded-lg border border-gray-200">
-                      <p className="text-gray-600 mb-1">Total Revenue</p>
-                      <p className="font-bold text-gray-900 text-lg">
-                        {formatCurrency(
-                          productData.reduce(
-                            (sum, p) => sum + p.totalRevenue,
-                            0
-                          )
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        From {productData.length} products
-                      </p>
-                    </div>
+                  {/* Transaction Summary - Below Table */}
+                  {productData.length > 0 && summary && (
+                    <div className="mt-8">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Summary</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-6">
+                        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                          <div className="flex items-center gap-2 mb-3">
+                            <IndianRupee className="w-5 h-5 text-blue-600" />
+                            <h4 className="font-semibold text-gray-700 text-sm">Total Revenue</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mb-1">
+                            {formatCurrency(summary.totalRevenue || 0)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            From {summary.totalProducts || 0} product{(summary.totalProducts || 0) !== 1 ? 's' : ''}
+                          </p>
+                        </div>
 
-                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-green-700 mb-1">Received</p>
-                      <p className="font-bold text-green-800 text-lg">
-                        {formatCurrency(
-                          productData.reduce(
-                            (sum, p) => sum + p.actualReceived,
-                            0
-                          )
-                        )}
-                      </p>
-                      <p className="text-xs text-green-600 mt-1">
-                        {productData.reduce(
-                          (sum, p) => sum + p.totalRevenue,
-                          0
-                        ) > 0
-                          ? `${(
-                              (productData.reduce(
-                                (sum, p) => sum + p.actualReceived,
-                                0
-                              ) /
-                                productData.reduce(
-                                  (sum, p) => sum + p.totalRevenue,
-                                  0
-                                )) *
-                              100
-                            ).toFixed(1)}% collected`
-                          : "0%"}
-                      </p>
-                    </div>
+                        <div className="bg-white rounded-xl shadow-md p-5 border border-red-100 bg-red-50">
+                          <div className="flex items-center gap-2 mb-3">
+                            <RotateCcw className="w-5 h-5 text-red-600" />
+                            <h4 className="font-semibold text-gray-700 text-sm">Returns</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-red-600 mb-1">
+                            {formatCurrency(summary.totalReturns || 0)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {productData.filter((p) => p.returnValue > 0).length} product{productData.filter((p) => p.returnValue > 0).length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
 
-                    <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
-                      <p className="text-indigo-700 mb-1">Credit Used</p>
-                      <p className="font-bold text-indigo-800 text-lg">
-                        {formatCurrency(
-                          productData.reduce(
-                            (sum, p) => sum + (p.creditUsed || 0),
-                            0
-                          )
-                        )}
-                      </p>
-                      <p className="text-xs text-indigo-600 mt-1">
-                        {productData.filter((p) => p.creditUsed > 0).length}{" "}
-                        products
-                      </p>
-                    </div>
+                        <div className="bg-white rounded-xl shadow-md p-5 border border-emerald-100 bg-emerald-50">
+                          <div className="flex items-center gap-2 mb-3">
+                            <TrendingUp className="w-5 h-5 text-emerald-600" />
+                            <h4 className="font-semibold text-gray-700 text-sm">Net Revenue</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-emerald-700 mb-1">
+                            {formatCurrency(summary.netRevenue || 0)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Gross - Returns
+                          </p>
+                        </div>
 
-                    <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                      <p className="text-orange-700 mb-1">Pending Dues</p>
-                      <p className="font-bold text-orange-800 text-lg">
-                        {formatCurrency(
-                          productData.reduce(
-                            (sum, p) => sum + (p.dueAmount || 0),
-                            0
-                          )
-                        )}
-                      </p>
-                      <p className="text-xs text-orange-600 mt-1">
-                        {productData.filter((p) => p.dueAmount > 0).length}{" "}
-                        products
-                      </p>
-                    </div>
+                        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Wallet className="w-5 h-5 text-green-600" />
+                            <h4 className="font-semibold text-gray-700 text-sm">Received</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mb-1">
+                            {formatCurrency(summary.actualReceived || 0)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {summary.collectionRate?.toFixed(1) || '0.0'}% collected
+                          </p>
+                        </div>
 
-                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                      <p className="text-purple-700 mb-1">Total Quantity</p>
-                      <p className="font-bold text-purple-800 text-lg">
-                        {productData
-                          .reduce((sum, p) => sum + p.totalQuantity, 0)
-                          .toFixed(2)}
-                      </p>
-                      <p className="text-xs text-purple-600 mt-1">
-                        {productData.reduce(
-                          (sum, p) => sum + p.transactionCount,
-                          0
-                        )}{" "}
-                        transactions
-                      </p>
+                        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                          <div className="flex items-center gap-2 mb-3">
+                            <HandCoins className="w-5 h-5 text-indigo-600" />
+                            <h4 className="font-semibold text-gray-700 text-sm">Due Payments</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mb-1">
+                            {formatCurrency(summary.duePayments || 0)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {summary.paymentCount || 0} payment{(summary.paymentCount || 0) !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Clock className="w-5 h-5 text-orange-600" />
+                            <h4 className="font-semibold text-gray-700 text-sm">Pending Dues</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mb-1">
+                            {formatCurrency(summary.totalDue || 0)}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {productData.filter((p) => p.dueAmount > 0).length} product{productData.filter((p) => p.dueAmount > 0).length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Package className="w-5 h-5 text-purple-600" />
+                            <h4 className="font-semibold text-gray-700 text-sm">Total Quantity</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 mb-1">
+                            {summary.totalQuantitySold?.toFixed(2) || '0.00'}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {summary.totalTransactions || 0} transaction{(summary.totalTransactions || 0) !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Additional Summary Stats */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
@@ -1562,152 +1827,136 @@ const RevenueByProducts = () => {
         </div>
 
         {/* Product Insights - Enhanced */}
-        {productData.length > 0 && (
-          <div className="mt-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Best Selling Product */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
-              <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <h4 className="font-semibold text-gray-900 text-sm">
-                  Best Seller
-                </h4>
-              </div>
-              <p className="text-lg font-bold text-gray-900 mb-1 truncate">
-                {productData[0]?.productName}
-              </p>
-              <p className="text-sm text-gray-600 mb-2">
-                {formatCurrency(productData[0]?.totalRevenue)}
-              </p>
-              <div className="space-y-1 text-xs text-gray-600">
-                <p>
-                  ✓ {formatCurrency(productData[0]?.actualReceived)} received
-                </p>
-                {productData[0]?.dueAmount > 0 && (
-                  <p className="text-orange-600">
-                    ⏱ {formatCurrency(productData[0]?.dueAmount)} due
-                  </p>
-                )}
-                <p>
-                  {productData[0]?.totalQuantity.toFixed(2)} units •{" "}
-                  {productData[0]?.transactionCount} txns
-                </p>
-              </div>
+        {
+          productData.length > 0 && (
+            <div className="mt-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Best Seller (Net Revenue) */}
+              {(() => {
+                const bestSeller = [...productData].sort(
+                  (a, b) => b.netRevenue - a.netRevenue
+                )[0];
+                return (
+                  <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <TrendingUp className="w-5 h-5 text-green-600" />
+                      <h4 className="font-semibold text-gray-900 text-sm">
+                        Best Seller (Net)
+                      </h4>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900 mb-1 truncate">
+                      {bestSeller?.productName}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {formatCurrency(bestSeller?.netRevenue)}
+                    </p>
+                    <div className="space-y-1 text-xs text-gray-600">
+                      <p>Gross: {formatCurrency(bestSeller?.totalRevenue)}</p>
+                      <p>Returns: {formatCurrency(bestSeller?.returnValue)}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Most Returned */}
+              {(() => {
+                const mostReturned = [...productData].sort(
+                  (a, b) => b.returnValue - a.returnValue
+                )[0];
+                return mostReturned && mostReturned.returnValue > 0 ? (
+                  <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border border-red-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <RotateCcw className="w-5 h-5 text-red-600" />
+                      <h4 className="font-semibold text-gray-900 text-sm">
+                        Most Returned
+                      </h4>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900 mb-1 truncate">
+                      {mostReturned?.productName}
+                    </p>
+                    <p className="text-sm text-red-600 mb-2">
+                      {formatCurrency(mostReturned?.returnValue)}
+                    </p>
+                    <div className="space-y-1 text-xs text-gray-600">
+                      <p>{mostReturned?.returnQuantity} units returned</p>
+                      <p>{mostReturned?.returnCount} return txns</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 flex flex-col items-center justify-center text-center">
+                    <RotateCcw className="w-8 h-8 text-gray-300 mb-2" />
+                    <p className="text-gray-500 text-sm font-medium">
+                      No returns
+                    </p>
+                    <p className="text-xs text-gray-400">Great job!</p>
+                  </div>
+                );
+              })()}
+
+              {/* Best Collection Rate */}
+              {(() => {
+                const bestCollection = [...productData].sort(
+                  (a, b) => b.receivedPercentage - a.receivedPercentage
+                )[0];
+                return (
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <CreditCard className="w-5 h-5 text-blue-600" />
+                      <h4 className="font-semibold text-gray-900 text-sm">
+                        Best Collection
+                      </h4>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900 mb-1 truncate">
+                      {bestCollection?.productName}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {bestCollection?.receivedPercentage.toFixed(1)}% collected
+                    </p>
+                    <div className="space-y-1 text-xs text-gray-600">
+                      <p>
+                        ✓ {formatCurrency(bestCollection?.actualReceived)}{" "}
+                        received
+                      </p>
+                      <p>
+                        Revenue: {formatCurrency(bestCollection?.totalRevenue)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Most Popular (Most Transactions) */}
+              {(() => {
+                const mostPopular = [...productData].sort(
+                  (a, b) => b.transactionCount - a.transactionCount
+                )[0];
+                return (
+                  <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <ShoppingCart className="w-5 h-5 text-purple-600" />
+                      <h4 className="font-semibold text-gray-900 text-sm">
+                        Most Popular
+                      </h4>
+                    </div>
+                    <p className="text-lg font-bold text-gray-900 mb-1 truncate">
+                      {mostPopular?.productName}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {mostPopular?.transactionCount} transactions
+                    </p>
+                    <div className="space-y-1 text-xs text-gray-600">
+                      <p>Revenue: {formatCurrency(mostPopular?.totalRevenue)}</p>
+                      <p>
+                        {mostPopular?.totalQuantity.toFixed(2)} units sold
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
-
-            {/* Best Collection Rate */}
-            {(() => {
-              const bestCollection = [...productData].sort(
-                (a, b) => b.receivedPercentage - a.receivedPercentage
-              )[0];
-              return (
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CreditCard className="w-5 h-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900 text-sm">
-                      Best Collection
-                    </h4>
-                  </div>
-                  <p className="text-lg font-bold text-gray-900 mb-1 truncate">
-                    {bestCollection?.productName}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-2">
-                    {bestCollection?.receivedPercentage.toFixed(1)}% collected
-                  </p>
-                  <div className="space-y-1 text-xs text-gray-600">
-                    <p>
-                      ✓ {formatCurrency(bestCollection?.actualReceived)}{" "}
-                      received
-                    </p>
-                    <p>
-                      Revenue: {formatCurrency(bestCollection?.totalRevenue)}
-                    </p>
-                    <p>{bestCollection?.transactionCount} transactions</p>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Most Popular (Most Transactions) */}
-            {(() => {
-              const mostPopular = [...productData].sort(
-                (a, b) => b.transactionCount - a.transactionCount
-              )[0];
-              return (
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <ShoppingCart className="w-5 h-5 text-purple-600" />
-                    <h4 className="font-semibold text-gray-900 text-sm">
-                      Most Popular
-                    </h4>
-                  </div>
-                  <p className="text-lg font-bold text-gray-900 mb-1 truncate">
-                    {mostPopular?.productName}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-2">
-                    {mostPopular?.transactionCount} transactions
-                  </p>
-                  <div className="space-y-1 text-xs text-gray-600">
-                    <p>Revenue: {formatCurrency(mostPopular?.totalRevenue)}</p>
-                    <p>
-                      ✓ {mostPopular?.receivedPercentage.toFixed(1)}% collected
-                    </p>
-                    <p>{mostPopular?.totalQuantity.toFixed(2)} units sold</p>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Highest Pending Dues */}
-            {(() => {
-              const highestDue = [...productData]
-                .filter((p) => p.dueAmount > 0)
-                .sort((a, b) => b.dueAmount - a.dueAmount)[0];
-
-              return highestDue ? (
-                <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-6 border border-orange-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Clock className="w-5 h-5 text-orange-600" />
-                    <h4 className="font-semibold text-gray-900 text-sm">
-                      Highest Pending
-                    </h4>
-                  </div>
-                  <p className="text-lg font-bold text-gray-900 mb-1 truncate">
-                    {highestDue?.productName}
-                  </p>
-                  <p className="text-sm text-orange-600 mb-2">
-                    {formatCurrency(highestDue?.dueAmount)} pending
-                  </p>
-                  <div className="space-y-1 text-xs text-gray-600">
-                    <p>Total: {formatCurrency(highestDue?.totalRevenue)}</p>
-                    <p>⏱ {highestDue?.duePercentage.toFixed(1)}% pending</p>
-                    <p>{highestDue?.transactionCount} transactions</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="w-5 h-5 text-green-600" />
-                    <h4 className="font-semibold text-gray-900 text-sm">
-                      Payment Status
-                    </h4>
-                  </div>
-                  <p className="text-lg font-bold text-green-600 mb-1">
-                    Excellent!
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    No pending dues across all products
-                  </p>
-                  <div className="mt-3 text-xs text-green-700">
-                    <p>✓ 100% collection rate</p>
-                    <p>All payments received</p>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-      </div>
-    </div>
+          )
+        }
+      </div >
+    </div >
   );
 };
 

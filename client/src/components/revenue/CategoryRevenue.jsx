@@ -43,6 +43,7 @@ import {
   Wallet,
   Receipt,
   HandCoins,
+  IndianRupee,
 } from "lucide-react";
 import { fetchRevenueByCategory } from "../../api/revenue";
 import toast, { Toaster } from "react-hot-toast";
@@ -236,6 +237,17 @@ const CategoryRevenue = () => {
   const filteredTotals = useMemo(() => {
     if (!filteredCategories.length) return null;
 
+    // Optimization: If all categories are selected, use the backend-provided totals
+    // This is CRITICAL for invoiceCount because summing category invoice counts leads to double-counting
+    if (totals && categoryData.length > 0 && selectedCategories.length === categoryData.length) {
+      return {
+        ...totals,
+        // Ensure percentages are formatted correctly if they aren't already strings
+        receivedPercentage: typeof totals.receivedPercentage === 'number' ? totals.receivedPercentage.toFixed(2) : totals.receivedPercentage,
+        duePercentage: typeof totals.duePercentage === 'number' ? totals.duePercentage.toFixed(2) : totals.duePercentage,
+      };
+    }
+
     const totalRevenue = filteredCategories.reduce((sum, cat) => sum + (cat.totalRevenue || 0), 0);
     const actualReceived = filteredCategories.reduce((sum, cat) => sum + (cat.actualReceived || 0), 0);
     const dueAmount = filteredCategories.reduce((sum, cat) => sum + (cat.dueAmount || 0), 0);
@@ -249,7 +261,7 @@ const CategoryRevenue = () => {
       receivedPercentage: totalRevenue > 0 ? ((actualReceived / totalRevenue) * 100).toFixed(2) : "0.00",
       duePercentage: totalRevenue > 0 ? ((dueAmount / totalRevenue) * 100).toFixed(2) : "0.00",
     };
-  }, [filteredCategories]);
+  }, [filteredCategories, totals, categoryData.length, selectedCategories.length]);
 
   const StatCard = ({ icon: Icon, title, value, subtitle, color, trend }) => (
     <div className="group relative bg-white rounded-2xl p-5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-slate-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
@@ -682,10 +694,10 @@ const CategoryRevenue = () => {
         {summary && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
             <StatCard
-              icon={Receipt}
-              title="Net Revenue"
-              value={formatCurrency(summary.netRevenue || 0)}
-              subtitle={`Gross: ${formatCurrency(summary.totalRevenue || 0)}`}
+              icon={IndianRupee}
+              title="Total Revenue"
+              value={formatCurrency(summary.totalRevenue || 0)}
+              subtitle="Gross Sales"
               color="bg-gradient-to-br from-blue-500 to-blue-600"
             />
             <StatCard
@@ -846,7 +858,7 @@ const CategoryRevenue = () => {
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-sm font-medium text-green-700">Actual Received</span>
-                              <span className="text-lg font-bold text-green-800">{formatCurrency(summary?.totalCollected || filteredTotals.actualReceived)}</span>
+                              <span className="text-lg font-bold text-green-800">{formatCurrency(filteredTotals.actualReceived)}</span>
                             </div>
                             {filteredTotals.dueAmount > 0 && (
                               <div className="flex items-center justify-between">

@@ -1227,7 +1227,7 @@ router.get("/by-category", auth, async (req, res) => {
                 online: 0,
                 card: 0,
                 due: 0,
-                mixed: 0,
+
               },
               in: {
                 cash: {
@@ -1258,13 +1258,7 @@ router.get("/by-category", auth, async (req, res) => {
                     "$$value.due",
                   ],
                 },
-                mixed: {
-                  $cond: [
-                    { $eq: ["$$this", "mixed"] },
-                    { $add: ["$$value.mixed", 1] },
-                    "$$value.mixed",
-                  ],
-                },
+
               },
             },
           },
@@ -1288,7 +1282,7 @@ router.get("/by-category", auth, async (req, res) => {
           onlineTransactions: "$paymentMethodCounts.online",
           cardTransactions: "$paymentMethodCounts.card",
           dueTransactions: "$paymentMethodCounts.due",
-          mixedTransactions: "$paymentMethodCounts.mixed",
+
 
           // Average metrics
           avgTransactionValue: {
@@ -1473,7 +1467,7 @@ router.get("/by-category", auth, async (req, res) => {
             onlineTransactions: 0,
             cardTransactions: 0,
             dueTransactions: 0,
-            mixedTransactions: 0,
+
             receivedPercentage: 0,
             duePercentage: 0,
             avgTransactionValue: 0,
@@ -1575,6 +1569,16 @@ router.get("/by-category", auth, async (req, res) => {
     console.log(`Returns found: ${returnsCount} items, Total value: ₹${returns}`);
     console.log(`===========================\n`);
 
+    // FIXED: Count unique invoices to avoid double-counting when summing category totals
+    const uniqueInvoiceCount = await Invoice.countDocuments({
+      createdBy: userId,
+      status: { $in: ["final", "paid"] },
+      ...dateFilter,
+    });
+
+    // Override the summed totalInvoices with actual unique count
+    totals.totalInvoices = uniqueInvoiceCount;
+
     // Enhanced summary matching revenue dashboard
     const summary = {
       // Basic metrics
@@ -1584,7 +1588,7 @@ router.get("/by-category", auth, async (req, res) => {
       returnsCount,
 
       // Collection breakdown
-      totalCollected: totals.actualReceived, // Initial + Due Payments (for categories in period)
+      totalCollected: totals.initialPayment + allDuePayments, // FIXED: Initial payments + ALL due payments in period
       initialPayment: totals.initialPayment,
       paymentsReceived: totals.paymentsReceived, // Category-level (period invoices only)
 
@@ -3346,6 +3350,7 @@ router.get("/by-products", auth, async (req, res) => {
           totalRevenue: { $sum: "$items.subtotal" },
 
           // Calculate actual received amount for this product
+          // Calculate actual received amount for this product
           actualReceived: {
             $sum: {
               $cond: [
@@ -3353,29 +3358,16 @@ router.get("/by-products", auth, async (req, res) => {
                 "$items.subtotal",
                 {
                   $cond: [
-                    { $eq: ["$paymentMethod", "credit"] },
-                    "$items.subtotal",
+                    { $eq: ["$paymentMethod", "due"] },
+                    0, // For due payments, initial received is 0
                     {
-                      // For due/mixed payments, calculate proportional received amount
-                      $subtract: [
-                        "$items.subtotal",
-                        {
-                          $multiply: [
-                            "$items.subtotal",
-                            {
-                              $divide: [
-                                { $ifNull: ["$dueAmount", 0] },
-                                { $max: ["$total", 1] },
-                              ],
-                            },
-                          ],
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            },
+                      // For any other case (shouldn't happen with strict types), default to 0
+                      $literal: 0
+                    }
+                  ]
+                }
+              ]
+            }
           },
 
           // Calculate due amount for this product
@@ -3399,26 +3391,7 @@ router.get("/by-products", auth, async (req, res) => {
             },
           },
 
-          // Calculate credit used for this product
-          creditUsed: {
-            $sum: {
-              $cond: [
-                { $gt: [{ $ifNull: ["$creditUsed", 0] }, 0] },
-                {
-                  $multiply: [
-                    "$items.subtotal",
-                    {
-                      $divide: [
-                        { $ifNull: ["$creditUsed", 0] },
-                        { $max: ["$total", 1] },
-                      ],
-                    },
-                  ],
-                },
-                0,
-              ],
-            },
-          },
+
 
           // Other metrics
           totalQuantity: { $sum: "$items.quantity" },
@@ -3452,12 +3425,7 @@ router.get("/by-products", auth, async (req, res) => {
           dueTransactions: {
             $sum: { $cond: [{ $eq: ["$paymentMethod", "due"] }, 1, 0] },
           },
-          creditTransactions: {
-            $sum: { $cond: [{ $eq: ["$paymentMethod", "credit"] }, 1, 0] },
-          },
-          mixedTransactions: {
-            $sum: { $cond: [{ $eq: ["$paymentMethod", "mixed"] }, 1, 0] },
-          },
+
         },
       },
       {
@@ -3492,7 +3460,7 @@ router.get("/by-products", auth, async (req, res) => {
           totalRevenue: { $round: ["$totalRevenue", 2] },
           actualReceived: { $round: ["$actualReceived", 2] },
           dueAmount: { $round: ["$dueAmount", 2] },
-          creditUsed: { $round: ["$creditUsed", 2] },
+
 
           // Other metrics
           totalQuantity: { $round: ["$totalQuantity", 2] },
@@ -3506,8 +3474,7 @@ router.get("/by-products", auth, async (req, res) => {
           onlineTransactions: 1,
           cardTransactions: 1,
           dueTransactions: 1,
-          creditTransactions: 1,
-          mixedTransactions: 1,
+
 
           // Calculate percentages
           receivedPercentage: {
@@ -3544,23 +3511,7 @@ router.get("/by-products", auth, async (req, res) => {
               0,
             ],
           },
-          creditPercentage: {
-            $cond: [
-              { $gt: ["$totalRevenue", 0] },
-              {
-                $round: [
-                  {
-                    $multiply: [
-                      { $divide: ["$creditUsed", "$totalRevenue"] },
-                      100,
-                    ],
-                  },
-                  2,
-                ],
-              },
-              0,
-            ],
-          },
+
 
           // Profit margin
           profitMargin: {
@@ -3588,6 +3539,56 @@ router.get("/by-products", auth, async (req, res) => {
         },
       },
     ]);
+
+    // Get product-wise returns
+    const stockDateFilter = {};
+    if (dateFilter.date) {
+      stockDateFilter.timestamp = dateFilter.date;
+    }
+
+    const productReturns = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          ...stockDateFilter,
+        },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $group: {
+          _id: "$product",
+          returnQuantity: { $sum: "$adjustment" },
+          returnValue: {
+            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          },
+          returnCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Create a map for easy lookup
+    const returnsMap = {};
+    productReturns.forEach((r) => {
+      returnsMap[r._id.toString()] = r;
+    });
+
+    // Merge returns into productRevenue
+    productRevenue.forEach((p) => {
+      const r = returnsMap[p.productId.toString()];
+      p.returnQuantity = r ? r.returnQuantity : 0;
+      p.returnValue = r ? r.returnValue : 0;
+      p.returnCount = r ? r.returnCount : 0;
+      p.netRevenue = p.totalRevenue - p.returnValue;
+    });
 
     // Apply filters
     let filteredProducts = productRevenue;
@@ -3648,10 +3649,6 @@ router.get("/by-products", auth, async (req, res) => {
         0
       ),
       totalDue: filteredProducts.reduce((sum, p) => sum + p.dueAmount, 0),
-      totalCreditUsed: filteredProducts.reduce(
-        (sum, p) => sum + p.creditUsed,
-        0
-      ),
       totalQuantitySold: filteredProducts.reduce(
         (sum, p) => sum + p.totalQuantity,
         0
@@ -3670,14 +3667,42 @@ router.get("/by-products", auth, async (req, res) => {
           filteredProducts.length
           : 0,
       totalTax: filteredProducts.reduce((sum, p) => sum + p.totalTax, 0),
+      totalReturns: filteredProducts.reduce((sum, p) => sum + p.returnValue, 0),
+      netRevenue: filteredProducts.reduce((sum, p) => sum + p.netRevenue, 0),
       collectionRate: 0,
     };
+
+    // FIXED: Count unique invoices to avoid double-counting
+    const uniqueInvoiceCount = await Invoice.countDocuments({
+      createdBy: userId,
+      status: { $in: ["final", "paid"] },
+      ...dateFilter,
+    });
+
+    // Override the summed totalInvoices with actual unique count
+    summary.totalInvoices = uniqueInvoiceCount;
 
     // Calculate collection rate
     if (summary.totalRevenue > 0) {
       summary.collectionRate =
         (summary.actualReceived / summary.totalRevenue) * 100;
     }
+
+    // Get due payments (type: "payment" transactions) for the period
+    const paymentQuery = {
+      createdBy: userId,
+      type: "payment",
+      ...dateFilter,
+    };
+
+    const payments = await mongoose.model("Transaction").find(paymentQuery).lean();
+    const totalDuePayments = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+    // Add enhanced fields to summary
+    summary.duePayments = totalDuePayments;
+    summary.paymentCount = payments.length;
+    summary.totalCollected = summary.actualReceived + totalDuePayments;
+    summary.dueSales = summary.totalRevenue - summary.actualReceived; // Amount given on credit
 
     // Get performance categories based on filtered data
     const performanceBreakdown = {
@@ -3774,6 +3799,7 @@ router.get("/by-products", auth, async (req, res) => {
       { $unwind: "$productInfo" },
       {
         $project: {
+          productId: "$_id.product",
           productName: "$productInfo.name",
           month: "$_id.month",
           year: "$_id.year",
@@ -3810,11 +3836,61 @@ router.get("/by-products", auth, async (req, res) => {
       { $sort: { year: 1, month: 1 } },
     ]);
 
+    // Get returns trend for top products
+    const returnsTrend = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          product: { $in: topProductIds },
+          timestamp: { $gte: sixMonthsAgo },
+        },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $group: {
+          _id: {
+            product: "$product",
+            month: { $month: "$timestamp" },
+            year: { $year: "$timestamp" },
+          },
+          returnValue: {
+            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          },
+        },
+      },
+    ]);
+
+    // Merge returns into revenueTrend
+    const returnsTrendMap = {};
+    returnsTrend.forEach((r) => {
+      const key = `${r._id.product}-${r._id.month}-${r._id.year}`;
+      returnsTrendMap[key] = r.returnValue;
+    });
+
+    const finalRevenueTrend = revenueTrend.map((item) => {
+      const key = `${item.productId}-${item.month}-${item.year}`;
+      const returnValue = returnsTrendMap[key] || 0;
+      return {
+        ...item,
+        returnValue: parseFloat(returnValue.toFixed(2)),
+        netRevenue: parseFloat((item.revenue - returnValue).toFixed(2)),
+      };
+    });
+
     res.json({
       products: filteredProducts,
       summary,
       performanceBreakdown,
-      revenueTrend,
+      revenueTrend: finalRevenueTrend,
     });
   } catch (error) {
     console.error("Product revenue error:", error);
@@ -4174,6 +4250,7 @@ router.get("/transactions", auth, async (req, res) => {
         actualReceivedRevenue: summary.actualReceivedRevenue || 0,
         totalDueRevenue: summary.totalDueRevenue || 0,
         transactionCount: summary.transactionCount || 0,
+        invoiceCount: summary.transactionCount || 0, // Number of sales/invoices
         returns: totalReturns || 0,
         duePayments: totalDuePayments || 0,
         paymentCount: duesPaymentCount || 0,
@@ -4196,6 +4273,353 @@ router.get("/transactions", auth, async (req, res) => {
     res
       .status(500)
       .json({ message: "Error fetching transactions", error: error.message });
+  }
+});
+
+// Get Product Returns Analytics
+router.get("/returns", auth, async (req, res) => {
+  try {
+    const {
+      startDate,
+      endDate,
+      categoryId,
+      productId,
+      sortBy = "returnValue",
+      sortOrder = "desc",
+    } = req.query;
+
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
+
+    // Build date filter
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter.timestamp = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
+      };
+    } else if (startDate || endDate) {
+      dateFilter.timestamp = startDate
+        ? { $gte: new Date(startDate) }
+        : { $lte: new Date(endDate) };
+    }
+
+    // Build base match query
+    const matchQuery = {
+      user: userId,
+      type: "return",
+      ...dateFilter,
+    };
+
+    // Get product-wise returns data
+    const productReturnsAggregation = [
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productInfo.category",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: "$product",
+          productName: { $first: "$productInfo.name" },
+          productSku: { $first: "$productInfo.sku" },
+          productPrice: { $first: "$productInfo.price" },
+          categoryId: { $first: "$categoryInfo._id" },
+          categoryName: {
+            $first: { $ifNull: ["$categoryInfo.name", "Uncategorized"] },
+          },
+          returnQuantity: { $sum: "$adjustment" },
+          returnCount: { $sum: 1 },
+          returnValue: {
+            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          },
+          lastReturnDate: { $max: "$timestamp" },
+          avgReturnQuantity: { $avg: "$adjustment" },
+        },
+      },
+    ];
+
+    // Add category filter if provided
+    if (categoryId && categoryId !== "all") {
+      productReturnsAggregation.push({
+        $match: { categoryId: new mongoose.Types.ObjectId(categoryId) },
+      });
+    }
+
+    // Add product filter if provided
+    if (productId && productId !== "all") {
+      productReturnsAggregation.push({
+        $match: { _id: new mongoose.Types.ObjectId(productId) },
+      });
+    }
+
+    // Add sorting
+    const sortField = {
+      returnValue: "returnValue",
+      returnQuantity: "returnQuantity",
+      returnCount: "returnCount",
+      productName: "productName",
+      lastReturnDate: "lastReturnDate",
+    }[sortBy] || "returnValue";
+
+    productReturnsAggregation.push({
+      $sort: { [sortField]: sortOrder === "desc" ? -1 : 1 },
+    });
+
+    const productReturns = await StockHistory.aggregate(
+      productReturnsAggregation
+    );
+
+    // Calculate summary statistics
+    const summaryData = await StockHistory.aggregate([
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $group: {
+          _id: null,
+          totalReturnValue: {
+            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          },
+          totalReturnQuantity: { $sum: "$adjustment" },
+          totalReturnCount: { $sum: 1 },
+          uniqueProducts: { $addToSet: "$product" },
+        },
+      },
+      {
+        $project: {
+          totalReturnValue: 1,
+          totalReturnQuantity: 1,
+          totalReturnCount: 1,
+          uniqueProductCount: { $size: "$uniqueProducts" },
+        },
+      },
+    ]);
+
+    const summary = summaryData[0] || {
+      totalReturnValue: 0,
+      totalReturnQuantity: 0,
+      totalReturnCount: 0,
+      uniqueProductCount: 0,
+    };
+
+    // Get category-wise returns breakdown
+    const categoryReturns = await StockHistory.aggregate([
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productInfo.category",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $group: {
+          _id: "$categoryInfo._id",
+          categoryName: {
+            $first: { $ifNull: ["$categoryInfo.name", "Uncategorized"] },
+          },
+          returnValue: {
+            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          },
+          returnQuantity: { $sum: "$adjustment" },
+          returnCount: { $sum: 1 },
+        },
+      },
+      { $sort: { returnValue: -1 } },
+    ]);
+
+    // Get returns trend (daily/weekly/monthly based on date range)
+    const getTrendGrouping = () => {
+      if (!startDate || !endDate) {
+        return {
+          year: { $year: "$timestamp" },
+          month: { $month: "$timestamp" },
+        };
+      }
+
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+      if (daysDiff <= 31) {
+        // Daily grouping for <= 1 month
+        return {
+          year: { $year: "$timestamp" },
+          month: { $month: "$timestamp" },
+          day: { $dayOfMonth: "$timestamp" },
+        };
+      } else if (daysDiff <= 365) {
+        // Weekly grouping for <= 1 year
+        return {
+          year: { $year: "$timestamp" },
+          week: { $week: "$timestamp" },
+        };
+      } else {
+        // Monthly grouping for > 1 year
+        return {
+          year: { $year: "$timestamp" },
+          month: { $month: "$timestamp" },
+        };
+      }
+    };
+
+    const trendData = await StockHistory.aggregate([
+      { $match: matchQuery },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $group: {
+          _id: getTrendGrouping(),
+          returnValue: {
+            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          },
+          returnQuantity: { $sum: "$adjustment" },
+          returnCount: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+    ]);
+
+    // Format trend data for frontend
+    const formattedTrend = trendData.map((item) => {
+      let date;
+      if (item._id.day) {
+        date = new Date(item._id.year, item._id.month - 1, item._id.day)
+          .toISOString()
+          .split("T")[0];
+      } else if (item._id.week) {
+        date = `${item._id.year}-W${String(item._id.week).padStart(2, "0")}`;
+      } else {
+        date = new Date(item._id.year, item._id.month - 1, 1)
+          .toISOString()
+          .split("T")[0]
+          .substring(0, 7);
+      }
+
+      return {
+        date,
+        returnValue: Math.round(item.returnValue * 100) / 100,
+        returnQuantity: item.returnQuantity,
+        returnCount: item.returnCount,
+      };
+    });
+
+    // Get total sales for the period to calculate return rate
+    const salesData = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...(startDate && endDate
+            ? {
+              date: {
+                $gte: new Date(startDate),
+                $lte: new Date(endDate),
+              },
+            }
+            : {}),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalSales: { $sum: "$total" },
+        },
+      },
+    ]);
+
+    const totalSales = salesData[0]?.totalSales || 0;
+    const returnRate =
+      totalSales > 0 ? (summary.totalReturnValue / totalSales) * 100 : 0;
+
+    // Find most returned product
+    const mostReturnedProduct = productReturns[0] || null;
+
+    // Enhanced summary
+    const enhancedSummary = {
+      ...summary,
+      returnRate: Math.round(returnRate * 100) / 100,
+      mostReturnedProduct: mostReturnedProduct
+        ? {
+          name: mostReturnedProduct.productName,
+          returnValue: mostReturnedProduct.returnValue,
+          returnQuantity: mostReturnedProduct.returnQuantity,
+          returnCount: mostReturnedProduct.returnCount,
+        }
+        : null,
+      avgReturnValue:
+        summary.totalReturnCount > 0
+          ? Math.round(
+            (summary.totalReturnValue / summary.totalReturnCount) * 100
+          ) / 100
+          : 0,
+      totalSales,
+    };
+
+    console.log("\n=== PRODUCT RETURNS ANALYTICS ===");
+    console.log(`Total Return Value: ₹${summary.totalReturnValue}`);
+    console.log(`Total Return Quantity: ${summary.totalReturnQuantity}`);
+    console.log(`Total Return Transactions: ${summary.totalReturnCount}`);
+    console.log(`Unique Products Returned: ${summary.uniqueProductCount}`);
+    console.log(`Return Rate: ${returnRate.toFixed(2)}%`);
+    console.log(`Total Sales (Period): ₹${totalSales}`);
+    console.log("=================================\n");
+
+    res.json({
+      summary: enhancedSummary,
+      products: productReturns,
+      categoryBreakdown: categoryReturns,
+      trend: formattedTrend,
+      dateRange: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+      },
+    });
+  } catch (error) {
+    console.error("Product returns error:", error);
+    res.status(500).json({
+      message: "Error fetching product returns",
+      error: error.message,
+    });
   }
 });
 

@@ -150,9 +150,8 @@ const RevenueAnalytics = () => {
         </div>
         {change !== undefined && (
           <div
-            className={`flex items-center gap-1 text-sm font-semibold ${
-              change >= 0 ? "text-green-600" : "text-red-600"
-            }`}
+            className={`flex items-center gap-1 text-sm font-semibold ${change >= 0 ? "text-green-600" : "text-red-600"
+              }`}
           >
             {change >= 0 ? (
               <ArrowUpRight className="w-4 h-4" />
@@ -251,11 +250,10 @@ const RevenueAnalytics = () => {
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${
-                selectedPeriod === period
+              className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${selectedPeriod === period
                   ? "bg-blue-600 text-white shadow-md"
                   : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
-              }`}
+                }`}
             >
               {getPeriodLabel(period)}
             </button>
@@ -274,11 +272,10 @@ const RevenueAnalytics = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all text-sm ${
-                  activeTab === tab.id
+                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all text-sm ${activeTab === tab.id
                     ? "text-blue-600 border-b-2 border-blue-600"
                     : "text-gray-600 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
@@ -645,13 +642,12 @@ const RevenueAnalytics = () => {
                           </td>
                           <td className="text-right py-3 px-4">
                             <span
-                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                month.collectionRate >= 80
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${month.collectionRate >= 80
                                   ? "bg-green-100 text-green-800"
                                   : month.collectionRate >= 60
-                                  ? "bg-yellow-100 text-yellow-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
                             >
                               {formatPercentage(month.collectionRate)}
                             </span>
@@ -1067,11 +1063,11 @@ const RevenueAnalytics = () => {
                       <p className="text-2xl font-bold text-gray-900">
                         {analyticsData.productPerformance.length > 0
                           ? (
-                              analyticsData.productPerformance.reduce(
-                                (sum, cat) => sum + cat.score,
-                                0
-                              ) / analyticsData.productPerformance.length
-                            ).toFixed(0)
+                            analyticsData.productPerformance.reduce(
+                              (sum, cat) => sum + cat.score,
+                              0
+                            ) / analyticsData.productPerformance.length
+                          ).toFixed(0)
                           : 0}
                         %
                       </p>

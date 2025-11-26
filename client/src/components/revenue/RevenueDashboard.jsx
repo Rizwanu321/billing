@@ -745,9 +745,18 @@ const RevenueDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 icon={IndianRupee}
+                title="Gross Revenue"
+                value={formatCurrency(enhancedMetrics.totalRevenue)}
+                subtitle="Total Sales Value"
+                trend={parseFloat(revenueData?.growth?.percentage || 0)}
+                color="bg-violet-500"
+              />
+
+              <StatCard
+                icon={Target}
                 title="Net Revenue"
                 value={enhancedMetrics.netRevenue}
-                subtitle={`Gross: ${formatCurrency(enhancedMetrics.totalRevenue)}`}
+                subtitle="Gross - Returns"
                 trend={parseFloat(revenueData?.growth?.percentage || 0)}
                 color="bg-blue-500"
               />
