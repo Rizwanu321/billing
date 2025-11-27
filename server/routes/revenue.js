@@ -1400,12 +1400,12 @@ router.get("/by-category", auth, async (req, res) => {
       });
     }
 
-    console.log("\n=== CATEGORY PAYMENTS SUMMARY ===");
+    console.log(`\\n=== CATEGORY PAYMENTS SUMMARY ===`);
     Object.entries(categoryPaymentsMap).forEach(([catId, amount]) => {
       console.log(`Category ${catId}: ₹${amount.toFixed(2)}`);
     });
     console.log(`Total distributed: ₹${Object.values(categoryPaymentsMap).reduce((s, a) => s + a, 0).toFixed(2)}`);
-    console.log("=================================\n");
+    console.log(`=================================\\n`);
 
     // Add payments to each category and calculate actual received
     const categoriesWithPayments = revenueByCategory.map((cat) => {
@@ -1430,6 +1430,74 @@ router.get("/by-category", auth, async (req, res) => {
             : 0,
       };
     });
+
+    // Calculate returns per category
+    const stockDateFilter = {};
+    if (dateFilter.date) {
+      stockDateFilter.timestamp = dateFilter.date;
+    }
+
+    const categoryReturns = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          ...stockDateFilter,
+        },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productInfo.category",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      { $unwind: "$categoryInfo" },
+      {
+        $group: {
+          _id: "$categoryInfo._id",
+          returnQuantity: { $sum: "$adjustment" },
+          returnValue: {
+            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          },
+          returnCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Create a map for easy lookup
+    const categoryReturnsMap = {};
+    categoryReturns.forEach((r) => {
+      categoryReturnsMap[r._id.toString()] = r;
+    });
+
+    // Merge returns into categories
+    categoriesWithPayments.forEach((cat) => {
+      const r = categoryReturnsMap[cat._id.toString()];
+      cat.returnQuantity = r ? r.returnQuantity : 0;
+      cat.returnValue = r ? r.returnValue : 0;
+      cat.returnCount = r ? r.returnCount : 0;
+      cat.netRevenue = cat.totalRevenue - cat.returnValue;
+    });
+
+    console.log(`\n=== CATEGORY RETURNS SUMMARY ===`);
+    categoryReturns.forEach((r) => {
+      const cat = categoriesWithPayments.find(c => c._id.toString() === r._id.toString());
+      if (cat) {
+        console.log(`${cat.categoryName}: ${r.returnCount} returns, ₹${r.returnValue.toFixed(2)}`);
+      }
+    });
+    console.log(`=================================\n`);
 
     // Get all categories if includeEmpty is true
     let allCategories = [];
@@ -1467,7 +1535,10 @@ router.get("/by-category", auth, async (req, res) => {
             onlineTransactions: 0,
             cardTransactions: 0,
             dueTransactions: 0,
-
+            returnQuantity: 0,
+            returnValue: 0,
+            returnCount: 0,
+            netRevenue: 0,
             receivedPercentage: 0,
             duePercentage: 0,
             avgTransactionValue: 0,
@@ -1517,7 +1588,6 @@ router.get("/by-category", auth, async (req, res) => {
         : 0;
 
     // Calculate TOTAL due payments (ALL payment transactions in period)
-    // This matches the revenue summary logic which counts all type:"payment" transactions
     const allDuePayments = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
     console.log(`\n=== DUE PAYMENTS CALCULATION ===`);
@@ -1528,12 +1598,7 @@ router.get("/by-category", auth, async (req, res) => {
     console.log(`Category-level payments (period invoices only): ₹${totals.paymentsReceived}`);
     console.log(`===============================\n`);
 
-    // Calculate returns for the period
-    const stockDateFilter = {};
-    if (dateFilter.date) {
-      stockDateFilter.timestamp = dateFilter.date;
-    }
-
+    // Calculate returns for the period (total)
     const returnsData = await StockHistory.aggregate([
       {
         $match: {
@@ -1569,7 +1634,7 @@ router.get("/by-category", auth, async (req, res) => {
     console.log(`Returns found: ${returnsCount} items, Total value: ₹${returns}`);
     console.log(`===========================\n`);
 
-    // FIXED: Count unique invoices to avoid double-counting when summing category totals
+    // FIXED: Count unique invoices to avoid double-counting
     const uniqueInvoiceCount = await Invoice.countDocuments({
       createdBy: userId,
       status: { $in: ["final", "paid"] },
@@ -1588,15 +1653,15 @@ router.get("/by-category", auth, async (req, res) => {
       returnsCount,
 
       // Collection breakdown
-      totalCollected: totals.initialPayment + allDuePayments, // FIXED: Initial payments + ALL due payments in period
+      totalCollected: totals.initialPayment + allDuePayments,
       initialPayment: totals.initialPayment,
-      paymentsReceived: totals.paymentsReceived, // Category-level (period invoices only)
+      paymentsReceived: totals.paymentsReceived,
 
       // Due sales metrics
-      totalDueRevenue: totals.dueAmount, // Current outstanding
-      dueSales: totals.initialPayment > 0 ? totals.totalRevenue - totals.initialPayment : totals.totalRevenue, // Amount given on credit
-      duePayments: allDuePayments, // ALL due payments made in period (not just for period invoices)
-      paymentCount: payments.length, // Number of payment transactions
+      totalDueRevenue: totals.dueAmount,
+      dueSales: totals.initialPayment > 0 ? totals.totalRevenue - totals.initialPayment : totals.totalRevenue,
+      duePayments: allDuePayments,
+      paymentCount: payments.length,
 
       // Other metrics
       invoiceCount: totals.totalInvoices,
@@ -1622,7 +1687,7 @@ router.get("/by-category", auth, async (req, res) => {
     res.json({
       categories: allCategories,
       totals,
-      summary, // Enhanced summary for cards
+      summary,
       dateRange: dateFilter.date || null,
     });
   } catch (error) {
@@ -3310,6 +3375,7 @@ router.get("/by-products", auth, async (req, res) => {
       sortOrder = "desc",
       minRevenue,
       maxRevenue,
+      returnsFilter = "all", // Add returns filter parameter
     } = req.query;
 
     // Build date filter
@@ -3618,6 +3684,16 @@ router.get("/by-products", auth, async (req, res) => {
         (p) => p.totalRevenue <= parseFloat(maxRevenue)
       );
     }
+
+    // Returns filter - IMPORTANT: Filter before calculating summary
+    if (returnsFilter === "withReturns") {
+      filteredProducts = filteredProducts.filter((p) => p.returnValue > 0);
+    } else if (returnsFilter === "withoutReturns") {
+      filteredProducts = filteredProducts.filter(
+        (p) => p.returnValue === 0 || !p.returnValue
+      );
+    }
+    // If "all", don't filter
 
     // Sort products
     const sortField = sortBy === "name" ? "productName" : sortBy;

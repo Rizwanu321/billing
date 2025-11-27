@@ -1,6 +1,6 @@
 // components/revenue/RevenueByProducts.jsx
 
-import React, { useState, useEffect, useRef, Fragment, useMemo } from "react";
+import React, { useState, useEffect, useRef, Fragment } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -74,23 +74,6 @@ const RevenueByProducts = () => {
 
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
-  // Add state for raw product data from API
-  const [rawProductData, setRawProductData] = useState([]);
-
-  // Apply returns filter using useMemo
-  const filteredProductData = useMemo(() => {
-    if (filters.returnsFilter === "all") {
-      return rawProductData;
-    } else if (filters.returnsFilter === "withReturns") {
-      return rawProductData.filter((p) => p.returnValue > 0);
-    } else if (filters.returnsFilter === "withoutReturns") {
-      return rawProductData.filter((p) => p.returnValue === 0 || !p.returnValue);
-    }
-    return rawProductData;
-  }, [rawProductData, filters.returnsFilter]);
-
-
-
   // Initial data load
   useEffect(() => {
     const initializeData = async () => {
@@ -127,10 +110,10 @@ const RevenueByProducts = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Update productData when filtered data changes
+  // Debug: Log when summary changes
   useEffect(() => {
-    setProductData(filteredProductData);
-  }, [filteredProductData]);
+    console.log("Summary state updated:", summary);
+  }, [summary]);
 
   const fetchCategories = async () => {
     try {
@@ -153,30 +136,6 @@ const RevenueByProducts = () => {
         <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
           <p className="font-semibold text-gray-900 mb-2">{label}</p>
           <div className="space-y-1 text-sm">
-            <div className="flex justify-between gap-4">
-              <span className="text-gray-600">Gross Revenue:</span>
-              <span className="font-medium text-gray-900">
-                {formatCurrency(data.revenue)}
-              </span>
-            </div>
-            {data.returnValue > 0 && (
-              <div className="flex justify-between gap-4">
-                <span className="text-red-600">Returns:</span>
-                <span className="font-medium text-red-700">
-                  -{formatCurrency(data.returnValue)}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between gap-4 border-b border-gray-100 pb-1 mb-1">
-              <span className="text-emerald-600 font-medium">Net Revenue:</span>
-              <span className="font-bold text-emerald-700">
-                {formatCurrency(
-                  data.netRevenue !== undefined
-                    ? data.netRevenue
-                    : data.revenue - (data.returnValue || 0)
-                )}
-              </span>
-            </div>
             {data.actualReceived !== undefined && (
               <div className="flex justify-between gap-4">
                 <span className="text-green-600">Received:</span>
@@ -190,6 +149,32 @@ const RevenueByProducts = () => {
                 <span className="text-orange-600">Due:</span>
                 <span className="font-medium text-orange-700">
                   {formatCurrency(data.dueAmount)}
+                </span>
+              </div>
+            )}
+            <div className="flex justify-between gap-4 border-t border-gray-200 pt-1 mt-1">
+              <span className="text-gray-600 font-medium">Gross Revenue:</span>
+              <span className="font-semibold text-gray-900">
+                {formatCurrency(data.revenue)}
+              </span>
+            </div>
+            {data.returnValue > 0 && (
+              <div className="flex justify-between gap-4">
+                <span className="text-red-600">Returns:</span>
+                <span className="font-medium text-red-700">
+                  -{formatCurrency(data.returnValue)}
+                </span>
+              </div>
+            )}
+            {data.returnValue > 0 && (
+              <div className="flex justify-between gap-4 border-t border-emerald-200 pt-1 mt-1">
+                <span className="text-emerald-600 font-semibold">Net Revenue:</span>
+                <span className="font-bold text-emerald-700">
+                  {formatCurrency(
+                    data.netRevenue !== undefined
+                      ? data.netRevenue
+                      : data.revenue - (data.returnValue || 0)
+                  )}
                 </span>
               </div>
             )}
@@ -219,10 +204,9 @@ const RevenueByProducts = () => {
       console.log("Fetching revenue data with filters:", filters);
       const data = await fetchRevenueByProducts(filters);
       console.log("Revenue data received:", data);
+      console.log("Summary from API:", data.summary);
 
-      // Store raw data for filtering
-      setRawProductData(data.products || []);
-      // Set filtered data immediately
+      // Backend now handles all filtering, so we directly use the data
       setProductData(data.products || []);
       setSummary(
         data.summary || {
@@ -244,7 +228,6 @@ const RevenueByProducts = () => {
       setRevenueTrend(data.revenueTrend || []);
     } catch (error) {
       console.error("Error fetching product revenue:", error);
-      setRawProductData([]);
       setProductData([]);
       setSummary({
         totalProducts: 0,
@@ -482,12 +465,13 @@ const RevenueByProducts = () => {
 
   // Add this function before the return statement
   const exportToCSV = () => {
+    const hasReturns = summary?.totalReturns > 0;
+
     const headers = [
       "Product",
       "Category",
       "Gross Revenue",
-      "Returns (Value)",
-      "Net Revenue",
+      ...(hasReturns ? ["Returns (Value)", "Net Revenue"] : []),
       "Received",
       "Credit Used",
       "Pending Due",
@@ -505,8 +489,10 @@ const RevenueByProducts = () => {
       product.productName,
       product.categoryName,
       product.totalRevenue.toFixed(2),
-      (product.returnValue || 0).toFixed(2),
-      (product.netRevenue || 0).toFixed(2),
+      ...(hasReturns ? [
+        (product.returnValue || 0).toFixed(2),
+        (product.netRevenue || 0).toFixed(2),
+      ] : []),
       product.actualReceived.toFixed(2),
       product.creditUsed.toFixed(2),
       product.dueAmount.toFixed(2),
@@ -632,7 +618,7 @@ const RevenueByProducts = () => {
 
         {/* Summary Stats Cards */}
         {summary && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${summary.totalReturns > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4 sm:gap-6 mb-8`}>
             <StatCard
               icon={IndianRupee}
               title="Gross Revenue"
@@ -641,21 +627,25 @@ const RevenueByProducts = () => {
               color="bg-gradient-to-br from-blue-500 to-blue-600"
             />
 
-            <StatCard
-              icon={RotateCcw}
-              title="Returns"
-              value={formatCurrency(summary.totalReturns || 0)}
-              subtitle="Product Returns"
-              color="bg-gradient-to-br from-red-500 to-red-600"
-            />
+            {summary.totalReturns > 0 && (
+              <StatCard
+                icon={RotateCcw}
+                title="Returns"
+                value={formatCurrency(summary.totalReturns || 0)}
+                subtitle="Product Returns"
+                color="bg-gradient-to-br from-red-500 to-red-600"
+              />
+            )}
 
-            <StatCard
-              icon={Wallet}
-              title="Net Revenue"
-              value={formatCurrency(summary.netRevenue || 0)}
-              subtitle="Gross - Returns"
-              color="bg-gradient-to-br from-emerald-500 to-emerald-600"
-            />
+            {summary.totalReturns > 0 && (
+              <StatCard
+                icon={Wallet}
+                title="Net Revenue"
+                value={formatCurrency(summary.netRevenue || 0)}
+                subtitle="Gross - Returns"
+                color="bg-gradient-to-br from-emerald-500 to-emerald-600"
+              />
+            )}
 
             <StatCard
               icon={HandCoins}
@@ -767,14 +757,16 @@ const RevenueByProducts = () => {
                     </p>
                   </div>
                 </div>
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Total Returns Impact:</span>
-                    <span className="font-semibold text-red-600">
-                      -{formatCurrency(summary.totalReturns)}
-                    </span>
+                {summary.totalReturns > 0 && (
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-gray-600">Total Returns Impact:</span>
+                      <span className="font-semibold text-red-600">
+                        -{formatCurrency(summary.totalReturns)}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -803,12 +795,14 @@ const RevenueByProducts = () => {
                       fill="#10b981"
                       name="Net Revenue"
                     />
-                    <Bar
-                      dataKey="returnValue"
-                      stackId="a"
-                      fill="#ef4444"
-                      name="Returns"
-                    />
+                    {summary.totalReturns > 0 && (
+                      <Bar
+                        dataKey="returnValue"
+                        stackId="a"
+                        fill="#ef4444"
+                        name="Returns"
+                      />
+                    )}
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -840,17 +834,39 @@ const RevenueByProducts = () => {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Revenue</span>
-                    <span className="font-medium text-gray-900">
-                      {formatCurrency(summary.totalRevenue)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Received</span>
-                    <span className="font-medium text-green-600">
+                    <span className="text-sm text-green-600">Received</span>
+                    <span className="font-medium text-green-700">
                       {formatCurrency(summary.actualReceived)}
                     </span>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-orange-600">Due</span>
+                    <span className="font-medium text-orange-700">
+                      {formatCurrency(summary.totalDue)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-gray-300 pt-2">
+                    <span className="text-sm font-medium text-gray-600">Gross Revenue</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatCurrency(summary.totalRevenue)}
+                    </span>
+                  </div>
+                  {summary.totalReturns > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-red-600">Returns</span>
+                      <span className="font-medium text-red-700">
+                        -{formatCurrency(summary.totalReturns)}
+                      </span>
+                    </div>
+                  )}
+                  {summary.totalReturns > 0 && (
+                    <div className="flex justify-between items-center border-t border-emerald-300 pt-2">
+                      <span className="text-sm font-semibold text-emerald-700">Net Revenue</span>
+                      <span className="font-bold text-emerald-700">
+                        {formatCurrency(summary.netRevenue)}
+                      </span>
+                    </div>
+                  )}
                   <div className="pt-2 border-t border-green-200">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold text-gray-900">
@@ -976,10 +992,12 @@ const RevenueByProducts = () => {
                   <div className="w-3 h-3 bg-orange-500 rounded"></div>
                   <span className="text-gray-600">Due</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-red-500 rounded"></div>
-                  <span className="text-gray-600">Returns</span>
-                </div>
+                {summary.totalReturns > 0 && (
+                  <div className="flex items-center gap-1">
+                    <div className="w-3 h-3 bg-red-500 rounded"></div>
+                    <span className="text-gray-600">Returns</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1005,7 +1023,9 @@ const RevenueByProducts = () => {
                 <Bar dataKey="revenue" fill="#3b82f6" name="Total Revenue" />
                 <Bar dataKey="actualReceived" fill="#10b981" name="Received" />
                 <Bar dataKey="dueAmount" fill="#f59e0b" name="Due Amount" />
-                <Bar dataKey="returnValue" fill="#ef4444" name="Returns" />
+                {summary.totalReturns > 0 && (
+                  <Bar dataKey="returnValue" fill="#ef4444" name="Returns" />
+                )}
               </BarChart>
             </ResponsiveContainer>
 
@@ -1030,8 +1050,20 @@ const RevenueByProducts = () => {
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Gross Revenue:</span>
-                        <span className="font-medium text-gray-900">
+                        <span className="text-green-600">Received:</span>
+                        <span className="font-medium text-green-700">
+                          {formatCurrency(item.actualReceived)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-orange-600">Due:</span>
+                        <span className="font-medium text-orange-700">
+                          {formatCurrency(item.dueAmount)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                        <span className="text-gray-600 font-medium">Gross Revenue:</span>
+                        <span className="font-semibold text-gray-900">
                           {formatCurrency(item.revenue)}
                         </span>
                       </div>
@@ -1043,24 +1075,12 @@ const RevenueByProducts = () => {
                           </span>
                         </div>
                       )}
-                      <div className="flex justify-between border-b border-gray-100 pb-1 mb-1">
-                        <span className="text-emerald-600 font-medium">
+                      <div className="flex justify-between border-t border-emerald-200 pt-1 mt-1">
+                        <span className="text-emerald-600 font-semibold">
                           Net Revenue:
                         </span>
                         <span className="font-bold text-emerald-700">
                           {formatCurrency(item.netRevenue)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-green-600">Received:</span>
-                        <span className="font-medium text-green-700">
-                          {formatCurrency(item.actualReceived)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-orange-600">Due:</span>
-                        <span className="font-medium text-orange-700">
-                          {formatCurrency(item.dueAmount)}
                         </span>
                       </div>
                       <div className="pt-1 mt-1 border-t border-gray-200">
@@ -1085,86 +1105,95 @@ const RevenueByProducts = () => {
         )}
 
         {/* Filters Section */}
+        {/* Advanced Filters Section */}
         {showFilters && (
           <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-300 relative z-20">
-            <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-6 relative overflow-visible">
-              {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 border-b border-slate-100 pb-4">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-visible">
+              {/* Filter Header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
                     <Filter className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800">
+                    <h3 className="text-base font-bold text-gray-900">
                       Advanced Filters
                     </h3>
-                    <p className="text-xs text-slate-500 font-medium">
+                    <p className="text-xs text-gray-500">
                       Refine your revenue analysis
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={clearFilters}
-                  className="group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
                 >
-                  <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                  <RotateCcw className="w-4 h-4 group-hover:-rotate-180 transition-transform duration-500" />
                   Reset Filters
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Date Range Group */}
-                <div className="space-y-4 relative z-40">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <Calendar className="w-3 h-3" />
-                    Time Period
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-600 ml-1">Start Date</label>
-                      <div className="relative">
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {/* Group 1: Time Period */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5" />
+                      Date Range
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-gray-400 font-medium ml-1">
+                          From
+                        </span>
                         <input
                           type="date"
                           value={filters.startDate}
                           onChange={(e) =>
-                            setFilters((prev) => ({ ...prev, startDate: e.target.value }))
+                            setFilters((prev) => ({
+                              ...prev,
+                              startDate: e.target.value,
+                            }))
                           }
-                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                         />
                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-600 ml-1">End Date</label>
-                      <div className="relative">
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-gray-400 font-medium ml-1">
+                          To
+                        </span>
                         <input
                           type="date"
                           value={filters.endDate}
                           onChange={(e) =>
-                            setFilters((prev) => ({ ...prev, endDate: e.target.value }))
+                            setFilters((prev) => ({
+                              ...prev,
+                              endDate: e.target.value,
+                            }))
                           }
-                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
                         />
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Product & Category Group */}
-                <div className="space-y-4 relative z-30">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <Package className="w-3 h-3" />
-                    Product Details
-                  </div>
-                  <div className="space-y-3">
-                    <div className="space-y-1.5 relative z-50">
-                      <label className="text-xs font-medium text-slate-600 ml-1">Category</label>
+                  {/* Group 2: Product & Category */}
+                  <div className="space-y-3 relative z-30">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                      <Package className="w-3.5 h-3.5" />
+                      Product & Category
+                    </label>
+                    <div className="space-y-3">
                       <div className="relative">
                         <select
                           value={filters.categoryId}
                           onChange={(e) =>
-                            setFilters((prev) => ({ ...prev, categoryId: e.target.value }))
+                            setFilters((prev) => ({
+                              ...prev,
+                              categoryId: e.target.value,
+                            }))
                           }
-                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10"
+                          className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer pr-10 transition-all"
                         >
                           <option value="all">All Categories</option>
                           {categories.map((category) => (
@@ -1173,163 +1202,178 @@ const RevenueByProducts = () => {
                             </option>
                           ))}
                         </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-
-                    {/* Custom Product Search Dropdown */}
-                    <div className="relative space-y-1.5 z-40" ref={productDropdownRef}>
-                      <label className="text-xs font-medium text-slate-600 ml-1">Product Search</label>
-                      <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                        <input
-                          type="text"
-                          value={productSearchTerm}
-                          onChange={handleProductSearchChange}
-                          onFocus={() => setShowProductDropdown(true)}
-                          placeholder="Search by name..."
-                          className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
-                        />
-                        {selectedProduct && (
-                          <button
-                            onClick={clearProductSelection}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-200 transition-colors"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        )}
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                       </div>
 
-                      {/* Dropdown Menu */}
-                      {showProductDropdown && (
-                        <div className="absolute z-50 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-2xl shadow-slate-400/20 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
-                          {filteredProductsList.length > 0 ? (
-                            <div className="p-1.5">
-                              <button
-                                onClick={() => {
-                                  clearProductSelection();
-                                  setShowProductDropdown(false);
-                                }}
-                                className="w-full text-left px-3 py-2.5 hover:bg-slate-50 rounded-lg text-sm font-medium text-slate-600 transition-colors mb-1"
-                              >
-                                All Products ({filteredProductsList.length})
-                              </button>
-                              {filteredProductsList.map((product) => {
-                                const categoryName =
-                                  product.category?.name ||
-                                  categories.find((c) => c._id === product.category)
-                                    ?.name ||
-                                  "Uncategorized";
-
-                                return (
-                                  <button
-                                    key={product._id}
-                                    onClick={() => handleProductSelect(product)}
-                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 mb-0.5 ${selectedProduct?._id === product._id
-                                      ? "bg-blue-50 text-blue-700 font-medium ring-1 ring-blue-100"
-                                      : "text-slate-700 hover:bg-slate-50"
-                                      }`}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <span className="truncate mr-2">{product.name}</span>
-                                      <span className="text-[10px] uppercase tracking-wide text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                                        {categoryName}
-                                      </span>
-                                    </div>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <div className="p-8 text-center">
-                              <Package className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                              <p className="text-sm text-slate-500">No products found</p>
-                            </div>
+                      {/* Custom Product Search Dropdown */}
+                      <div
+                        className="relative"
+                        ref={productDropdownRef}
+                      >
+                        <div className="relative group">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
+                          <input
+                            type="text"
+                            value={productSearchTerm}
+                            onChange={handleProductSearchChange}
+                            onFocus={() => setShowProductDropdown(true)}
+                            placeholder="Search product..."
+                            className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
+                          />
+                          {selectedProduct && (
+                            <button
+                              onClick={clearProductSelection}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5 rounded-full hover:bg-gray-200 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
                           )}
                         </div>
-                      )}
+
+                        {/* Dropdown Menu */}
+                        {showProductDropdown && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                            {filteredProductsList.length > 0 ? (
+                              <div className="p-1">
+                                <button
+                                  onClick={() => {
+                                    clearProductSelection();
+                                    setShowProductDropdown(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-gray-50 rounded-lg text-sm font-medium text-gray-600 transition-colors mb-1"
+                                >
+                                  All Products ({filteredProductsList.length})
+                                </button>
+                                {filteredProductsList.map((product) => {
+                                  const categoryName =
+                                    product.category?.name ||
+                                    categories.find(
+                                      (c) => c._id === product.category
+                                    )?.name ||
+                                    "Uncategorized";
+
+                                  return (
+                                    <button
+                                      key={product._id}
+                                      onClick={() =>
+                                        handleProductSelect(product)
+                                      }
+                                      className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 mb-0.5 ${selectedProduct?._id === product._id
+                                        ? "bg-blue-50 text-blue-700 font-medium"
+                                        : "text-gray-700 hover:bg-gray-50"
+                                        }`}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <span className="truncate mr-2">
+                                          {product.name}
+                                        </span>
+                                        <span className="text-[10px] uppercase tracking-wide text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                                          {categoryName}
+                                        </span>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div className="p-6 text-center">
+                                <Package className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                <p className="text-sm text-gray-500">
+                                  No products found
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Financials Group */}
-                <div className="space-y-4 relative z-20">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <IndianRupee className="w-3 h-3" />
-                    Revenue Range
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-600 ml-1">Min Amount</label>
+                  {/* Group 3: Financials */}
+                  <div className="space-y-3">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                      <IndianRupee className="w-3.5 h-3.5" />
+                      Revenue Range
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                          ₹
+                        </span>
                         <input
                           type="number"
                           value={filters.minRevenue}
                           onChange={(e) =>
-                            setFilters((prev) => ({ ...prev, minRevenue: e.target.value }))
+                            setFilters((prev) => ({
+                              ...prev,
+                              minRevenue: e.target.value,
+                            }))
                           }
-                          placeholder="0"
-                          className="w-full pl-6 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                          placeholder="Min"
+                          className="w-full pl-6 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
                         />
                       </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-600 ml-1">Max Amount</label>
                       <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">₹</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">
+                          ₹
+                        </span>
                         <input
                           type="number"
                           value={filters.maxRevenue}
                           onChange={(e) =>
-                            setFilters((prev) => ({ ...prev, maxRevenue: e.target.value }))
+                            setFilters((prev) => ({
+                              ...prev,
+                              maxRevenue: e.target.value,
+                            }))
                           }
-                          placeholder="Any"
-                          className="w-full pl-6 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none"
+                          placeholder="Max"
+                          className="w-full pl-6 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
                         />
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Analysis Group */}
-                <div className="space-y-4 relative z-10">
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    <BarChart3 className="w-3 h-3" />
-                    Analysis
-                  </div>
+                  {/* Group 4: Analysis */}
                   <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-600 ml-1">Return Status</label>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                      <BarChart3 className="w-3.5 h-3.5" />
+                      Analysis
+                    </label>
+                    <div className="space-y-3">
                       <div className="relative">
                         <select
                           value={filters.returnsFilter}
                           onChange={(e) =>
-                            setFilters((prev) => ({ ...prev, returnsFilter: e.target.value }))
+                            setFilters((prev) => ({
+                              ...prev,
+                              returnsFilter: e.target.value,
+                            }))
                           }
-                          className={`w-full px-3 py-2.5 border rounded-xl text-sm focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10 ${filters.returnsFilter !== "all"
+                          className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10 ${filters.returnsFilter !== "all"
                             ? "bg-red-50 border-red-200 text-red-700 font-medium"
-                            : "bg-slate-50 border-slate-200 text-slate-700 focus:bg-white focus:border-blue-500"
+                            : "bg-gray-50 border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500"
                             }`}
                         >
                           <option value="all">All Products</option>
                           <option value="withReturns">With Returns Only</option>
-                          <option value="withoutReturns">Without Returns Only</option>
+                          <option value="withoutReturns">
+                            Without Returns Only
+                          </option>
                         </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                       </div>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-slate-600 ml-1">Sort By</label>
                       <div className="flex gap-2">
                         <div className="relative flex-1">
                           <select
                             value={filters.sortBy}
                             onChange={(e) =>
-                              setFilters((prev) => ({ ...prev, sortBy: e.target.value }))
+                              setFilters((prev) => ({
+                                ...prev,
+                                sortBy: e.target.value,
+                              }))
                             }
-                            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10"
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none appearance-none cursor-pointer pr-10"
                           >
                             <option value="totalRevenue">Revenue</option>
                             <option value="totalQuantity">Quantity</option>
@@ -1337,17 +1381,22 @@ const RevenueByProducts = () => {
                             <option value="productName">Name</option>
                             <option value="profitMargin">Profit Margin</option>
                           </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                         </div>
                         <button
                           onClick={() =>
                             setFilters((prev) => ({
                               ...prev,
-                              sortOrder: prev.sortOrder === "desc" ? "asc" : "desc",
+                              sortOrder:
+                                prev.sortOrder === "desc" ? "asc" : "desc",
                             }))
                           }
-                          className="px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-white hover:border-blue-300 hover:shadow-sm transition-all duration-200 text-slate-600"
-                          title={filters.sortOrder === "desc" ? "Descending" : "Ascending"}
+                          className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-white hover:border-blue-300 hover:shadow-sm transition-all duration-200 text-gray-600"
+                          title={
+                            filters.sortOrder === "desc"
+                              ? "Descending"
+                              : "Ascending"
+                          }
                         >
                           {filters.sortOrder === "desc" ? (
                             <TrendingDown className="w-4 h-4" />
@@ -1363,18 +1412,25 @@ const RevenueByProducts = () => {
 
               {/* Active Filters Summary */}
               {hasActiveFilters() && (
-                <div className="mt-8 pt-6 border-t border-slate-100">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">
-                      Active:
+                <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-2">
+                      Active Filters:
                     </span>
 
                     {filters.categoryId !== "all" && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-xs font-semibold border border-blue-100 shadow-sm animate-in fade-in zoom-in-95">
-                        Category: {categories.find((c) => c._id === filters.categoryId)?.name}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-100">
+                        Category:{" "}
+                        {categories.find((c) => c._id === filters.categoryId)
+                          ?.name}
                         <button
-                          onClick={() => setFilters(prev => ({ ...prev, categoryId: "all" }))}
-                          className="hover:bg-blue-100 rounded-full p-0.5 transition-colors"
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              categoryId: "all",
+                            }))
+                          }
+                          className="hover:text-blue-900 transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1382,11 +1438,11 @@ const RevenueByProducts = () => {
                     )}
 
                     {filters.productId !== "all" && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold border border-emerald-100 shadow-sm animate-in fade-in zoom-in-95">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-100">
                         Product: {selectedProduct?.name}
                         <button
                           onClick={clearProductSelection}
-                          className="hover:bg-emerald-100 rounded-full p-0.5 transition-colors"
+                          className="hover:text-emerald-900 transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1394,11 +1450,13 @@ const RevenueByProducts = () => {
                     )}
 
                     {filters.minRevenue && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full text-xs font-semibold border border-violet-100 shadow-sm animate-in fade-in zoom-in-95">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 rounded-md text-xs font-medium border border-violet-100">
                         Min: ₹{filters.minRevenue}
                         <button
-                          onClick={() => setFilters(prev => ({ ...prev, minRevenue: "" }))}
-                          className="hover:bg-violet-100 rounded-full p-0.5 transition-colors"
+                          onClick={() =>
+                            setFilters((prev) => ({ ...prev, minRevenue: "" }))
+                          }
+                          className="hover:text-violet-900 transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1406,11 +1464,13 @@ const RevenueByProducts = () => {
                     )}
 
                     {filters.maxRevenue && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-50 text-violet-700 rounded-full text-xs font-semibold border border-violet-100 shadow-sm animate-in fade-in zoom-in-95">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 rounded-md text-xs font-medium border border-violet-100">
                         Max: ₹{filters.maxRevenue}
                         <button
-                          onClick={() => setFilters(prev => ({ ...prev, maxRevenue: "" }))}
-                          className="hover:bg-violet-100 rounded-full p-0.5 transition-colors"
+                          onClick={() =>
+                            setFilters((prev) => ({ ...prev, maxRevenue: "" }))
+                          }
+                          className="hover:text-violet-900 transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1418,11 +1478,19 @@ const RevenueByProducts = () => {
                     )}
 
                     {filters.returnsFilter !== "all" && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 rounded-full text-xs font-semibold border border-red-100 shadow-sm animate-in fade-in zoom-in-95">
-                        Returns: {filters.returnsFilter === "withReturns" ? "With Returns" : "Without Returns"}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-700 rounded-md text-xs font-medium border border-red-100">
+                        Returns:{" "}
+                        {filters.returnsFilter === "withReturns"
+                          ? "With Returns"
+                          : "Without Returns"}
                         <button
-                          onClick={() => setFilters(prev => ({ ...prev, returnsFilter: "all" }))}
-                          className="hover:bg-red-100 rounded-full p-0.5 transition-colors"
+                          onClick={() =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              returnsFilter: "all",
+                            }))
+                          }
+                          className="hover:text-red-900 transition-colors"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1474,12 +1542,16 @@ const RevenueByProducts = () => {
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
                         Gross Revenue
                       </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                        Returns
-                      </th>
-                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                        Net Revenue
-                      </th>
+                      {summary?.totalReturns > 0 && (
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                          Returns
+                        </th>
+                      )}
+                      {summary?.totalReturns > 0 && (
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
+                          Net Revenue
+                        </th>
+                      )}
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
                         Quantity Sold
                       </th>
@@ -1568,23 +1640,27 @@ const RevenueByProducts = () => {
                                 </div>
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-right">
-                              {product.returnValue > 0 ? (
-                                <div>
-                                  <p className="text-red-600 font-medium">
-                                    {formatCurrency(product.returnValue)}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {product.returnQuantity.toFixed(2)} qty
-                                  </p>
-                                </div>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-right font-bold text-gray-900">
-                              {formatCurrency(product.netRevenue)}
-                            </td>
+                            {summary?.totalReturns > 0 && (
+                              <td className="py-3 px-4 text-right">
+                                {product.returnValue > 0 ? (
+                                  <div>
+                                    <p className="text-red-600 font-medium">
+                                      {formatCurrency(product.returnValue)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {product.returnQuantity.toFixed(2)} qty
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                              </td>
+                            )}
+                            {summary?.totalReturns > 0 && (
+                              <td className="py-3 px-4 text-right font-bold text-gray-900">
+                                {formatCurrency(product.netRevenue)}
+                              </td>
+                            )}
                             <td className="py-3 px-4 text-right text-gray-900 font-medium">
                               {product.totalQuantity.toFixed(2)}
                             </td>
@@ -1677,7 +1753,7 @@ const RevenueByProducts = () => {
                   {productData.length > 0 && summary && (
                     <div className="mt-8">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Summary</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4 sm:gap-6">
+                      <div className={`grid grid-cols-1 sm:grid-cols-2 ${summary.totalReturns > 0 ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4'} gap-4 sm:gap-6`}>
                         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
                           <div className="flex items-center gap-2 mb-3">
                             <IndianRupee className="w-5 h-5 text-blue-600" />
@@ -1691,31 +1767,35 @@ const RevenueByProducts = () => {
                           </p>
                         </div>
 
-                        <div className="bg-white rounded-xl shadow-md p-5 border border-red-100 bg-red-50">
-                          <div className="flex items-center gap-2 mb-3">
-                            <RotateCcw className="w-5 h-5 text-red-600" />
-                            <h4 className="font-semibold text-gray-700 text-sm">Returns</h4>
+                        {summary.totalReturns > 0 && (
+                          <div className="bg-white rounded-xl shadow-md p-5 border border-red-100 bg-red-50">
+                            <div className="flex items-center gap-2 mb-3">
+                              <RotateCcw className="w-5 h-5 text-red-600" />
+                              <h4 className="font-semibold text-gray-700 text-sm">Returns</h4>
+                            </div>
+                            <p className="text-2xl font-bold text-red-600 mb-1">
+                              {formatCurrency(summary.totalReturns || 0)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {productData.filter((p) => p.returnValue > 0).length} product{productData.filter((p) => p.returnValue > 0).length !== 1 ? 's' : ''}
+                            </p>
                           </div>
-                          <p className="text-2xl font-bold text-red-600 mb-1">
-                            {formatCurrency(summary.totalReturns || 0)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {productData.filter((p) => p.returnValue > 0).length} product{productData.filter((p) => p.returnValue > 0).length !== 1 ? 's' : ''}
-                          </p>
-                        </div>
+                        )}
 
-                        <div className="bg-white rounded-xl shadow-md p-5 border border-emerald-100 bg-emerald-50">
-                          <div className="flex items-center gap-2 mb-3">
-                            <TrendingUp className="w-5 h-5 text-emerald-600" />
-                            <h4 className="font-semibold text-gray-700 text-sm">Net Revenue</h4>
+                        {summary.totalReturns > 0 && (
+                          <div className="bg-white rounded-xl shadow-md p-5 border border-emerald-100 bg-emerald-50">
+                            <div className="flex items-center gap-2 mb-3">
+                              <TrendingUp className="w-5 h-5 text-emerald-600" />
+                              <h4 className="font-semibold text-gray-700 text-sm">Net Revenue</h4>
+                            </div>
+                            <p className="text-2xl font-bold text-emerald-700 mb-1">
+                              {formatCurrency(summary.netRevenue || 0)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Gross - Returns
+                            </p>
                           </div>
-                          <p className="text-2xl font-bold text-emerald-700 mb-1">
-                            {formatCurrency(summary.netRevenue || 0)}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Gross - Returns
-                          </p>
-                        </div>
+                        )}
 
                         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
                           <div className="flex items-center gap-2 mb-3">
@@ -1774,7 +1854,7 @@ const RevenueByProducts = () => {
 
                   {/* Additional Summary Stats */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                       <div className="flex justify-between">
                         <span className="text-gray-600">
                           Avg Revenue/Product:
@@ -1829,7 +1909,7 @@ const RevenueByProducts = () => {
         {/* Product Insights - Enhanced */}
         {
           productData.length > 0 && (
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className={`mt-8 grid grid-cols-1 sm:grid-cols-2 ${summary?.totalReturns > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-6`}>
               {/* Best Seller (Net Revenue) */}
               {(() => {
                 const bestSeller = [...productData].sort(
@@ -1851,14 +1931,16 @@ const RevenueByProducts = () => {
                     </p>
                     <div className="space-y-1 text-xs text-gray-600">
                       <p>Gross: {formatCurrency(bestSeller?.totalRevenue)}</p>
-                      <p>Returns: {formatCurrency(bestSeller?.returnValue)}</p>
+                      {summary?.totalReturns > 0 && (
+                        <p>Returns: {formatCurrency(bestSeller?.returnValue)}</p>
+                      )}
                     </div>
                   </div>
                 );
               })()}
 
-              {/* Most Returned */}
-              {(() => {
+              {/* Most Returned - Only show when returns exist */}
+              {summary?.totalReturns > 0 && (() => {
                 const mostReturned = [...productData].sort(
                   (a, b) => b.returnValue - a.returnValue
                 )[0];
@@ -1881,15 +1963,7 @@ const RevenueByProducts = () => {
                       <p>{mostReturned?.returnCount} return txns</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 flex flex-col items-center justify-center text-center">
-                    <RotateCcw className="w-8 h-8 text-gray-300 mb-2" />
-                    <p className="text-gray-500 text-sm font-medium">
-                      No returns
-                    </p>
-                    <p className="text-xs text-gray-400">Great job!</p>
-                  </div>
-                );
+                ) : null;
               })()}
 
               {/* Best Collection Rate */}
