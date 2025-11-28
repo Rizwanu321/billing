@@ -33,7 +33,7 @@ const transactionSchema = new mongoose.Schema(
     balanceAfter: Number,
     paymentMode: {
       type: String,
-      enum: ["cash", "online", "card", "other"],
+      enum: ["cash", "online", "card", "return", "other"],
       default: "cash",
     },
     createdBy: {

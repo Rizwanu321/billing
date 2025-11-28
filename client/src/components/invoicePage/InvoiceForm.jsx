@@ -65,12 +65,21 @@ const InvoiceForm = ({
   const primaryButtonLabel = !isExistingInvoice
     ? "Save Invoice"
     : hasChanges
-    ? "Save Changes"
-    : "Edit Invoice";
+      ? "Save Changes"
+      : "Edit Invoice";
   const isActionDisabled =
     loading ||
     (!isExistingInvoice && invoice.items.length === 0) ||
     (isExistingInvoice && hasChanges && invoice.items.length === 0);
+
+  console.log("Primary Button Debug:", {
+    isExistingInvoice,
+    hasChanges,
+    primaryButtonLabel,
+    isActionDisabled,
+    invoiceId: invoice._id,
+    itemsCount: invoice.items.length
+  });
 
   const handlePrimaryAction = () => {
     if (isExistingInvoice && !hasChanges) {
@@ -148,11 +157,15 @@ const InvoiceForm = ({
       ...prev,
       items: newItems,
       ...totals,
+      // Update dueAmount if payment method is 'due'
+      dueAmount: prev.paymentMethod === "due" ? totals.total : prev.dueAmount,
     }));
     setInvoice((prev) => ({
       ...prev,
       items: newItems,
       ...totals,
+      // Update dueAmount if payment method is 'due'
+      dueAmount: prev.paymentMethod === "due" ? totals.total : prev.dueAmount,
     }));
     markAsDirty();
   };
@@ -198,11 +211,10 @@ const InvoiceForm = ({
             <button
               key={method}
               onClick={() => handlePaymentMethodChange(method)}
-              className={`flex items-center justify-center px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg capitalize font-medium transition-all text-sm sm:text-base ${
-                invoice.paymentMethod === method
-                  ? "bg-indigo-600 text-white shadow-md"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`flex items-center justify-center px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg capitalize font-medium transition-all text-sm sm:text-base ${invoice.paymentMethod === method
+                ? "bg-indigo-600 text-white shadow-md"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               {paymentIcons[method]}
               <span className="ml-2">{method} Payment</span>
@@ -301,9 +313,8 @@ const InvoiceForm = ({
         <button
           onClick={handlePrimaryAction}
           disabled={isActionDisabled}
-          className={`w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-md text-sm sm:text-base ${
-            isActionDisabled && "opacity-50 cursor-not-allowed"
-          }`}
+          className={`w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-md text-sm sm:text-base ${isActionDisabled && "opacity-50 cursor-not-allowed"
+            }`}
         >
           {primaryButtonLabel === "Edit Invoice" ? (
             <Edit3 className="w-4 h-4 mr-2" />
@@ -312,13 +323,44 @@ const InvoiceForm = ({
           )}
           {primaryButtonLabel}
         </button>
+
+        {/* Receive Payment Button - Only show for saved due invoices */}
+        {(() => {
+          const showButton = invoice._id &&
+            invoice.paymentMethod === "due" &&
+            invoice.customer?._id &&
+            invoice.dueAmount > 0;
+
+          console.log("Receive Payment Button Debug:", {
+            hasInvoiceId: !!invoice._id,
+            paymentMethod: invoice.paymentMethod,
+            hasCustomerId: !!invoice.customer?._id,
+            dueAmount: invoice.dueAmount,
+            showButton
+          });
+
+          return showButton ? (
+            <button
+              onClick={() => {
+                // Trigger parent to open payment modal
+                if (window.openPaymentModal) {
+                  window.openPaymentModal();
+                }
+              }}
+              className="w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors shadow-md text-sm sm:text-base"
+            >
+              <IndianRupee className="w-4 h-4 mr-2" />
+              Receive Payment
+            </button>
+          ) : null;
+        })()}
+
         <button
           onClick={onPrint}
           disabled={!invoice._id || invoice.status !== "final"}
-          className={`w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 font-medium transition-colors shadow-md text-sm sm:text-base ${
-            (!invoice._id || invoice.status !== "final") &&
+          className={`w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 font-medium transition-colors shadow-md text-sm sm:text-base ${(!invoice._id || invoice.status !== "final") &&
             "opacity-50 cursor-not-allowed"
-          }`}
+            }`}
         >
           <Printer className="w-4 h-4 mr-2" />
           Print Invoice

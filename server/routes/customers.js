@@ -369,7 +369,10 @@ router.post("/:id/payments", auth, async (req, res) => {
         const paymentForInvoice = Math.min(remainingPayment, invoice.dueAmount);
         const previousDue = invoice.dueAmount;
 
-        invoice.dueAmount = Math.max(0, invoice.dueAmount - paymentForInvoice);
+        // Calculate new due amount with precision handling
+        const newDueAmount = Math.max(0, invoice.dueAmount - paymentForInvoice);
+        invoice.dueAmount = Number(newDueAmount.toFixed(2));
+
         if (invoice.dueAmount === 0) {
           invoice.status = "paid";
           if (invoice.paymentMethod === "due") invoice.paymentMethod = "cash";
@@ -379,9 +382,9 @@ router.post("/:id/payments", auth, async (req, res) => {
         invoicesUpdated.push({
           invoiceId: invoice._id,
           invoiceNumber: invoice.invoiceNumber,
-          previousDue,
-          paymentApplied: paymentForInvoice,
-          remainingDue: invoice.dueAmount,
+          previousDue: Number(previousDue.toFixed(2)),
+          paymentApplied: Number(paymentForInvoice.toFixed(2)),
+          remainingDue: Number(invoice.dueAmount.toFixed(2)), // This now reflects the saved value
         });
         remainingPayment -= paymentForInvoice;
       }

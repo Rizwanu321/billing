@@ -309,13 +309,13 @@ router.post("/", auth, async (req, res) => {
       populatedInvoice._doc.message =
         dueAmount > 0
           ? `Invoice created! ₹${creditUsed.toFixed(
-              2
-            )} credit applied. Remaining ₹${dueAmount.toFixed(
-              2
-            )} added to dues.`
+            2
+          )} credit applied. Remaining ₹${dueAmount.toFixed(
+            2
+          )} added to dues.`
           : `Invoice created! Fully paid with ₹${creditUsed.toFixed(
-              2
-            )} credit.`;
+            2
+          )} credit.`;
     }
 
     res.status(201).json(populatedInvoice);
@@ -405,11 +405,11 @@ router.get("/", auth, async (req, res) => {
     // Build search query
     const searchQuery = search
       ? {
-          $or: [
-            { "customer.name": { $regex: search, $options: "i" } },
-            { invoiceNumber: { $regex: search, $options: "i" } },
-          ],
-        }
+        $or: [
+          { "customer.name": { $regex: search, $options: "i" } },
+          { invoiceNumber: { $regex: search, $options: "i" } },
+        ],
+      }
       : {};
 
     // Build sort options
@@ -609,6 +609,94 @@ router.put("/:id", auth, async (req, res) => {
         originalInvoice._id,
         false
       );
+    }
+
+    // Handle customer transaction updates for due invoices
+    const Customer = require("../models/Customer");
+    const Transaction = require("../models/Transaction");
+
+    const oldPaymentMethod = originalInvoice.paymentMethod;
+    const oldCustomerId = originalInvoice.customer?._id;
+    const newPaymentMethod = req.body.paymentMethod;
+    const newCustomerId = req.body.customer?._id;
+    const newDueAmount = req.body.dueAmount;
+    const newTotal = req.body.total;
+    const newStatus = req.body.status || originalInvoice.status;
+
+    // Case 1: Editing existing due invoice
+    if (oldCustomerId && oldPaymentMethod === "due" && newStatus === "final") {
+      const customer = await Customer.findById(oldCustomerId).session(session);
+
+      if (customer) {
+        // Delete old transactions for this invoice
+        await Transaction.deleteMany({
+          customerId: oldCustomerId,
+          invoiceId: originalInvoice._id,
+        }).session(session);
+
+        // Recalculate all customer transactions
+        const allTransactions = await Transaction.find({
+          customerId: oldCustomerId,
+        }).sort({ date: 1 }).session(session);
+
+        let runningBalance = 0;
+        for (const trans of allTransactions) {
+          if (trans.type === "purchase") {
+            runningBalance += trans.amount;
+          } else if (trans.type === "payment") {
+            runningBalance -= trans.amount;
+          }
+          trans.balanceAfter = runningBalance;
+          await trans.save({ session });
+        }
+
+        // If new version is still due, create new transaction
+        if (newPaymentMethod === "due" && newDueAmount > 0) {
+          const newPurchaseTrans = new Transaction({
+            customerId: oldCustomerId,
+            type: "purchase",
+            amount: newDueAmount,
+            date: new Date(),
+            invoiceId: originalInvoice._id,
+            invoiceNumber: originalInvoice.invoiceNumber,
+            balanceBefore: runningBalance,
+            balanceAfter: runningBalance + newDueAmount,
+            description: `Purchase for invoice ${originalInvoice.invoiceNumber} (₹${newTotal})`,
+            createdBy: req.user.userId,
+          });
+          await newPurchaseTrans.save({ session });
+          runningBalance += newDueAmount;
+        }
+
+        // Update customer balance
+        customer.amountDue = runningBalance;
+        await customer.save({ session });
+      }
+    }
+    // Case 2: Converting TO due invoice
+    else if (newCustomerId && newPaymentMethod === "due" && newDueAmount > 0 && newStatus === "final" && oldPaymentMethod !== "due") {
+      const customer = await Customer.findById(newCustomerId).session(session);
+
+      if (customer) {
+        const currentDue = customer.amountDue || 0;
+
+        const newPurchaseTrans = new Transaction({
+          customerId: newCustomerId,
+          type: "purchase",
+          amount: newDueAmount,
+          date: new Date(),
+          invoiceId: originalInvoice._id,
+          invoiceNumber: originalInvoice.invoiceNumber,
+          balanceBefore: currentDue,
+          balanceAfter: currentDue + newDueAmount,
+          description: `Purchase for invoice ${originalInvoice.invoiceNumber} (₹${newTotal})`,
+          createdBy: req.user.userId,
+        });
+        await newPurchaseTrans.save({ session });
+
+        customer.amountDue = currentDue + newDueAmount;
+        await customer.save({ session });
+      }
     }
 
     // Update the invoice

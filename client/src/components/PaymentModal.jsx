@@ -137,8 +137,8 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-1">Current Balance</p>
               <p className={`text-2xl font-bold ${customer?.amountDue > 0 ? "text-red-600" :
-                  customer?.amountDue < 0 ? "text-green-600" :
-                    "text-gray-600"
+                customer?.amountDue < 0 ? "text-green-600" :
+                  "text-gray-600"
                 }`}>
                 {customer?.amountDue < 0 ? "-" : ""}₹{Math.abs(customer?.amountDue || 0).toFixed(2)}
               </p>
@@ -168,8 +168,8 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                     setFormData({ ...formData, amount: e.target.value })
                   }
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${errors.amount
-                      ? "border-red-300 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-blue-500"
+                    ? "border-red-300 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
                     }`}
                   placeholder="0.00"
                   step="0.01"
@@ -186,8 +186,8 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
             {/* Payment Summary */}
             {paymentSummary && (
               <div className={`mb-6 rounded-lg p-4 border ${paymentSummary.isAdvance
-                  ? "bg-green-50 border-green-200"
-                  : "bg-blue-50 border-blue-200"
+                ? "bg-green-50 border-green-200"
+                : "bg-blue-50 border-blue-200"
                 }`}>
                 <div className="flex items-start space-x-3">
                   <Info className={`w-5 h-5 mt-0.5 ${paymentSummary.isAdvance ? "text-green-600" : "text-blue-600"
@@ -214,10 +214,10 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                         <span className="text-gray-600">New Balance:</span>
                         <span
                           className={`font-semibold ${paymentSummary.newDue > 0
-                              ? "text-red-600"
-                              : paymentSummary.newDue < 0
-                                ? "text-green-600"
-                                : "text-gray-600"
+                            ? "text-red-600"
+                            : paymentSummary.newDue < 0
+                              ? "text-green-600"
+                              : "text-gray-600"
                             }`}
                         >
                           {paymentSummary.newDue < 0 ? "-" : ""}₹{Math.abs(paymentSummary.newDue).toFixed(2)}
@@ -250,8 +250,8 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                       setFormData({ ...formData, paymentMode: mode.value })
                     }
                     className={`flex items-center justify-center space-x-2 px-4 py-3 border rounded-lg transition-all ${formData.paymentMode === mode.value
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-300 hover:border-gray-400"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-300 hover:border-gray-400"
                       }`}
                   >
                     <mode.icon className="w-5 h-5" />

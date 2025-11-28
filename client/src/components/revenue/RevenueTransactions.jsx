@@ -15,6 +15,9 @@ import {
   Clock,
   FileText,
   IndianRupee,
+  RotateCcw,
+  Wallet,
+  HandCoins,
 } from "lucide-react";
 import { fetchRevenueTransactions } from "../../api/revenue";
 import toast, { Toaster } from 'react-hot-toast';
@@ -282,41 +285,50 @@ const RevenueTransactions = () => {
           )}
 
           {summary && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6">
+            <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${(summary.returns || 0) > 0 ? 'xl:grid-cols-5' : 'xl:grid-cols-3'
+              } gap-4 sm:gap-6`}>
               <StatCard
                 icon={IndianRupee}
-                title="TOTAL REVENUE"
+                title="Gross Revenue"
                 value={formatCurrency(summary.totalRevenue || 0)}
-                subtitle="Gross Sales"
+                subtitle="Total Sales"
                 gradient="bg-gradient-to-br from-blue-500 to-blue-600"
               />
+
+              {(summary.returns || 0) > 0 && (
+                <StatCard
+                  icon={RotateCcw}
+                  title="Returns"
+                  value={formatCurrency(summary.returns || 0)}
+                  subtitle="Product Returns"
+                  gradient="bg-gradient-to-br from-red-500 to-red-600"
+                />
+              )}
+
+              {(summary.returns || 0) > 0 && (
+                <StatCard
+                  icon={Wallet}
+                  title="Net Revenue"
+                  value={formatCurrency(summary.netRevenue || 0)}
+                  subtitle="Gross - Returns"
+                  gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
+                />
+              )}
+
               <StatCard
-                icon={DollarSign}
-                title="TOTAL COLLECTED"
+                icon={HandCoins}
+                title="Total Collected"
                 value={formatCurrency(summary.totalCollected || 0)}
                 subtitle="Cash + Online + Due Payments"
-                gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
-              />
-              <StatCard
-                icon={TrendingUp}
-                title="DUE SALES"
-                value={formatCurrency(summary.totalDueRevenue || 0)}
-                subtitle="Sales on Credit"
-                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
-              />
-              <StatCard
-                icon={Receipt}
-                title="DUE PAYMENTS"
-                value={formatCurrency(summary.duePayments || 0)}
-                subtitle={`${summary.paymentCount || 0} payments`}
                 gradient="bg-gradient-to-br from-indigo-500 to-indigo-600"
               />
+
               <StatCard
-                icon={FileText}
-                title="TOTAL INVOICES"
-                value={summary.invoiceCount || 0}
-                subtitle={`Avg: ${formatCurrency((summary.totalRevenue || 0) / (summary.invoiceCount || 1))}/invoice`}
-                gradient="bg-gradient-to-br from-purple-500 to-purple-600"
+                icon={Clock}
+                title="Pending Dues"
+                value={formatCurrency(summary.totalDueRevenue || 0)}
+                subtitle="Outstanding Amount"
+                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
               />
             </div>
           )}

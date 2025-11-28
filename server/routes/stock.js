@@ -139,8 +139,7 @@ const generateStockPDF = async (type, products, reportData, res) => {
 
           outOfStock.forEach((product) => {
             doc.text(
-              `• ${product.name} (${
-                product.category?.name || "Uncategorized"
+              `• ${product.name} (${product.category?.name || "Uncategorized"
               })`,
               { indent: 20 }
             );
@@ -206,8 +205,7 @@ const generateStockPDF = async (type, products, reportData, res) => {
               indent: 20,
             });
             doc.text(
-              `  Net Change: ${movement.netChange >= 0 ? "+" : ""}${
-                movement.netChange
+              `  Net Change: ${movement.netChange >= 0 ? "+" : ""}${movement.netChange
               } units`,
               { indent: 20 }
             );
@@ -538,10 +536,8 @@ router.get("/movements/export", auth, async (req, res) => {
     const csvRows = movements
       .map(
         (m) =>
-          `${new Date(m.timestamp).toLocaleString()},${m.product?.name || ""},${
-            m.type
-          },${m.adjustment},${m.unit},${m.previousStock},${m.newStock},"${
-            m.description || ""
+          `${new Date(m.timestamp).toLocaleString()},${m.product?.name || ""},${m.type
+          },${m.adjustment},${m.unit},${m.previousStock},${m.newStock},"${m.description || ""
           }",${m.user?.name || ""}`
       )
       .join("\n");
@@ -849,8 +845,7 @@ router.get("/reports/generate", auth, async (req, res) => {
           csv += products
             .map(
               (p) =>
-                `"${p.name}","${p.category?.name || "Uncategorized"}",${
-                  p.stock
+                `"${p.name}","${p.category?.name || "Uncategorized"}",${p.stock
                 },"${p.unit}",${p.price},${p.stock * p.price}`
             )
             .join("\n");
@@ -864,9 +859,8 @@ router.get("/reports/generate", auth, async (req, res) => {
           csv += lowStockProducts
             .map((p) => {
               const status = p.stock === 0 ? "Out of Stock" : "Low Stock";
-              return `"${p.name}","${p.category?.name || "Uncategorized"}",${
-                p.stock
-              },"${p.unit}","${status}",${p.stock * p.price}`;
+              return `"${p.name}","${p.category?.name || "Uncategorized"}",${p.stock
+                },"${p.unit}","${status}",${p.stock * p.price}`;
             })
             .join("\n");
           break;
@@ -876,8 +870,7 @@ router.get("/reports/generate", auth, async (req, res) => {
           csv += products
             .map(
               (p) =>
-                `"${p.name}","${p.category?.name || "Uncategorized"}",${
-                  p.stock
+                `"${p.name}","${p.category?.name || "Uncategorized"}",${p.stock
                 },"${p.unit}",${p.price},${p.stock * p.price}`
             )
             .join("\n");
@@ -889,8 +882,7 @@ router.get("/reports/generate", auth, async (req, res) => {
             csv += reportData.movements
               .map(
                 (m) =>
-                  `"${m.productName || "Unknown"}",${m.totalIn || 0},${
-                    m.totalOut || 0
+                  `"${m.productName || "Unknown"}",${m.totalIn || 0},${m.totalOut || 0
                   },${m.netChange || 0}`
               )
               .join("\n");
@@ -902,8 +894,7 @@ router.get("/reports/generate", auth, async (req, res) => {
           csv += products
             .map(
               (p) =>
-                `"${p.name}","${p.category?.name || "Uncategorized"}",${
-                  p.stock
+                `"${p.name}","${p.category?.name || "Uncategorized"}",${p.stock
                 },"${p.unit}",${p.price},${p.stock * p.price}`
             )
             .join("\n");
@@ -955,7 +946,18 @@ router.post("/batch-adjustment", auth, async (req, res) => {
   session.startTransaction();
 
   try {
-    const { adjustments, reason, type: adjustmentType, reference } = req.body;
+    const {
+      adjustments,
+      reason,
+      type: adjustmentType,
+      reference,
+      // Customer return specific fields
+      customer,
+      invoice,
+      returnTotal,
+      returnTax,
+      returnSubtotal
+    } = req.body;
 
     if (
       !adjustments ||
@@ -963,6 +965,90 @@ router.post("/batch-adjustment", auth, async (req, res) => {
       adjustments.length === 0
     ) {
       return res.status(400).json({ message: "No adjustments provided" });
+    }
+
+    // ======= WALK-IN CUSTOMER RETURN VALIDATION =======
+    // If it's a customer return WITHOUT customer link but WITH invoice reference,
+    // validate products against the invoice (walk-in customer scenario)
+    if (adjustmentType === "return_from_customer" && !customer && reference) {
+      const Invoice = require("../models/Invoice");
+
+      // Find invoice by reference number
+      const invoiceDoc = await Invoice.findOne({
+        invoiceNumber: reference,
+        createdBy: req.user.userId
+      }).populate('items.product');
+
+      if (!invoiceDoc) {
+        return res.status(404).json({
+          message: `Invoice ${reference} not found`
+        });
+      }
+
+      // CRITICAL: Prevent using a registered customer's invoice in walk-in flow
+      // If invoice has a customer ID, it means it belongs to a registered customer
+      if (invoiceDoc.customer && invoiceDoc.customer._id) {
+        return res.status(400).json({
+          message: `Invoice ${reference} belongs to registered customer "${invoiceDoc.customer.name}". Please use the "Link to Customer" option to ensure their account is credited correctly.`
+        });
+      }
+
+      // Validate each product against the invoice
+      for (const adjustment of adjustments) {
+        const { productId, quantity } = adjustment;
+
+        // Find the product in the invoice items
+        const invoiceItem = invoiceDoc.items.find(
+          item => item.product._id.toString() === productId.toString()
+        );
+
+        if (!invoiceItem) {
+          // Get product name for better error message
+          const product = await Product.findById(productId);
+          return res.status(400).json({
+            message: `Product "${product?.name || 'Unknown'}" was not found in invoice ${reference}`
+          });
+        }
+
+        // Check if return quantity exceeds invoice quantity
+        if (quantity > invoiceItem.quantity) {
+          const product = await Product.findById(productId);
+          return res.status(400).json({
+            message: `Cannot return ${quantity} ${invoiceItem.unit} of "${product?.name || 'Unknown'}". Invoice ${reference} only had ${invoiceItem.quantity} ${invoiceItem.unit}.`
+          });
+        }
+      }
+
+      // Validation passed - invoice reference is valid for walk-in return
+      console.log(`Walk-in customer return validated against invoice ${reference}`);
+    }
+
+    // ======= CUSTOMER RETURN VALIDATION =======
+    // If it's a linked customer return, ensure the invoice (if provided) belongs to them
+    if (adjustmentType === "return_from_customer" && customer && invoice) {
+      // We need to verify this invoice belongs to the selected customer
+      // The invoice ID is passed in req.body.invoice._id
+      if (invoice._id) {
+        const Invoice = require("../models/Invoice");
+        const linkedInvoice = await Invoice.findById(invoice._id);
+
+        if (linkedInvoice) {
+          // Case 1: Invoice belongs to a DIFFERENT registered customer
+          if (linkedInvoice.customer && linkedInvoice.customer._id && linkedInvoice.customer._id.toString() !== customer._id.toString()) {
+            return res.status(400).json({
+              message: `Invoice ${linkedInvoice.invoiceNumber} belongs to customer "${linkedInvoice.customer.name}", not "${customer.name}". Please select an invoice belonging to the selected customer.`
+            });
+          }
+
+          // Case 2: Invoice is a Walk-in invoice (no customer ID) but user is trying to link it to a Registered Customer
+          // This is the "normal customer invoice input on due customer" scenario
+          if ((!linkedInvoice.customer || !linkedInvoice.customer._id)) {
+            return res.status(400).json({
+              message: `Invoice ${linkedInvoice.invoiceNumber} is a walk-in invoice and cannot be linked to customer "${customer.name}". Please select a valid invoice for this customer.`
+            });
+          }
+        }
+      }
     }
 
     const results = [];
@@ -1036,6 +1122,88 @@ router.post("/batch-adjustment", auth, async (req, res) => {
       });
     }
 
+    // Handle customer return transaction if customer is provided
+    let customerReturnData = null;
+    if (adjustmentType === "return_from_customer" && customer) {
+      const Customer = require("../models/Customer");
+      const Transaction = require("../models/Transaction");
+
+      // Find customer
+      const customerDoc = await Customer.findOne({
+        _id: customer._id,
+        createdBy: req.user.userId,
+      }).session(session);
+
+      if (!customerDoc) {
+        throw new Error("Customer not found");
+      }
+
+      const returnAmount = returnTotal || 0;
+      const currentDue = customerDoc.amountDue || 0;
+
+      // Calculate new due (return reduces the due amount)
+      const newDue = currentDue - returnAmount;
+
+      // Create return transaction
+      const returnTransaction = new Transaction({
+        customerId: customer._id,
+        type: "payment", // Return is treated as a payment/credit
+        amount: returnAmount,
+        date: new Date(),
+        invoiceId: invoice?._id || null,
+        invoiceNumber: invoice?.invoiceNumber || null,
+        balanceBefore: currentDue,
+        balanceAfter: newDue,
+        paymentMode: "return",
+        reference: reference,
+        description: `Product return - ${reason}${invoice ? ` (Invoice: ${invoice.invoiceNumber})` : ""}${returnTax > 0 ? ` [Tax: ₹${returnTax.toFixed(2)}]` : ""}`,
+        createdBy: req.user.userId,
+      });
+      await returnTransaction.save({ session });
+
+      // Update customer
+      customerDoc.amountDue = newDue;
+      customerDoc.totalPayments = (customerDoc.totalPayments || 0) + returnAmount;
+      customerDoc.lastTransactionDate = new Date();
+      await customerDoc.save({ session });
+
+      // Update invoice if linked
+      if (invoice && invoice._id) {
+        const Invoice = require("../models/Invoice");
+        const invoiceDoc = await Invoice.findById(invoice._id).session(session);
+
+        if (invoiceDoc && invoiceDoc.dueAmount > 0) {
+          const paymentForInvoice = Math.min(returnAmount, invoiceDoc.dueAmount);
+          invoiceDoc.dueAmount = Math.max(0, invoiceDoc.dueAmount - paymentForInvoice);
+
+          if (invoiceDoc.dueAmount === 0) {
+            invoiceDoc.status = "paid";
+            if (invoiceDoc.paymentMethod === "due") {
+              invoiceDoc.paymentMethod = "cash";
+            }
+          }
+          await invoiceDoc.save({ session });
+        }
+      }
+
+      customerReturnData = {
+        customer: {
+          _id: customerDoc._id,
+          name: customerDoc.name,
+          previousDue: currentDue,
+          newDue: newDue,
+        },
+        transaction: returnTransaction,
+        invoice: invoice ? {
+          _id: invoice._id,
+          invoiceNumber: invoice.invoiceNumber,
+        } : null,
+        returnAmount: returnAmount,
+        returnTax: returnTax || 0,
+        returnSubtotal: returnSubtotal || 0,
+      };
+    }
+
     await session.commitTransaction();
 
     res.json({
@@ -1046,6 +1214,7 @@ router.post("/batch-adjustment", auth, async (req, res) => {
         adjustmentType: adjustmentType,
         reference: reference,
       },
+      customerReturn: customerReturnData,
     });
   } catch (error) {
     await session.abortTransaction();

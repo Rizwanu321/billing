@@ -73,8 +73,8 @@ const BillingList = () => {
       const invoiceData = Array.isArray(response.data)
         ? response.data
         : Array.isArray(response)
-        ? response
-        : [];
+          ? response
+          : [];
 
       setInvoices(reset ? invoiceData : [...invoices, ...invoiceData]);
       setHasMore(invoiceData.length === itemsPerPage);

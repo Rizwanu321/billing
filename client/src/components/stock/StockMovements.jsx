@@ -20,6 +20,9 @@ import {
   AlertTriangle,
   AlertCircle,
   Truck,
+  ArrowRight,
+  User,
+  Clock
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -87,351 +90,310 @@ const StockMovements = () => {
     }
   };
 
-  const getMovementColor = (type) => {
-    switch (type) {
-      case "initial":
-        return "bg-blue-50 border-blue-200";
-      case "addition":
-        return "bg-green-50 border-green-200";
-      case "removal":
-        return "bg-red-50 border-red-200";
-      case "sale":
-        return "bg-orange-50 border-orange-200";
-      case "return":
-        return "bg-purple-50 border-purple-200";
-      default:
-        return "bg-gray-50 border-gray-200";
-    }
-  };
+  const getTypeConfig = (movement) => {
+    const type = movement.adjustmentType || movement.type;
 
-  const getTypeLabel = (movement) => {
-    // If we have a specific adjustment type, use that
-    if (movement.adjustmentType) {
-      const labels = {
-        // Additions
-        purchase: "Purchase",
-        return_from_customer: "Customer Return",
-        production: "Production Output",
-        found: "Found/Recovered",
-        adjustment_positive: "Positive Adjustment",
-        // Removals
-        damaged: "Damaged Goods",
-        expired: "Expired Products",
-        lost: "Lost/Missing",
-        theft: "Theft",
-        return_to_supplier: "Return to Supplier",
-        quality_issue: "Quality Issue",
-        adjustment_negative: "Negative Adjustment",
-        // Sales
-        sale: "Sale",
-        initial: "Initial Stock",
-      };
-      return labels[movement.adjustmentType] || movement.type;
-    }
+    const configs = {
+      // Sales & Returns
+      sale: { label: "Sale", color: "text-orange-700 bg-orange-50 border-orange-200", icon: <ShoppingCart className="w-4 h-4" /> },
+      return_from_customer: { label: "Customer Return", color: "text-purple-700 bg-purple-50 border-purple-200", icon: <RotateCcw className="w-4 h-4" /> },
 
-    // Fallback to type
-    const typeLabels = {
-      initial: "Initial Stock",
-      addition: "Stock Added",
-      removal: "Stock Removed",
-      sale: "Sale",
-      return: "Return",
-      adjustment: "Adjustment",
+      // Additions
+      purchase: { label: "Purchase", color: "text-emerald-700 bg-emerald-50 border-emerald-200", icon: <Truck className="w-4 h-4" /> },
+      production: { label: "Production", color: "text-blue-700 bg-blue-50 border-blue-200", icon: <Package className="w-4 h-4" /> },
+      found: { label: "Found", color: "text-green-700 bg-green-50 border-green-200", icon: <CheckCircle className="w-4 h-4" /> },
+      adjustment_positive: { label: "Adjustment (+)", color: "text-indigo-700 bg-indigo-50 border-indigo-200", icon: <Plus className="w-4 h-4" /> },
+      initial: { label: "Initial Stock", color: "text-gray-700 bg-gray-50 border-gray-200", icon: <Package className="w-4 h-4" /> },
+
+      // Removals
+      damaged: { label: "Damaged", color: "text-red-700 bg-red-50 border-red-200", icon: <XCircle className="w-4 h-4" /> },
+      expired: { label: "Expired", color: "text-amber-700 bg-amber-50 border-amber-200", icon: <AlertTriangle className="w-4 h-4" /> },
+      lost: { label: "Lost", color: "text-rose-700 bg-rose-50 border-rose-200", icon: <AlertCircle className="w-4 h-4" /> },
+      theft: { label: "Theft", color: "text-red-900 bg-red-100 border-red-300", icon: <AlertTriangle className="w-4 h-4" /> },
+      return_to_supplier: { label: "Return to Supplier", color: "text-orange-800 bg-orange-100 border-orange-300", icon: <Truck className="w-4 h-4" /> },
+      adjustment_negative: { label: "Adjustment (-)", color: "text-slate-700 bg-slate-50 border-slate-200", icon: <Minus className="w-4 h-4" /> },
+
+      // Fallbacks
+      addition: { label: "Addition", color: "text-green-700 bg-green-50 border-green-200", icon: <Plus className="w-4 h-4" /> },
+      removal: { label: "Removal", color: "text-red-700 bg-red-50 border-red-200", icon: <Minus className="w-4 h-4" /> },
+      return: { label: "Return", color: "text-purple-700 bg-purple-50 border-purple-200", icon: <RotateCcw className="w-4 h-4" /> },
+      adjustment: { label: "Adjustment", color: "text-blue-700 bg-blue-50 border-blue-200", icon: <RefreshCw className="w-4 h-4" /> },
     };
-    return typeLabels[movement.type] || movement.type;
+
+    return configs[type] || { label: type, color: "text-gray-700 bg-gray-50 border-gray-200", icon: <FileText className="w-4 h-4" /> };
   };
 
-  // Update the icon function to handle adjustment types
-  const getMovementIcon = (movement) => {
-    if (movement.adjustmentType) {
-      const icons = {
-        purchase: <ShoppingCart className="w-5 h-5 text-green-600" />,
-        return_from_customer: <RotateCcw className="w-5 h-5 text-blue-600" />,
-        production: <Package className="w-5 h-5 text-green-600" />,
-        found: <CheckCircle className="w-5 h-5 text-green-600" />,
-        damaged: <XCircle className="w-5 h-5 text-red-600" />,
-        expired: <AlertTriangle className="w-5 h-5 text-orange-600" />,
-        lost: <AlertCircle className="w-5 h-5 text-red-600" />,
-        theft: <AlertTriangle className="w-5 h-5 text-red-800" />,
-        return_to_supplier: <Truck className="w-5 h-5 text-orange-600" />,
-        quality_issue: <XCircle className="w-5 h-5 text-red-600" />,
-        sale: <ShoppingCart className="w-5 h-5 text-orange-600" />,
-      };
-      return icons[movement.adjustmentType] || getDefaultIcon(movement.type);
-    }
-    return getDefaultIcon(movement.type);
-  };
-
-  const getDefaultIcon = (type) => {
-    switch (type) {
-      case "initial":
-        return <Package className="w-5 h-5 text-blue-600" />;
-      case "addition":
-        return <Plus className="w-5 h-5 text-green-600" />;
-      case "removal":
-        return <Minus className="w-5 h-5 text-red-600" />;
-      case "sale":
-        return <ShoppingCart className="w-5 h-5 text-orange-600" />;
-      case "return":
-        return <RotateCcw className="w-5 h-5 text-purple-600" />;
-      case "adjustment":
-        return <RefreshCw className="w-5 h-5 text-blue-600" />;
-      default:
-        return <Package className="w-5 h-5 text-gray-600" />;
-    }
+  const formatNumber = (num) => {
+    return Number(num).toFixed(2).replace(/\.00$/, '');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50/50 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex-shrink-0 bg-gradient-to-br from-green-500 to-green-600 p-2.5 sm:p-3 rounded-xl shadow-lg">
-                <Package className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight">
-                  Stock Movements
-                </h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-0.5 sm:mt-1">
-                  Track all stock additions, removals, sales, and adjustments
-                </p>
-              </div>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-200">
+              <RefreshCw className="w-6 h-6 text-white" />
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
-              <button
-                onClick={loadMovements}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all shadow-sm hover:shadow-md text-sm sm:text-base font-medium"
-              >
-                <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Refresh</span>
-              </button>
-              <button
-                onClick={handleExport}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all shadow-lg hover:shadow-xl text-sm sm:text-base font-medium"
-              >
-                <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Export</span>
-              </button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Stock Movements</h1>
+              <p className="text-sm text-gray-500">Track inventory history and audit trail</p>
             </div>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={loadMovements}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </button>
+            <button
+              onClick={handleExport}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm shadow-blue-200"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export</span>
+            </button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-4 sm:mb-6 animate-fadeIn">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-            {/* Search */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="relative sm:col-span-2 lg:col-span-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search products..."
                 value={filters.search}
-                onChange={(e) =>
-                  setFilters({ ...filters, search: e.target.value })
-                }
-                className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
               />
             </div>
 
-            {/* Type Filter */}
             <select
               value={filters.type}
               onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all"
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white transition-all"
             >
-            <option value="all">All Movement Types</option>
-            <option value="initial">Initial Stock</option>
-            <option value="additions">All Additions</option>
-            <option value="removals">All Removals</option>
-            <option value="sale">Sales Only</option>
-            <option value="return">Returns Only</option>
-            <option value="adjustments">Manual Adjustments</option>
-          </select>
+              <option value="all">All Types</option>
+              <option value="sale">Sales</option>
+              <option value="return">Returns</option>
+              <option value="additions">Additions</option>
+              <option value="removals">Removals</option>
+              <option value="adjustments">Adjustments</option>
+            </select>
 
-            {/* Date Range */}
-            <DatePicker
-              selected={filters.startDate}
-              onChange={(date) => setFilters({ ...filters, startDate: date })}
-              selectsStart
-              startDate={filters.startDate}
-              endDate={filters.endDate}
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              placeholderText="Start Date"
-            />
-            <DatePicker
-              selected={filters.endDate}
-              onChange={(date) => setFilters({ ...filters, endDate: date })}
-              selectsEnd
-              startDate={filters.startDate}
-              endDate={filters.endDate}
-              minDate={filters.startDate}
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              placeholderText="End Date"
-            />
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+              <DatePicker
+                selected={filters.startDate}
+                onChange={(date) => setFilters({ ...filters, startDate: date })}
+                selectsStart
+                startDate={filters.startDate}
+                endDate={filters.endDate}
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                placeholderText="Start Date"
+              />
+            </div>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 z-10" />
+              <DatePicker
+                selected={filters.endDate}
+                onChange={(date) => setFilters({ ...filters, endDate: date })}
+                selectsEnd
+                startDate={filters.startDate}
+                endDate={filters.endDate}
+                minDate={filters.startDate}
+                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                placeholderText="End Date"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Movements List */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden animate-fadeIn">
+        {/* Content */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center p-12">
-              <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-                <p className="text-sm text-gray-600">Loading movements...</p>
-              </div>
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+              <p className="text-gray-500 text-sm">Loading movements...</p>
             </div>
           ) : movements.length === 0 ? (
-            <div className="text-center p-12">
-              <Package className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-sm sm:text-base text-gray-500">No stock movements found</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center px-4">
+              <div className="p-4 bg-gray-50 rounded-full mb-4">
+                <Package className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">No movements found</h3>
+              <p className="text-gray-500 text-sm max-w-sm">
+                Try adjusting your filters or date range to see stock history.
+              </p>
             </div>
           ) : (
-            <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Product
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quantity
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Stock Before
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Stock After
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Reference / Reason
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {movements.map((movement) => (
-                  <tr
-                    key={movement._id}
-                    className={`hover:bg-gray-50 ${getMovementColor(
-                      movement.type
-                    )}`}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div>
-                        <p className="font-medium">
-                          {new Date(movement.timestamp).toLocaleDateString()}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(movement.timestamp).toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {movement.product?.name || "Unknown Product"}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {movement.product?.category?.name || "Uncategorized"}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {getMovementIcon(movement.type)}
-                        <span className="text-sm font-medium text-gray-900 capitalize">
-                          {getTypeLabel(movement.type)}
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date & Time</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Product</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Change</th>
+                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Stock</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reference</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {movements.map((movement) => {
+                      const typeConfig = getTypeConfig(movement);
+                      return (
+                        <tr key={movement._id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900">
+                                {new Date(movement.timestamp).toLocaleDateString()}
+                              </span>
+                              <span className="text-xs text-gray-500 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {new Date(movement.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900">
+                                {movement.product?.name || "Unknown Product"}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {movement.product?.category?.name || "Uncategorized"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${typeConfig.color}`}>
+                              {typeConfig.icon}
+                              {typeConfig.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <span className={`text-sm font-bold ${movement.adjustment > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                              {movement.adjustment > 0 ? "+" : ""}
+                              {formatNumber(movement.adjustment)} {movement.unit}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right">
+                            <div className="flex flex-col items-end text-sm">
+                              <span className="text-gray-900 font-medium">{formatNumber(movement.newStock)} {movement.unit}</span>
+                              <span className="text-xs text-gray-400 line-through">{formatNumber(movement.previousStock)}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col max-w-[200px]">
+                              {movement.reference && (
+                                <span className="text-sm font-medium text-gray-900 truncate" title={movement.reference}>
+                                  {movement.reference}
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-500 truncate" title={movement.reason || movement.description}>
+                                {movement.reason || movement.description || "-"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center">
+                                <User className="w-3 h-3 text-gray-500" />
+                              </div>
+                              <span className="text-sm text-gray-700 max-w-[120px] truncate">
+                                {movement.user?.name || "System"}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="md:hidden divide-y divide-gray-200">
+                {movements.map((movement) => {
+                  const typeConfig = getTypeConfig(movement);
+                  return (
+                    <div key={movement._id} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h4 className="font-medium text-gray-900">{movement.product?.name}</h4>
+                          <p className="text-xs text-gray-500">{movement.product?.category?.name}</p>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${typeConfig.color}`}>
+                          {typeConfig.icon}
+                          {typeConfig.label}
                         </span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span
-                        className={`font-bold ${
-                          movement.adjustment > 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {movement.adjustment > 0 ? "+" : ""}
-                        {Math.abs(movement.adjustment)} {movement.unit}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {movement.previousStock} {movement.unit}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {movement.newStock} {movement.unit}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div>
+
+                      <div className="grid grid-cols-2 gap-4 mb-3">
+                        <div className="bg-gray-50 p-2 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-1">Change</p>
+                          <p className={`text-sm font-bold ${movement.adjustment > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                            {movement.adjustment > 0 ? "+" : ""}
+                            {formatNumber(movement.adjustment)} {movement.unit}
+                          </p>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded-lg">
+                          <p className="text-xs text-gray-500 mb-1">New Stock</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatNumber(movement.newStock)} {movement.unit}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between items-center text-xs text-gray-500 border-t border-gray-100 pt-3">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3 h-3" />
+                          <span>{new Date(movement.timestamp).toLocaleDateString()}</span>
+                        </div>
                         {movement.reference && (
-                          <p className="font-medium">{movement.reference}</p>
-                        )}
-                        {movement.reason && (
-                          <p className="text-xs text-gray-600">
-                            {movement.reason}
-                          </p>
-                        )}
-                        {movement.description && !movement.reason && (
-                          <p className="text-xs text-gray-600">
-                            {movement.description}
-                          </p>
+                          <span className="font-medium text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
+                            {movement.reference}
+                          </span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {movement.user?.name || "System"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
 
           {/* Pagination */}
           {!loading && movements.length > 0 && (
-            <div className="px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
-                <p className="text-xs sm:text-sm text-gray-700 text-center sm:text-left">
-                  Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
-                  {Math.min(pagination.page * pagination.limit, pagination.total)}{" "}
-                  of {pagination.total} movements
-                </p>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() =>
-                      setPagination({ ...pagination, page: pagination.page - 1 })
-                    }
-                    disabled={pagination.page === 1}
-                    className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Previous
-                  </button>
-                  <span className="flex items-center px-3 sm:px-4 py-2 text-xs sm:text-sm text-gray-700 bg-white border border-gray-200 rounded-xl">
-                    Page {pagination.page} of {pagination.totalPages}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setPagination({ ...pagination, page: pagination.page + 1 })
-                    }
-                    disabled={pagination.page === pagination.totalPages}
-                    className="flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Next
-                  </button>
-                </div>
+            <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> to{" "}
+                <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{" "}
+                <span className="font-medium">{pagination.total}</span> results
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
+                  disabled={pagination.page === 1}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
+                  disabled={pagination.page === pagination.totalPages}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
               </div>
             </div>
           )}
