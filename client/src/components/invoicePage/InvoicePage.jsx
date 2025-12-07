@@ -206,10 +206,13 @@ const InvoicePage = () => {
     }, [selectedCustomer]);
 
     return (
-        <div className="min-h-screen bg-gray-50 p-2 sm:p-4 lg:p-6 overflow-visible">
-            <div className="max-w-7xl mx-auto overflow-visible">
-                <InvoiceHeader onNewBilling={handleNewBilling} />
-                <div className="bg-white rounded-lg sm:rounded-xl shadow-sm sm:shadow-lg overflow-visible border border-gray-100">
+        <div className="min-h-screen bg-slate-50 p-2 sm:p-6 lg:p-8 overflow-visible">
+            <div className="max-w-7xl mx-auto overflow-visible space-y-6">
+                <InvoiceHeader
+                    onNewBilling={handleNewBilling}
+                    taxEnabled={taxSettings.taxEnabled}
+                />
+                <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-visible ring-1 ring-black/5">
                     <InvoiceForm
                         invoice={invoice}
                         setInvoice={setInvoice}

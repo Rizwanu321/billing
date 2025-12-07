@@ -111,10 +111,11 @@ const RevenueComparison = () => {
 
   const getComparisonTypeLabel = (type) => {
     const labels = {
-      "week-over-week": "Week over Week",
-      "month-over-month": "Month over Month",
-      "quarter-over-quarter": "Quarter over Quarter",
-      "year-over-year": "Year over Year",
+      "day-over-day": "Today vs Yesterday",
+      "week-over-week": "This Week vs Last Week",
+      "month-over-month": "This Month vs Last Month",
+      "quarter-over-quarter": "This Quarter vs Last Quarter",
+      "year-over-year": "This Year vs Last Year",
     };
     return labels[type] || "Comparison";
   };
@@ -135,22 +136,19 @@ const RevenueComparison = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 hover:shadow-md transition-all duration-200">
         <div className="flex items-center justify-between mb-4">
           <div
-            className={`p-3 rounded-lg ${
-              isPositive ? "bg-green-100" : "bg-red-100"
-            }`}
+            className={`p-3 rounded-lg ${isPositive ? "bg-green-100" : "bg-red-100"
+              }`}
           >
             <Icon
-              className={`w-5 h-5 ${
-                isPositive ? "text-green-600" : "text-red-600"
-              }`}
+              className={`w-5 h-5 ${isPositive ? "text-green-600" : "text-red-600"
+                }`}
             />
           </div>
           <div
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${
-              isPositive
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${isPositive
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+              }`}
           >
             {isPositive ? (
               <ArrowUpRight className="w-4 h-4" />
@@ -170,8 +168,8 @@ const RevenueComparison = () => {
               {format === "currency"
                 ? formatCompactCurrency(current)
                 : format === "percentage"
-                ? formatPercentage(current)
-                : current}
+                  ? formatPercentage(current)
+                  : current}
             </p>
           </div>
 
@@ -182,23 +180,22 @@ const RevenueComparison = () => {
                 {format === "currency"
                   ? formatCompactCurrency(previous)
                   : format === "percentage"
-                  ? formatPercentage(previous)
-                  : previous}
+                    ? formatPercentage(previous)
+                    : previous}
               </p>
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500 mb-1">Change</p>
               <p
-                className={`text-sm font-bold ${
-                  isPositive ? "text-green-600" : "text-red-600"
-                }`}
+                className={`text-sm font-bold ${isPositive ? "text-green-600" : "text-red-600"
+                  }`}
               >
                 {isPositive ? "+" : ""}
                 {format === "currency"
                   ? formatCompactCurrency(difference)
                   : format === "percentage"
-                  ? formatPercentage(difference)
-                  : difference}
+                    ? formatPercentage(difference)
+                    : difference}
               </p>
             </div>
           </div>
@@ -226,9 +223,8 @@ const RevenueComparison = () => {
 
     return (
       <div
-        className={`flex items-start gap-3 p-4 rounded-lg border ${
-          colors[insight.type] || colors.info
-        }`}
+        className={`flex items-start gap-3 p-4 rounded-lg border ${colors[insight.type] || colors.info
+          }`}
       >
         <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <p className="text-sm font-medium">{insight.message}</p>
@@ -304,7 +300,8 @@ const RevenueComparison = () => {
 
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+              disabled={true}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export Report</span>
@@ -320,31 +317,23 @@ const RevenueComparison = () => {
           </div>
           <div className="flex flex-wrap gap-2">
             {[
-              { value: "week-over-week", label: "Week vs Week", icon: "📅" },
-              {
-                value: "month-over-month",
-                label: "Month vs Month",
-                icon: "📊",
-              },
-              {
-                value: "quarter-over-quarter",
-                label: "Quarter vs Quarter",
-                icon: "💹",
-              },
-              { value: "year-over-year", label: "Year vs Year", icon: "📆" },
+              { value: "day-over-day", label: "Today vs Yesterday", icon: "📆", shortLabel: "Today" },
+              { value: "week-over-week", label: "This Week vs Last Week", icon: "📅", shortLabel: "Week" },
+              { value: "month-over-month", label: "This Month vs Last Month", icon: "📊", shortLabel: "Month" },
+              { value: "quarter-over-quarter", label: "This Quarter vs Last Quarter", icon: "💹", shortLabel: "Quarter" },
+              { value: "year-over-year", label: "This Year vs Last Year", icon: "📈", shortLabel: "Year" },
             ].map((type) => (
               <button
                 key={type.value}
                 onClick={() => setComparisonType(type.value)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all text-sm ${
-                  comparisonType === type.value
-                    ? "bg-blue-600 text-white shadow-md scale-105"
-                    : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
-                }`}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all text-sm ${comparisonType === type.value
+                  ? "bg-blue-600 text-white shadow-md scale-105"
+                  : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
+                  }`}
               >
                 <span>{type.icon}</span>
                 <span className="hidden sm:inline">{type.label}</span>
-                <span className="sm:hidden">{type.label.split(" ")[0]}</span>
+                <span className="sm:hidden">{type.shortLabel}</span>
               </button>
             ))}
           </div>
@@ -396,11 +385,10 @@ const RevenueComparison = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all text-sm ${
-                  activeTab === tab.id
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
+                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all text-sm ${activeTab === tab.id
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
@@ -416,25 +404,25 @@ const RevenueComparison = () => {
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <div className="space-y-6">
-              {/* Key Metrics Grid */}
+              {/* Key Metrics Grid - Row 1: Revenue metrics */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
-                  title="Total Revenue"
+                  title="Gross Revenue"
                   current={comparisonData.current.revenue}
                   previous={comparisonData.previous.revenue}
                   icon={DollarSign}
                 />
                 <MetricCard
-                  title="Amount Received"
-                  current={comparisonData.current.actualReceived}
-                  previous={comparisonData.previous.actualReceived}
-                  icon={CheckCircle}
+                  title="Returns"
+                  current={comparisonData.current.totalReturns || 0}
+                  previous={comparisonData.previous.totalReturns || 0}
+                  icon={TrendingDown}
                 />
                 <MetricCard
-                  title="Pending Dues"
-                  current={comparisonData.current.totalDue}
-                  previous={comparisonData.previous.totalDue}
-                  icon={AlertTriangle}
+                  title="Net Revenue"
+                  current={comparisonData.current.netRevenue || comparisonData.current.revenue}
+                  previous={comparisonData.previous.netRevenue || comparisonData.previous.revenue}
+                  icon={TrendingUp}
                 />
                 <MetricCard
                   title="Total Invoices"
@@ -442,6 +430,35 @@ const RevenueComparison = () => {
                   previous={comparisonData.previous.transactionCount}
                   icon={FileText}
                   format="number"
+                />
+              </div>
+
+              {/* Key Metrics Grid - Row 2: Collection metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                  title="Total Collected"
+                  current={comparisonData.current.actualReceived}
+                  previous={comparisonData.previous.actualReceived}
+                  icon={CheckCircle}
+                />
+                <MetricCard
+                  title="Credit Payments"
+                  current={comparisonData.current.creditPayments || 0}
+                  previous={comparisonData.previous.creditPayments || 0}
+                  icon={CreditCard}
+                />
+                <MetricCard
+                  title="Net Position"
+                  current={comparisonData.current.totalDue}
+                  previous={comparisonData.previous.totalDue}
+                  icon={AlertTriangle}
+                />
+                <MetricCard
+                  title="Collection Rate"
+                  current={comparisonData.current.collectionRate}
+                  previous={comparisonData.previous.collectionRate}
+                  icon={Percent}
+                  format="percentage"
                 />
               </div>
 
@@ -453,15 +470,15 @@ const RevenueComparison = () => {
                 </h3>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-blue-100 text-sm mb-1">Revenue Growth</p>
+                    <p className="text-blue-100 text-sm mb-1">Net Revenue Growth</p>
                     <p className="text-2xl font-bold flex items-center gap-2">
-                      {comparisonData.growth.revenue >= 0 ? (
+                      {(comparisonData.growth.netRevenue || comparisonData.growth.revenue) >= 0 ? (
                         <ArrowUpRight className="w-5 h-5 text-green-300" />
                       ) : (
                         <ArrowDownRight className="w-5 h-5 text-red-300" />
                       )}
                       {formatPercentage(
-                        Math.abs(comparisonData.growth.revenue)
+                        Math.abs(comparisonData.growth.netRevenue || comparisonData.growth.revenue)
                       )}
                     </p>
                   </div>
@@ -496,14 +513,14 @@ const RevenueComparison = () => {
                     </p>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-blue-100 text-sm mb-1">Profit Growth</p>
+                    <p className="text-blue-100 text-sm mb-1">Customer Growth</p>
                     <p className="text-2xl font-bold flex items-center gap-2">
-                      {comparisonData.growth.profit >= 0 ? (
+                      {comparisonData.growth.customers >= 0 ? (
                         <ArrowUpRight className="w-5 h-5 text-green-300" />
                       ) : (
                         <ArrowDownRight className="w-5 h-5 text-red-300" />
                       )}
-                      {formatPercentage(Math.abs(comparisonData.growth.profit))}
+                      {formatPercentage(Math.abs(comparisonData.growth.customers || 0))}
                     </p>
                   </div>
                 </div>
@@ -533,19 +550,25 @@ const RevenueComparison = () => {
                         <Bar
                           dataKey="revenue"
                           fill={CHART_COLORS.current}
-                          name="Total Revenue"
+                          name="Gross Revenue"
+                          radius={[8, 8, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="netRevenue"
+                          fill="#6366f1"
+                          name="Net Revenue"
                           radius={[8, 8, 0, 0]}
                         />
                         <Bar
                           dataKey="received"
                           fill={CHART_COLORS.positive}
-                          name="Received"
+                          name="Total Collected"
                           radius={[8, 8, 0, 0]}
                         />
                         <Bar
                           dataKey="due"
                           fill={CHART_COLORS.warning}
-                          name="Pending"
+                          name="Net Position"
                           radius={[8, 8, 0, 0]}
                         />
                       </BarChart>
@@ -583,7 +606,7 @@ const RevenueComparison = () => {
                           yAxisId="left"
                           dataKey="received"
                           fill={CHART_COLORS.positive}
-                          name="Received"
+                          name="Total Collected"
                           radius={[8, 8, 0, 0]}
                         />
                         <Line
@@ -604,10 +627,10 @@ const RevenueComparison = () => {
               {/* Additional Metrics */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
-                  title="Credit Used"
-                  current={comparisonData.current.totalCreditUsed}
-                  previous={comparisonData.previous.totalCreditUsed}
-                  icon={CreditCard}
+                  title="Total Tax Collected"
+                  current={comparisonData.current.totalTax || 0}
+                  previous={comparisonData.previous.totalTax || 0}
+                  icon={DollarSign}
                 />
                 <MetricCard
                   title="Avg Order Value"
@@ -616,18 +639,17 @@ const RevenueComparison = () => {
                   icon={ShoppingCart}
                 />
                 <MetricCard
-                  title="Collection Rate"
-                  current={comparisonData.current.collectionRate}
-                  previous={comparisonData.previous.collectionRate}
-                  icon={Percent}
-                  format="percentage"
+                  title="Customer Count"
+                  current={comparisonData.current.customerCount || 0}
+                  previous={comparisonData.previous.customerCount || 0}
+                  icon={Users}
+                  format="number"
                 />
                 <MetricCard
-                  title="Profit Margin"
-                  current={comparisonData.current.profitMargin}
-                  previous={comparisonData.previous.profitMargin}
-                  icon={TrendingUp}
-                  format="percentage"
+                  title="Credit Used"
+                  current={comparisonData.current.totalCreditUsed || 0}
+                  previous={comparisonData.previous.totalCreditUsed || 0}
+                  icon={CreditCard}
                 />
               </div>
             </div>
@@ -681,39 +703,37 @@ const RevenueComparison = () => {
                                 ? formatPercentage(row.current)
                                 : typeof row.current === "number" &&
                                   row.current > 100
-                                ? formatCurrency(row.current)
-                                : row.current}
+                                  ? formatCurrency(row.current)
+                                  : row.current}
                             </td>
                             <td className="text-right py-4 px-6 text-gray-600">
                               {row.isPercentage
                                 ? formatPercentage(row.previous)
                                 : typeof row.previous === "number" &&
                                   row.previous > 100
-                                ? formatCurrency(row.previous)
-                                : row.previous}
+                                  ? formatCurrency(row.previous)
+                                  : row.previous}
                             </td>
                             <td
-                              className={`text-right py-4 px-6 font-semibold ${
-                                row.isPositive
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }`}
+                              className={`text-right py-4 px-6 font-semibold ${row.isPositive
+                                ? "text-green-600"
+                                : "text-red-600"
+                                }`}
                             >
                               {row.isPositive ? "+" : ""}
                               {row.isPercentage
                                 ? formatPercentage(difference)
                                 : typeof difference === "number" &&
                                   Math.abs(difference) > 100
-                                ? formatCompactCurrency(difference)
-                                : difference}
+                                  ? formatCompactCurrency(difference)
+                                  : difference}
                             </td>
                             <td className="text-right py-4 px-6">
                               <span
-                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${
-                                  row.isPositive
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
+                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${row.isPositive
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                                  }`}
                               >
                                 {row.isPositive ? (
                                   <ArrowUpRight className="w-4 h-4" />
@@ -789,11 +809,10 @@ const RevenueComparison = () => {
                                 {method.type?.toUpperCase() || "Unknown"}
                               </h4>
                               <span
-                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                  method.growth >= 0
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
+                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${method.growth >= 0
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                                  }`}
                               >
                                 {method.growth >= 0 ? "+" : ""}
                                 {formatPercentage(method.growth)}
@@ -896,11 +915,10 @@ const RevenueComparison = () => {
                                 </td>
                                 <td className="text-right py-3 px-4">
                                   <span
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                                      category.growth >= 0
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-red-100 text-red-700"
-                                    }`}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${category.growth >= 0
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-700"
+                                      }`}
                                   >
                                     {category.growth >= 0 ? (
                                       <ArrowUpRight className="w-3 h-3" />
@@ -919,11 +937,10 @@ const RevenueComparison = () => {
                                 </td>
                                 <td className="text-right py-3 px-4">
                                   <span
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                                      category.collectionGrowth >= 0
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-red-100 text-red-700"
-                                    }`}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${category.collectionGrowth >= 0
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-700"
+                                      }`}
                                   >
                                     {category.collectionGrowth >= 0 ? "+" : ""}
                                     {formatPercentage(
@@ -1054,7 +1071,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.revenue,
                                   comparisonData.previous.revenue
                                 )) *
-                                100
+                              100
                             ),
                             previous: Math.min(
                               100,
@@ -1063,7 +1080,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.revenue,
                                   comparisonData.previous.revenue
                                 )) *
-                                100
+                              100
                             ),
                           },
                           {
@@ -1080,7 +1097,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.transactionCount,
                                   comparisonData.previous.transactionCount
                                 )) *
-                                100
+                              100
                             ),
                             previous: Math.min(
                               100,
@@ -1089,7 +1106,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.transactionCount,
                                   comparisonData.previous.transactionCount
                                 )) *
-                                100
+                              100
                             ),
                           },
                           {
@@ -1101,7 +1118,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.avgOrderValue,
                                   comparisonData.previous.avgOrderValue
                                 )) *
-                                100
+                              100
                             ),
                             previous: Math.min(
                               100,
@@ -1110,7 +1127,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.avgOrderValue,
                                   comparisonData.previous.avgOrderValue
                                 )) *
-                                100
+                              100
                             ),
                           },
                           {
@@ -1193,14 +1210,12 @@ const RevenueComparison = () => {
                         >
                           <div className="flex items-center gap-3">
                             <div
-                              className={`p-2.5 rounded-lg ${
-                                isPositive ? "bg-green-100" : "bg-red-100"
-                              }`}
+                              className={`p-2.5 rounded-lg ${isPositive ? "bg-green-100" : "bg-red-100"
+                                }`}
                             >
                               <Icon
-                                className={`w-5 h-5 ${
-                                  isPositive ? "text-green-600" : "text-red-600"
-                                }`}
+                                className={`w-5 h-5 ${isPositive ? "text-green-600" : "text-red-600"
+                                  }`}
                               />
                             </div>
                             <span className="font-medium text-gray-900">
@@ -1210,9 +1225,8 @@ const RevenueComparison = () => {
                           <div className="flex items-center gap-3">
                             <div className="w-32 bg-gray-200 rounded-full h-2">
                               <div
-                                className={`h-2 rounded-full ${
-                                  isPositive ? "bg-green-500" : "bg-red-500"
-                                }`}
+                                className={`h-2 rounded-full ${isPositive ? "bg-green-500" : "bg-red-500"
+                                  }`}
                                 style={{
                                   width: `${Math.min(
                                     100,
@@ -1222,9 +1236,8 @@ const RevenueComparison = () => {
                               />
                             </div>
                             <span
-                              className={`text-lg font-bold ${
-                                isPositive ? "text-green-600" : "text-red-600"
-                              }`}
+                              className={`text-lg font-bold ${isPositive ? "text-green-600" : "text-red-600"
+                                }`}
                             >
                               {isPositive ? "+" : ""}
                               {formatPercentage(item.value)}
@@ -1316,12 +1329,12 @@ const RevenueComparison = () => {
                         <span className="text-xl font-bold">
                           {comparisonData.current.collectionRate -
                             comparisonData.previous.collectionRate >=
-                          0
+                            0
                             ? "+"
                             : ""}
                           {formatPercentage(
                             comparisonData.current.collectionRate -
-                              comparisonData.previous.collectionRate
+                            comparisonData.previous.collectionRate
                           )}
                         </span>
                       </div>
@@ -1389,10 +1402,10 @@ const RevenueComparison = () => {
                     {comparisonData.chartData.filter(
                       (item) => item.isPositive && item.growth > 5
                     ).length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        Continue building momentum in all areas
-                      </p>
-                    )}
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          Continue building momentum in all areas
+                        </p>
+                      )}
                   </div>
                 </div>
 
@@ -1424,10 +1437,10 @@ const RevenueComparison = () => {
                     {comparisonData.chartData.filter(
                       (item) => !item.isPositive || item.growth < -5
                     ).length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        All metrics showing positive trends! 🎉
-                      </p>
-                    )}
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          All metrics showing positive trends! 🎉
+                        </p>
+                      )}
                   </div>
                 </div>
               </div>
@@ -1485,21 +1498,21 @@ const RevenueComparison = () => {
 
                   {comparisonData.current.avgOrderValue <
                     comparisonData.previous.avgOrderValue && (
-                    <div className="bg-white p-4 rounded-lg border border-indigo-200">
-                      <h5 className="font-semibold text-gray-900 mb-2">
-                        Increase Average Order Value
-                      </h5>
-                      <p className="text-sm text-gray-600">
-                        AOV decreased by{" "}
-                        {formatCurrency(
-                          comparisonData.previous.avgOrderValue -
+                      <div className="bg-white p-4 rounded-lg border border-indigo-200">
+                        <h5 className="font-semibold text-gray-900 mb-2">
+                          Increase Average Order Value
+                        </h5>
+                        <p className="text-sm text-gray-600">
+                          AOV decreased by{" "}
+                          {formatCurrency(
+                            comparisonData.previous.avgOrderValue -
                             comparisonData.current.avgOrderValue
-                        )}
-                        . Try bundling products or suggesting complementary
-                        items.
-                      </p>
-                    </div>
-                  )}
+                          )}
+                          . Try bundling products or suggesting complementary
+                          items.
+                        </p>
+                      </div>
+                    )}
 
                   {comparisonData.growth.revenue >= 10 &&
                     comparisonData.growth.collection >= 5 && (

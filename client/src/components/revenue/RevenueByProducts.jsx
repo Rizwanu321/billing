@@ -40,6 +40,8 @@ import {
 } from "recharts";
 import { fetchRevenueByProducts } from "../../api/revenue";
 import api from "../../utils/api";
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const RevenueByProducts = () => {
   const [loading, setLoading] = useState(false);
@@ -525,6 +527,172 @@ const RevenueByProducts = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  // PDF-specific currency format (Rs. instead of ₹ symbol)
+  const formatCurrencyForPDF = (value) => {
+    const num = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
+    return `Rs. ${num}`;
+  };
+
+  // Export to PDF function
+  const exportToPDF = () => {
+    if (productData.length === 0) return;
+
+    try {
+      // Create PDF document (landscape A4)
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
+      const hasReturns = summary?.totalReturns > 0;
+
+      // ========== HEADER ==========
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text('Product Revenue Report', pageWidth / 2, 18, { align: 'center' });
+
+      // Subtitle - filters info
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+
+      let filterText = '';
+      if (filters.startDate && filters.endDate) {
+        filterText = `Period: ${filters.startDate} to ${filters.endDate}`;
+      }
+      if (filters.categoryId !== 'all') {
+        const category = categories.find(c => c._id === filters.categoryId);
+        filterText += filterText ? ' | ' : '';
+        filterText += `Category: ${category?.name || 'Selected'}`;
+      }
+      if (filters.productId !== 'all') {
+        filterText += filterText ? ' | ' : '';
+        filterText += `Product: ${selectedProduct?.name || 'Selected'}`;
+      }
+      if (!filterText) {
+        filterText = 'All Products';
+      }
+
+      doc.text(filterText, pageWidth / 2, 25, { align: 'center' });
+      doc.setFontSize(9);
+      doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pageWidth / 2, 30, { align: 'center' });
+
+      // ========== SUMMARY BOX ==========
+      const summaryStartY = 36;
+      const boxHeight = 18;
+      const numBoxes = hasReturns ? 5 : 3;
+      const boxWidth = (pageWidth - margin * 2) / numBoxes;
+
+      const summaryItems = [
+        { label: 'Gross Revenue', value: formatCurrencyForPDF(summary?.totalRevenue || 0) },
+        ...(hasReturns ? [
+          { label: 'Returns', value: formatCurrencyForPDF(summary?.totalReturns || 0) },
+          { label: 'Net Revenue', value: formatCurrencyForPDF(summary?.netRevenue || 0) },
+        ] : []),
+        { label: 'Total Collected', value: formatCurrencyForPDF(summary?.totalCollected || 0) },
+        { label: 'Net Position', value: formatCurrencyForPDF(summary?.totalDueRevenue || 0) },
+      ];
+
+      summaryItems.forEach((item, index) => {
+        const x = margin + (boxWidth * index);
+
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(x, summaryStartY, boxWidth - 2, boxHeight, 2, 2, 'FD');
+
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.label, x + (boxWidth - 2) / 2, summaryStartY + 6, { align: 'center' });
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(item.value, x + (boxWidth - 2) / 2, summaryStartY + 13, { align: 'center' });
+      });
+
+      // ========== TABLE ==========
+      const tableStartY = summaryStartY + boxHeight + 6;
+
+      // Simplified columns for PDF
+      const tableColumn = ['#', 'Product', 'Category', 'Gross Revenue', 'Received', 'Due', 'Qty', 'Performance'];
+      const tableRows = productData.map((product, index) => [
+        String(index + 1),
+        product.productName.length > 25 ? product.productName.substring(0, 22) + '...' : product.productName,
+        product.categoryName.length > 15 ? product.categoryName.substring(0, 12) + '...' : product.categoryName,
+        formatCurrencyForPDF(product.totalRevenue),
+        formatCurrencyForPDF(product.actualReceived),
+        formatCurrencyForPDF(product.dueAmount),
+        String(product.totalQuantity),
+        product.totalRevenue > (summary?.avgRevenuePerProduct || 0) * 1.5
+          ? 'High'
+          : product.totalRevenue < (summary?.avgRevenuePerProduct || 0) * 0.5
+            ? 'Low'
+            : 'Avg',
+      ]);
+
+      // Calculate table width and center it
+      const colWidths = [10, 55, 35, 35, 35, 30, 20, 22];
+      const totalTableWidth = colWidths.reduce((a, b) => a + b, 0);
+      const centerMargin = (pageWidth - totalTableWidth) / 2;
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: tableStartY,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [30, 41, 59],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'center',
+          valign: 'middle',
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [51, 65, 85],
+          valign: 'middle',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        columnStyles: {
+          0: { cellWidth: colWidths[0], halign: 'center' },
+          1: { cellWidth: colWidths[1], halign: 'left' },
+          2: { cellWidth: colWidths[2], halign: 'left' },
+          3: { cellWidth: colWidths[3], halign: 'right', fontStyle: 'bold' },
+          4: { cellWidth: colWidths[4], halign: 'right' },
+          5: { cellWidth: colWidths[5], halign: 'right' },
+          6: { cellWidth: colWidths[6], halign: 'center' },
+          7: { cellWidth: colWidths[7], halign: 'center' },
+        },
+        margin: { left: centerMargin, right: centerMargin },
+        tableWidth: totalTableWidth,
+        didDrawPage: (data) => {
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(150, 150, 150);
+          doc.text(
+            `Page ${data.pageNumber}`,
+            pageWidth / 2,
+            doc.internal.pageSize.getHeight() - 8,
+            { align: 'center' }
+          );
+        },
+      });
+
+      // Save PDF
+      const fileName = `product-revenue-${filters.startDate || 'all'}_to_${filters.endDate || 'all'}.pdf`;
+      doc.save(fileName);
+    } catch (err) {
+      console.error('PDF export error:', err);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
@@ -558,12 +726,12 @@ const RevenueByProducts = () => {
                 <span className="hidden sm:inline">Refresh</span>
               </button>
               <button
-                onClick={exportToCSV}
+                onClick={exportToPDF}
                 disabled={productData.length === 0}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export CSV</span>
+                <span className="hidden sm:inline">Export PDF</span>
               </button>
             </div>
           </div>
@@ -658,10 +826,20 @@ const RevenueByProducts = () => {
 
             <StatCard
               icon={Clock}
-              title="Pending Dues"
-              value={formatCurrency(summary.totalDue || 0)}
-              subtitle="Outstanding Amount"
-              color="bg-gradient-to-br from-orange-500 to-orange-600"
+              title="Net Position"
+              value={formatCurrency(summary.totalDueRevenue || summary.totalDue || 0)}
+              subtitle={
+                (summary.totalDueRevenue || 0) < 0
+                  ? "Advance Received"
+                  : (summary.totalDueRevenue || 0) > 0
+                    ? "Outstanding Amount"
+                    : "Fully Settled"
+              }
+              color={
+                (summary.totalDueRevenue || 0) < 0
+                  ? "bg-gradient-to-br from-emerald-500 to-emerald-600"
+                  : "bg-gradient-to-br from-orange-500 to-orange-600"
+              }
             />
           </div>
         )}
@@ -881,38 +1059,33 @@ const RevenueByProducts = () => {
                 </div>
               </div>
 
-              {/* Outstanding Dues */}
-              <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+              {/* Net Position */}
+              <div className={`p-4 rounded-lg border ${(summary.totalDueRevenue || 0) < 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-orange-50 border-orange-200'}`}>
                 <div className="flex items-center gap-2 mb-3">
-                  <Clock className="w-5 h-5 text-orange-600" />
+                  <Clock className={`w-5 h-5 ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`} />
                   <h4 className="font-semibold text-gray-900">
-                    Outstanding Dues
+                    Net Position
                   </h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Due</span>
-                    <span className="font-medium text-orange-600">
-                      {formatCurrency(summary.totalDue)}
+                    <span className="text-sm text-gray-600">Total Amount</span>
+                    <span className={`font-medium ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
+                      {formatCurrency(summary.totalDueRevenue || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">% of Revenue</span>
+                    <span className="text-sm text-gray-600">Status</span>
                     <span className="font-medium text-gray-900">
-                      {summary.totalRevenue > 0
-                        ? `${(
-                          (summary.totalDue / summary.totalRevenue) *
-                          100
-                        ).toFixed(1)}%`
-                        : "0%"}
+                      {(summary.totalDueRevenue || 0) < 0 ? 'Advance' : 'Outstanding'}
                     </span>
                   </div>
-                  <div className="pt-2 border-t border-orange-200">
+                  <div className={`pt-2 border-t ${(summary.totalDueRevenue || 0) < 0 ? 'border-emerald-200' : 'border-orange-200'}`}>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold text-gray-900">
                         Products
                       </span>
-                      <span className="text-lg font-bold text-orange-600">
+                      <span className={`text-lg font-bold ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
                         {productData.filter((p) => p.dueAmount > 0).length}
                       </span>
                     </div>
@@ -968,7 +1141,7 @@ const RevenueByProducts = () => {
           </div>
         )}
 
-        {/* Revenue Trend Chart - Fixed */}
+        {/* Revenue Trend Chart - Dynamic based on selected period */}
         {revenueTrend.length > 0 && (
           <div className="bg-white rounded-xl shadow-md p-6 mb-8">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
@@ -977,7 +1150,18 @@ const RevenueByProducts = () => {
                   Revenue Trend - Top 5 Products
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Last 6 months performance with payment status
+                  {(() => {
+                    // Determine period description based on selected period
+                    const periodDescriptions = {
+                      today: "Today's hourly performance with payment status",
+                      week: "This week's daily performance with payment status",
+                      month: "This month's daily performance with payment status",
+                      quarter: "This quarter's weekly performance with payment status",
+                      year: "This year's monthly performance with payment status",
+                      all: "All-time monthly performance with payment status",
+                    };
+                    return periodDescriptions[selectedPeriod] || "Performance trend with payment status";
+                  })()}
                 </p>
               </div>
               <div className="flex gap-2 mt-3 sm:mt-0 text-xs">
@@ -1002,31 +1186,76 @@ const RevenueByProducts = () => {
               </div>
             </div>
 
-            {/* Bar Chart instead of Line Chart for better visualization */}
+            {/* Grouped Bar Chart for time-based trend visualization */}
             <ResponsiveContainer width="100%" height={400}>
-              <BarChart data={revenueTrend}>
+              <BarChart
+                data={(() => {
+                  // Transform data: Group by date, with products as separate bars
+                  const dateGroups = {};
+                  revenueTrend.forEach(item => {
+                    if (!dateGroups[item.date]) {
+                      dateGroups[item.date] = { date: item.date };
+                    }
+                    // Use product name as key for this date's data
+                    const productKey = item.productName.substring(0, 20); // Truncate for legend
+                    dateGroups[item.date][`${productKey}_revenue`] = item.revenue;
+                    dateGroups[item.date][`${productKey}_received`] = item.actualReceived;
+                    dateGroups[item.date][`${productKey}_due`] = item.dueAmount;
+                    if (item.returnValue > 0) {
+                      dateGroups[item.date][`${productKey}_returns`] = item.returnValue;
+                    }
+                  });
+                  return Object.values(dateGroups);
+                })()}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis
-                  dataKey="productName"
-                  tick={{ fontSize: 12 }}
+                  dataKey="date"
+                  tick={{ fontSize: 11 }}
                   stroke="#6b7280"
                   angle={-45}
                   textAnchor="end"
-                  height={100}
+                  height={80}
                 />
                 <YAxis
                   tick={{ fontSize: 12 }}
                   stroke="#6b7280"
                   tickFormatter={(value) => `₹${value}`}
                 />
-                <Tooltip content={<EnhancedChartTooltip />} />
-                <Legend wrapperStyle={{ fontSize: "12px" }} />
-                <Bar dataKey="revenue" fill="#3b82f6" name="Total Revenue" />
-                <Bar dataKey="actualReceived" fill="#10b981" name="Received" />
-                <Bar dataKey="dueAmount" fill="#f59e0b" name="Due Amount" />
-                {summary.totalReturns > 0 && (
-                  <Bar dataKey="returnValue" fill="#ef4444" name="Returns" />
-                )}
+                <Tooltip
+                  content={({ active, payload, label }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+                          <p className="font-semibold text-gray-900 mb-2">{label}</p>
+                          <div className="space-y-1 text-xs">
+                            {payload.map((entry, index) => (
+                              <div key={index} className="flex justify-between gap-3">
+                                <span style={{ color: entry.color }}>{entry.name}:</span>
+                                <span className="font-medium">{formatCurrency(entry.value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: "11px" }} />
+                {/* Generate bars dynamically based on unique products */}
+                {Array.from(new Set(revenueTrend.map(item => item.productName))).map((productName, idx) => {
+                  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+                  const productKey = productName.substring(0, 20);
+                  return (
+                    <Bar
+                      key={productKey}
+                      dataKey={`${productKey}_revenue`}
+                      fill={colors[idx % colors.length]}
+                      name={`${productName} (Revenue)`}
+                    />
+                  );
+                })}
               </BarChart>
             </ResponsiveContainer>
 
@@ -1801,10 +2030,10 @@ const RevenueByProducts = () => {
                         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
                           <div className="flex items-center gap-2 mb-3">
                             <Wallet className="w-5 h-5 text-green-600" />
-                            <h4 className="font-semibold text-gray-700 text-sm">Received</h4>
+                            <h4 className="font-semibold text-gray-700 text-sm">Total Collected</h4>
                           </div>
                           <p className="text-2xl font-bold text-gray-900 mb-1">
-                            {formatCurrency(summary.actualReceived || 0)}
+                            {formatCurrency(summary.totalCollected || 0)}
                           </p>
                           <p className="text-xs text-gray-500">
                             {summary.collectionRate?.toFixed(1) || '0.0'}% collected
@@ -1824,16 +2053,16 @@ const RevenueByProducts = () => {
                           </p>
                         </div>
 
-                        <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
+                        <div className={`rounded-xl shadow-md p-5 border ${(summary.totalDueRevenue || 0) < 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100'}`}>
                           <div className="flex items-center gap-2 mb-3">
-                            <Clock className="w-5 h-5 text-orange-600" />
-                            <h4 className="font-semibold text-gray-700 text-sm">Pending Dues</h4>
+                            <Clock className={`w-5 h-5 ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`} />
+                            <h4 className={`font-semibold text-sm ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-800' : 'text-gray-700'}`}>Net Position</h4>
                           </div>
-                          <p className="text-2xl font-bold text-gray-900 mb-1">
-                            {formatCurrency(summary.totalDue || 0)}
+                          <p className={`text-2xl font-bold mb-1 ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-700' : 'text-gray-900'}`}>
+                            {formatCurrency(summary.totalDueRevenue || 0)}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {productData.filter((p) => p.dueAmount > 0).length} product{productData.filter((p) => p.dueAmount > 0).length !== 1 ? 's' : ''}
+                          <p className={`text-xs ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
+                            {(summary.totalDueRevenue || 0) < 0 ? 'Advance Received' : 'Outstanding Amount'}
                           </p>
                         </div>
 

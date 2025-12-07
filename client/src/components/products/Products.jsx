@@ -168,8 +168,7 @@ const Products = () => {
         Math.abs(adjustment) > currentProduct.stock
       ) {
         setError(
-          `Cannot remove more than the current stock (${currentProduct.stock} ${
-            currentProduct.unit || "units"
+          `Cannot remove more than the current stock (${currentProduct.stock} ${currentProduct.unit || "units"
           })`
         );
         setLoading(false);
@@ -181,8 +180,7 @@ const Products = () => {
       await updateProductStock(currentProduct._id, adjustment, reason);
 
       toast.success(
-        `Stock ${
-          stockAdjustment.type === "add" ? "added" : "removed"
+        `Stock ${stockAdjustment.type === "add" ? "added" : "removed"
         } successfully`
       );
 
@@ -297,67 +295,39 @@ const Products = () => {
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 border border-blue-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-blue-600 font-medium">
-                    Total Products
-                  </p>
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-900 mt-1">
-                    {stats.total}
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-blue-200 rounded-lg">
-                  <Package className="h-5 w-5 sm:h-6 sm:w-6 text-blue-700" />
-                </div>
-              </div>
+              <p className="text-xs sm:text-sm text-blue-600 font-medium mb-2">
+                Total Products
+              </p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-900">
+                {stats.total}
+              </p>
             </div>
 
             <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 sm:p-4 border border-amber-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-amber-600 font-medium">
-                    Low Stock
-                  </p>
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-900 mt-1">
-                    {stats.lowStock}
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-amber-200 rounded-lg">
-                  <Package className="h-5 w-5 sm:h-6 sm:w-6 text-amber-700" />
-                </div>
-              </div>
+              <p className="text-xs sm:text-sm text-amber-600 font-medium mb-2">
+                Low Stock
+              </p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-amber-900">
+                {stats.lowStock}
+              </p>
             </div>
 
             <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-3 sm:p-4 border border-red-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-red-600 font-medium">
-                    Out of Stock
-                  </p>
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-900 mt-1">
-                    {stats.outOfStock}
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-red-200 rounded-lg">
-                  <Package className="h-5 w-5 sm:h-6 sm:w-6 text-red-700" />
-                </div>
-              </div>
+              <p className="text-xs sm:text-sm text-red-600 font-medium mb-2">
+                Out of Stock
+              </p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-900">
+                {stats.outOfStock}
+              </p>
             </div>
 
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 sm:p-4 border border-green-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs sm:text-sm text-green-600 font-medium">
-                    Total Value
-                  </p>
-                  <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-900 mt-1">
-                    ₹{stats.totalValue.toLocaleString()}
-                  </p>
-                </div>
-                <div className="p-2 sm:p-3 bg-green-200 rounded-lg">
-                  <Package className="h-5 w-5 sm:h-6 sm:w-6 text-green-700" />
-                </div>
-              </div>
+              <p className="text-xs sm:text-sm text-green-600 font-medium mb-2">
+                Total Value
+              </p>
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-900">
+                ₹{stats.totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
             </div>
           </div>
         </div>
@@ -388,33 +358,30 @@ const Products = () => {
               <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
                 <button
                   onClick={() => setViewMode("table")}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    viewMode === "table"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
+                  className={`p-2 rounded-lg transition-all duration-200 ${viewMode === "table"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                    }`}
                   title="Table View"
                 >
                   <Table2 className="h-5 w-5" />
                 </button>
                 <button
                   onClick={() => setViewMode("grid")}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    viewMode === "grid"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
+                  className={`p-2 rounded-lg transition-all duration-200 ${viewMode === "grid"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                    }`}
                   title="Grid View"
                 >
                   <Grid className="h-5 w-5" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    viewMode === "list"
-                      ? "bg-white text-blue-600 shadow-sm"
-                      : "text-gray-600 hover:text-gray-900"
-                  }`}
+                  className={`p-2 rounded-lg transition-all duration-200 ${viewMode === "list"
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                    }`}
                   title="List View"
                 >
                   <List className="h-5 w-5" />

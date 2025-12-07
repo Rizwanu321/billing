@@ -170,8 +170,8 @@ const CategoryRevenue = () => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value || 0);
   };
 
@@ -536,7 +536,7 @@ const CategoryRevenue = () => {
               </button>
               <button
                 onClick={exportToCSV}
-                disabled={loading || filteredCategories.length === 0}
+                disabled={true}
                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30 text-sm font-medium"
               >
                 <Download className="w-4 h-4" />
@@ -824,16 +824,26 @@ const CategoryRevenue = () => {
             <StatCard
               icon={Wallet}
               title="Total Collected"
-              value={formatCurrency(filteredTotals.actualReceived || 0)}
-              subtitle="Actual Received Amount"
+              value={formatCurrency(summary?.totalCollected || filteredTotals.actualReceived || 0)}
+              subtitle="Net Walk-in Sales + Credit Payments"
               color="bg-gradient-to-br from-teal-500 to-teal-600"
             />
             <StatCard
               icon={Clock}
-              title="Due Amount"
-              value={formatCurrency(filteredTotals.dueAmount || 0)}
-              subtitle={`${filteredTotals.receivedPercentage}% collected`}
-              color="bg-gradient-to-br from-orange-500 to-orange-600"
+              title="Net Position"
+              value={formatCurrency(summary?.totalDueRevenue || filteredTotals.dueAmount || 0)}
+              subtitle={
+                (summary?.totalDueRevenue || 0) < 0
+                  ? "Advance Received"
+                  : (summary?.totalDueRevenue || 0) > 0
+                    ? "Outstanding Amount"
+                    : "Fully Settled"
+              }
+              color={
+                (summary?.totalDueRevenue || 0) < 0
+                  ? "bg-gradient-to-br from-emerald-500 to-emerald-600"
+                  : "bg-gradient-to-br from-orange-500 to-orange-600"
+              }
             />
             <StatCard
               icon={FileText}
@@ -990,13 +1000,15 @@ const CategoryRevenue = () => {
                         <div className="mt-4 pt-4 border-t border-slate-200">
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-green-700">Actual Received</span>
-                              <span className="text-lg font-bold text-green-800">{formatCurrency(filteredTotals.actualReceived)}</span>
+                              <span className="text-sm font-medium text-green-700">Total Collected</span>
+                              <span className="text-lg font-bold text-green-800">{formatCurrency(summary?.totalCollected || filteredTotals.actualReceived)}</span>
                             </div>
-                            {filteredTotals.dueAmount > 0 && (
+                            {(summary?.totalDueRevenue !== undefined && summary?.totalDueRevenue !== 0) && (
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-orange-700">Pending Dues</span>
-                                <span className="text-lg font-bold text-orange-800">{formatCurrency(filteredTotals.dueAmount)}</span>
+                                <span className="text-sm font-medium text-orange-700">Net Position</span>
+                                <span className={`text-lg font-bold ${(summary?.totalDueRevenue || 0) < 0 ? 'text-emerald-800' : 'text-orange-800'}`}>
+                                  {formatCurrency(summary?.totalDueRevenue || 0)}
+                                </span>
                               </div>
                             )}
                             <div className="flex items-center justify-between border-t border-slate-200 pt-2 mt-2">
@@ -1032,7 +1044,7 @@ const CategoryRevenue = () => {
                 </h3>
                 <div className={`grid grid-cols-1 md:grid-cols-2 ${(summary?.returns || summary?.totalReturns) > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
                   {(() => {
-                    const topCategory = [...filteredCategories].sort((a, b) => b.totalRevenue - a.totalRevenue)[0];
+                    const topCategory = [...filteredCategories].sort((a, b) => b.netRevenue - a.netRevenue)[0];
                     return (
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200">
                         <div className="flex items-center gap-2 mb-2">
@@ -1040,7 +1052,7 @@ const CategoryRevenue = () => {
                           <h4 className="font-semibold text-green-900">Top Performer</h4>
                         </div>
                         <p className="text-lg font-bold text-green-800 mb-1">{topCategory.categoryName}</p>
-                        <p className="text-sm text-green-700">{formatCurrency(topCategory.totalRevenue)} revenue</p>
+                        <p className="text-sm text-green-700">{formatCurrency(topCategory.netRevenue)} net revenue</p>
                         <p className="text-xs text-green-600 mt-1">{topCategory.invoiceCount} invoices • {topCategory.quantity.toFixed(2)} units</p>
                       </div>
                     );
@@ -1056,7 +1068,7 @@ const CategoryRevenue = () => {
                         </div>
                         <p className="text-lg font-bold text-blue-800 mb-1">{bestPayment.categoryName}</p>
                         <p className="text-sm text-blue-700">{bestPayment.receivedPercentage.toFixed(1)}% collected</p>
-                        <p className="text-xs text-blue-600 mt-1">{formatCurrency(bestPayment.actualReceived)} received</p>
+                        <p className="text-xs text-blue-600 mt-1">{formatCurrency(bestPayment.actualReceived)} collected</p>
                       </div>
                     );
                   })()}
@@ -1086,6 +1098,7 @@ const CategoryRevenue = () => {
 
                   {(summary?.returns || summary?.totalReturns) > 0 && (() => {
                     const mostReturned = [...filteredCategories].sort((a, b) => (b.returnValue || 0) - (a.returnValue || 0))[0];
+                    const returnRate = mostReturned.totalRevenue > 0 ? ((mostReturned.returnValue / mostReturned.totalRevenue) * 100).toFixed(1) : 0;
                     return mostReturned && mostReturned.returnValue > 0 ? (
                       <div className="p-4 bg-red-50 rounded-xl border border-red-200">
                         <div className="flex items-center gap-2 mb-2">
@@ -1094,7 +1107,7 @@ const CategoryRevenue = () => {
                         </div>
                         <p className="text-lg font-bold text-red-800 mb-1">{mostReturned.categoryName}</p>
                         <p className="text-sm text-red-700">{formatCurrency(mostReturned.returnValue)} returned</p>
-                        <p className="text-xs text-red-600 mt-1">{mostReturned.returnCount} return transactions</p>
+                        <p className="text-xs text-red-600 mt-1">{returnRate}% return rate • {mostReturned.returnCount} txns</p>
                       </div>
                     ) : null;
                   })()}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Settings, Save, Building2, Calculator, DollarSign, MapPin, CheckCircle2 } from "lucide-react";
+import { Settings, Save, Building2, Calculator, DollarSign, MapPin, Phone, CheckCircle2 } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "../utils/api";
 
@@ -10,6 +10,7 @@ const SettingsPage = () => {
     currency: "USD",
     businessName: "",
     businessAddress: "",
+    businessPhone: "",
   });
   const [loading, setLoading] = useState(false);
 
@@ -74,7 +75,7 @@ const SettingsPage = () => {
         <form onSubmit={handleSaveSettings} className="space-y-4 sm:space-y-6">
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            
+
             {/* Business Information Card */}
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-shadow duration-300 animate-fadeIn">
               <div className="bg-gradient-to-r from-purple-500 to-purple-600 px-4 sm:px-6 py-4 sm:py-5">
@@ -123,6 +124,22 @@ const SettingsPage = () => {
                     rows="4"
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 resize-none bg-gray-50 hover:bg-white"
                     placeholder="Enter your complete business address"
+                  />
+                </div>
+
+                {/* Business Phone */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                    <Phone className="w-4 h-4 text-purple-500" />
+                    Business Phone
+                  </label>
+                  <input
+                    type="tel"
+                    name="businessPhone"
+                    value={settings.businessPhone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white"
+                    placeholder="+91 XXXXX XXXXX"
                   />
                 </div>
 
@@ -204,11 +221,10 @@ const SettingsPage = () => {
                 </div>
 
                 {/* Tax Rate Input - Animated */}
-                <div className={`space-y-2 transition-all duration-300 ${
-                  settings.taxEnabled 
-                    ? 'opacity-100 max-h-32' 
+                <div className={`space-y-2 transition-all duration-300 ${settings.taxEnabled
+                    ? 'opacity-100 max-h-32'
                     : 'opacity-50 max-h-32 pointer-events-none'
-                }`}>
+                  }`}>
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                     <Calculator className="w-4 h-4 text-green-500" />
                     Tax Rate (%)

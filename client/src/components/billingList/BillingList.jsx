@@ -176,8 +176,8 @@ Thank you for your business!`;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <div className="h-[calc(100vh-4rem)] bg-slate-50/50 flex flex-col">
+      <div className="flex-none px-4 sm:px-6 lg:px-8 py-6">
         <BillingListHeader
           navigate={navigate}
           searchTerm={searchTerm}
@@ -201,67 +201,69 @@ Thank you for your business!`;
           isMobileFilterOpen={isMobileFilterOpen}
           setIsMobileFilterOpen={setIsMobileFilterOpen}
         />
-
-        <div
-          className="mt-6 h-[calc(100vh-200px)] sm:h-[calc(100vh-250px)] overflow-y-auto rounded-lg"
-          onScroll={handleScroll}
-        >
-          <div className="space-y-3 sm:space-y-4">
-            {invoices.map((invoice) => (
-              <BillingListItem
-                key={invoice._id}
-                invoice={invoice}
-                onView={() => setSelectedInvoice(invoice)}
-                onDownload={() => handlePrint(invoice)}
-                onPrint={() => handlePrint(invoice)}
-                onShareEmail={() => shareInvoice(invoice, "email")}
-                onShareWhatsApp={() => shareInvoice(invoice, "whatsapp")}
-              />
-            ))}
-
-            {/* Loading State */}
-            {loading && (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-              </div>
-            )}
-
-            {/* No More Data */}
-            {!loading && !hasMore && invoices.length > 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">No more invoices to load</p>
-              </div>
-            )}
-
-            {/* Empty State */}
-            {!loading && invoices.length === 0 && (
-              <div className="text-center py-16">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No invoices found
-                </h3>
-                <p className="text-gray-500 mb-6">
-                  Create your first invoice to get started
-                </p>
-                <button
-                  onClick={() => navigate("/invoices")}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create Invoice
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {selectedInvoice && (
-          <InvoiceModal
-            invoice={selectedInvoice}
-            onClose={() => setSelectedInvoice(null)}
-          />
-        )}
       </div>
+
+      <div
+        className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 pb-6 custom-scrollbar"
+        onScroll={handleScroll}
+      >
+        <div className="space-y-3">
+          {invoices.map((invoice) => (
+            <BillingListItem
+              key={invoice._id}
+              invoice={invoice}
+              onView={() => setSelectedInvoice(invoice)}
+              onDownload={() => handlePrint(invoice)}
+              onPrint={() => handlePrint(invoice)}
+              onShareEmail={() => shareInvoice(invoice, "email")}
+              onShareWhatsApp={() => shareInvoice(invoice, "whatsapp")}
+            />
+          ))}
+
+          {/* Loading State */}
+          {loading && (
+            <div className="flex justify-center py-8">
+              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
+
+          {/* No More Data */}
+          {!loading && !hasMore && invoices.length > 0 && (
+            <div className="text-center py-8">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-widest">End of List</span>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && invoices.length === 0 && (
+            <div className="h-96 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+                <FileText className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1">
+                No invoices found
+              </h3>
+              <p className="text-slate-500 mb-6 max-w-xs mx-auto">
+                No invoices match your current search or filters. Create a new one to get started.
+              </p>
+              <button
+                onClick={() => navigate("/invoices")}
+                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create First Invoice
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {selectedInvoice && (
+        <InvoiceModal
+          invoice={selectedInvoice}
+          onClose={() => setSelectedInvoice(null)}
+        />
+      )}
     </div>
   );
 };

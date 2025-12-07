@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { fetchRevenueTransactions } from "../../api/revenue";
 import toast, { Toaster } from 'react-hot-toast';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Premium StatCard with Glassmorphism & Enhanced Design
 const StatCard = ({ icon: Icon, title, value, subtitle, gradient }) => (
@@ -53,6 +55,7 @@ const RevenueTransactions = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
@@ -88,8 +91,188 @@ const RevenueTransactions = () => {
     }
   };
 
-  const formatCurrency = (value) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
+  const formatCurrency = (value) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
   const formatDate = (date) => new Date(date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+
+  // PDF-specific currency format (Rs. instead of ₹ symbol - jsPDF doesn't support ₹)
+  const formatCurrencyForPDF = (value) => {
+    const num = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value || 0);
+    return `Rs. ${num}`;
+  };
+
+  // Export to PDF function
+  const exportToPDF = async () => {
+    try {
+      setExportLoading(true);
+      toast.loading('Generating PDF...', { id: 'pdf-export' });
+
+      // Fetch all transactions for the current filters (without pagination)
+      const allFilters = { ...filters, page: 1, limit: 10000 };
+      const data = await fetchRevenueTransactions(allFilters);
+      const allTransactions = data.transactions || [];
+      const summaryData = data.summary || {};
+
+      if (allTransactions.length === 0) {
+        toast.error('No transactions to export', { id: 'pdf-export' });
+        setExportLoading(false);
+        return;
+      }
+
+      // Create PDF document (landscape A4)
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 14;
+
+      // ========== HEADER ==========
+      doc.setFontSize(22);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text('Revenue Transactions Report', pageWidth / 2, 18, { align: 'center' });
+
+      // Subtitle - filters info
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+
+      let filterText = '';
+      if (filters.timePeriod && filters.timePeriod !== 'all') {
+        filterText += `Period: ${filters.timePeriod.charAt(0).toUpperCase() + filters.timePeriod.slice(1)}`;
+      }
+      if (filters.startDate && filters.endDate) {
+        filterText += filterText ? ' | ' : '';
+        filterText += `Date: ${filters.startDate} to ${filters.endDate}`;
+      }
+      if (filters.paymentMethod !== 'all') {
+        filterText += filterText ? ' | ' : '';
+        filterText += `Payment: ${filters.paymentMethod.toUpperCase()}`;
+      }
+      if (filters.transactionType !== 'all') {
+        filterText += filterText ? ' | ' : '';
+        filterText += `Type: ${filters.transactionType.charAt(0).toUpperCase() + filters.transactionType.slice(1)}`;
+      }
+      if (!filterText) {
+        filterText = 'All Transactions';
+      }
+
+      doc.text(filterText, pageWidth / 2, 25, { align: 'center' });
+      doc.setFontSize(9);
+      doc.text(`Generated: ${new Date().toLocaleString('en-IN')}`, pageWidth / 2, 30, { align: 'center' });
+
+      // ========== SUMMARY BOX ==========
+      const summaryStartY = 36;
+      const boxHeight = 18;
+      const boxWidth = (pageWidth - margin * 2) / 4;
+
+      // Draw summary boxes
+      const summaryItems = [
+        { label: 'Gross Revenue', value: formatCurrencyForPDF(summaryData.totalRevenue || 0) },
+        { label: 'Total Collected', value: formatCurrencyForPDF(summaryData.totalCollected || 0) },
+        { label: 'Net Position', value: formatCurrencyForPDF(summaryData.totalDueRevenue || 0) },
+        { label: 'Transactions', value: String(allTransactions.length) }
+      ];
+
+      summaryItems.forEach((item, index) => {
+        const x = margin + (boxWidth * index);
+
+        // Box background
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.roundedRect(x, summaryStartY, boxWidth - 2, boxHeight, 2, 2, 'FD');
+
+        // Label
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.label, x + (boxWidth - 2) / 2, summaryStartY + 6, { align: 'center' });
+
+        // Value
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 41, 59);
+        doc.text(item.value, x + (boxWidth - 2) / 2, summaryStartY + 13, { align: 'center' });
+      });
+
+      // ========== TABLE ==========
+      const tableStartY = summaryStartY + boxHeight + 6;
+
+      // Calculate table width and center it
+      const colWidths = [12, 28, 22, 45, 55, 25, 35]; // Column widths
+      const totalTableWidth = colWidths.reduce((a, b) => a + b, 0); // 222mm
+      const centerMargin = (pageWidth - totalTableWidth) / 2;
+
+      const tableColumn = ['#', 'Date', 'Type', 'Invoice Number', 'Customer Name', 'Payment', 'Amount'];
+      const tableRows = allTransactions.map((tx, index) => [
+        String(index + 1),
+        formatDate(tx.date),
+        tx.type === 'sale' ? 'SALE' : 'PAYMENT',
+        tx.invoiceNumber || '-',
+        tx.customerName || 'Walk-in Customer',
+        (tx.paymentMethod || 'N/A').toUpperCase(),
+        formatCurrencyForPDF(tx.amount)
+      ]);
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: tableStartY,
+        theme: 'grid',
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [30, 41, 59],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 9,
+          halign: 'center',
+          valign: 'middle',
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [51, 65, 85],
+          valign: 'middle',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252],
+        },
+        columnStyles: {
+          0: { cellWidth: colWidths[0], halign: 'center' },  // #
+          1: { cellWidth: colWidths[1], halign: 'center' },  // Date
+          2: { cellWidth: colWidths[2], halign: 'center' },  // Type
+          3: { cellWidth: colWidths[3], halign: 'left' },    // Invoice Number
+          4: { cellWidth: colWidths[4], halign: 'left' },    // Customer Name
+          5: { cellWidth: colWidths[5], halign: 'center' },  // Payment
+          6: { cellWidth: colWidths[6], halign: 'right', fontStyle: 'bold' },  // Amount
+        },
+        margin: { left: centerMargin, right: centerMargin },
+        tableWidth: totalTableWidth,
+        didDrawPage: (data) => {
+          // Footer on each page
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(150, 150, 150);
+          doc.text(
+            `Page ${data.pageNumber}`,
+            pageWidth / 2,
+            doc.internal.pageSize.getHeight() - 8,
+            { align: 'center' }
+          );
+        },
+      });
+
+      // Save PDF
+      const fileName = `transactions_${filters.startDate || 'all'}_to_${filters.endDate || 'all'}.pdf`;
+      doc.save(fileName);
+
+      toast.success(`PDF exported successfully! (${allTransactions.length} transactions)`, { id: 'pdf-export' });
+    } catch (err) {
+      console.error('PDF export error:', err);
+      toast.error('Failed to export PDF', { id: 'pdf-export' });
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   const getPaymentBadge = (method) => {
     const styles = {
@@ -212,9 +395,17 @@ const RevenueTransactions = () => {
                 <Filter className="w-4 h-4" />
                 <span className="hidden sm:inline">{showFilters ? "Hide" : "Show"} Filters</span>
               </button>
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-sm font-medium">
-                <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export</span>
+              <button
+                onClick={exportToPDF}
+                disabled={exportLoading || transactions.length === 0}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all shadow-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {exportLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                <span className="hidden sm:inline">{exportLoading ? 'Exporting...' : 'Export PDF'}</span>
               </button>
             </div>
           </div>
@@ -319,16 +510,26 @@ const RevenueTransactions = () => {
                 icon={HandCoins}
                 title="Total Collected"
                 value={formatCurrency(summary.totalCollected || 0)}
-                subtitle="Cash + Online + Due Payments"
+                subtitle="Net Walk-in Sales + Credit Payments"
                 gradient="bg-gradient-to-br from-indigo-500 to-indigo-600"
               />
 
               <StatCard
                 icon={Clock}
-                title="Pending Dues"
+                title="Net Position"
                 value={formatCurrency(summary.totalDueRevenue || 0)}
-                subtitle="Outstanding Amount"
-                gradient="bg-gradient-to-br from-orange-500 to-orange-600"
+                subtitle={
+                  (summary.totalDueRevenue || 0) < 0
+                    ? "Advance Received"
+                    : (summary.totalDueRevenue || 0) > 0
+                      ? "Outstanding Amount"
+                      : "Fully Settled"
+                }
+                gradient={
+                  (summary.totalDueRevenue || 0) < 0
+                    ? "bg-gradient-to-br from-emerald-500 to-emerald-600"
+                    : "bg-gradient-to-br from-orange-500 to-orange-600"
+                }
               />
             </div>
           )}

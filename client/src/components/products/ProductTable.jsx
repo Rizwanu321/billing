@@ -120,119 +120,157 @@ const ProductTable = ({
   };
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
+    // Create PDF document (landscape A4) - MATCHING REVENUE TRANSACTIONS
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 14;
 
-    // Add title
-    doc.setFontSize(18);
-    doc.setTextColor(31, 41, 55);
-    doc.text("Product Inventory Report", 14, 22);
+    // ========== HEADER ========== (matching revenue transactions style)
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('Product Inventory Report', pageWidth / 2, 18, { align: 'center' });
 
-    // Add metadata
+    // Subtitle - filters info
     doc.setFontSize(10);
-    doc.setTextColor(107, 114, 128);
-    const generatedDate = new Date();
-    doc.text(
-      `Generated: ${generatedDate.toLocaleDateString()} at ${generatedDate.toLocaleTimeString()}`,
-      14,
-      30
-    );
-    doc.text(`Total Products: ${sortedProducts.length}`, 14, 36);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
 
-    let yPosition = 42;
-
+    let filterText = '';
     if (searchTerm) {
-      doc.text(`Search Filter: ${searchTerm}`, 14, yPosition);
-      yPosition += 6;
+      filterText += `Search: "${searchTerm}"`;
     }
-
     if (selectedCategory !== "all") {
       const categoryName = sortedProducts.find(
         (p) => p.category?._id === selectedCategory
       )?.category?.name;
       if (categoryName) {
-        doc.text(`Category Filter: ${categoryName}`, 14, yPosition);
-        yPosition += 6;
+        filterText += (filterText ? ' | ' : '') + `Category: "${categoryName}"`;
       }
     }
+    if (!filterText) {
+      filterText = 'All Products';
+    }
 
-    // Prepare table data
-    const tableData = sortedProducts.map((product) => {
+    doc.text(filterText, pageWidth / 2, 25, { align: 'center' });
+    doc.setFontSize(9);
+    const generatedDate = new Date();
+    doc.text(`Generated: ${generatedDate.toLocaleString('en-IN')}`, pageWidth / 2, 30, { align: 'center' });
+
+    // ========== SUMMARY BOX ========== (matching revenue transactions style)
+    const summaryStartY = 36;
+    const boxHeight = 18;
+    const boxWidth = (pageWidth - margin * 2) / 4;
+
+    // Draw summary boxes
+    const summaryItems = [
+      { label: 'Total Products', value: String(sortedProducts.length) },
+      { label: 'In Stock', value: String(sortedProducts.filter(p => p.isStockRequired && p.stock > 10).length) },
+      { label: 'Low Stock', value: String(sortedProducts.filter(p => p.isStockRequired && p.stock > 0 && p.stock <= 10).length) },
+      { label: 'Out of Stock', value: String(sortedProducts.filter(p => p.isStockRequired && p.stock === 0).length) }
+    ];
+
+    summaryItems.forEach((item, index) => {
+      const x = margin + (boxWidth * index);
+
+      // Box background
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(x, summaryStartY, boxWidth - 2, boxHeight, 2, 2, 'FD');
+
+      // Label
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(item.label, x + (boxWidth - 2) / 2, summaryStartY + 6, { align: 'center' });
+
+      // Value
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text(item.value, x + (boxWidth - 2) / 2, summaryStartY + 13, { align: 'center' });
+    });
+
+    // ========== TABLE ========== (matching revenue transactions style)
+    const tableStartY = summaryStartY + boxHeight + 6;
+
+    // Calculate table width and center it
+    const colWidths = [12, 70, 40, 28, 20, 28, 30]; // Column widths
+    const totalTableWidth = colWidths.reduce((a, b) => a + b, 0);
+    const centerMargin = (pageWidth - totalTableWidth) / 2;
+
+    // Prepare table data with proper formatting
+    const tableData = sortedProducts.map((product, index) => {
       const stockStatus = getStockStatus(product);
-      const priceValue = parseFloat(product.price || 0).toFixed(2);
+      const priceValue = Number(product.price || 0).toFixed(2);
+      const stockValue = product.isStockRequired
+        ? Number(product.stock).toFixed(2)
+        : "—";
 
       return [
-        String(product.name || ""),
-        String(getCategoryName(product)),
-        `Rs ${priceValue}`,
-        String(product.unit || ""),
-        product.isStockRequired
-          ? `${product.stock} ${formatUnitDisplay(product.unit, product.stock)}`
-          : "N/A",
-        String(stockStatus.text),
+        String(index + 1),
+        product.name || "",
+        getCategoryName(product),
+        `Rs. ${priceValue}`,
+        product.unit || "",
+        stockValue,
+        stockStatus.text,
       ];
     });
 
-    // USE autoTable function directly instead of doc.autoTable
+    const tableColumn = ['#', 'Product Name', 'Category', 'Price', 'Unit', 'Stock Qty', 'Status'];
+
     autoTable(doc, {
-      startY: yPosition,
-      head: [["Product Name", "Category", "Price", "Unit", "Stock", "Status"]],
+      head: [tableColumn],
       body: tableData,
-      theme: "grid",
-      headStyles: {
-        fillColor: [37, 99, 235],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        halign: "left",
-        fontSize: 10,
-      },
+      startY: tableStartY,
+      theme: 'grid',
       styles: {
         fontSize: 9,
-        cellPadding: 4,
-        overflow: "linebreak",
-        cellWidth: "wrap",
-        minCellHeight: 10,
+        cellPadding: 3,
       },
-      columnStyles: {
-        0: { cellWidth: 45 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 25, halign: "right" },
-        3: { cellWidth: 20, halign: "center" },
-        4: { cellWidth: 30, halign: "center" },
-        5: { cellWidth: 28, halign: "center" },
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 9,
+        halign: 'center',
+        valign: 'middle',
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [51, 65, 85],
+        valign: 'middle',
       },
       alternateRowStyles: {
-        fillColor: [249, 250, 251],
+        fillColor: [248, 250, 252],
       },
-      margin: { top: 10, right: 10, bottom: 10, left: 10 },
-      showHead: "everyPage",
-      pageBreak: "auto",
-      rowPageBreak: "avoid",
-      tableWidth: "auto",
-      didDrawPage: function (data) {
-        const pageCount = doc.internal.getNumberOfPages();
-        const currentPage = doc.internal.getCurrentPageInfo().pageNumber;
-
-        // Footer with page numbers
+      columnStyles: {
+        0: { cellWidth: colWidths[0], halign: 'center' },  // #
+        1: { cellWidth: colWidths[1], halign: 'left' },    // Product Name
+        2: { cellWidth: colWidths[2], halign: 'left' },    // Category
+        3: { cellWidth: colWidths[3], halign: 'right', fontStyle: 'bold' },  // Price
+        4: { cellWidth: colWidths[4], halign: 'center' },  // Unit
+        5: { cellWidth: colWidths[5], halign: 'center', fontStyle: 'bold' },  // Stock
+        6: { cellWidth: colWidths[6], halign: 'center' },  // Status
+      },
+      margin: { left: centerMargin, right: centerMargin },
+      tableWidth: totalTableWidth,
+      didDrawPage: (data) => {
+        // Footer on each page (matching revenue transactions style)
         doc.setFontSize(8);
-        doc.setTextColor(107, 114, 128);
-        const pageText = `Page ${currentPage} of ${pageCount}`;
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(150, 150, 150);
         doc.text(
-          pageText,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
-          { align: "center" }
+          `Page ${data.pageNumber}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 8,
+          { align: 'center' }
         );
-
-        // Header on subsequent pages
-        if (currentPage > 1) {
-          doc.setFontSize(10);
-          doc.setTextColor(107, 114, 128);
-          doc.text("Product Inventory Report (continued)", 14, 15);
-        }
       },
     });
 
-    // Save with timestamp
+    // Save PDF
     const timestamp = generatedDate.toISOString().split("T")[0];
     doc.save(`products-inventory-${timestamp}.pdf`);
   };
@@ -320,9 +358,8 @@ const ProductTable = ({
               return (
                 <tr
                   key={product._id}
-                  className={`hover:bg-gray-50 transition-colors ${
-                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                  }`}
+                  className={`hover:bg-gray-50 transition-colors ${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                    }`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -358,7 +395,7 @@ const ProductTable = ({
                     {product.isStockRequired ? (
                       <div className="text-sm">
                         <div className="font-semibold text-gray-900">
-                          {product.stock}
+                          {Number(product.stock).toFixed(2)}
                         </div>
                         <div className="text-xs text-gray-500">
                           {formatUnitDisplay(product.unit, product.stock)}
@@ -386,22 +423,13 @@ const ProductTable = ({
                         <Edit2 className="h-4 w-4" />
                       </button>
                       {product.isStockRequired && (
-                        <>
-                          <button
-                            onClick={() => onStockAdjust(product)}
-                            className="inline-flex items-center p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Adjust Stock"
-                          >
-                            <Package className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => onStockHistory(product)}
-                            className="inline-flex items-center p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                            title="Stock History"
-                          >
-                            <Clock className="h-4 w-4" />
-                          </button>
-                        </>
+                        <button
+                          onClick={() => onStockHistory(product)}
+                          className="inline-flex items-center p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Stock History"
+                        >
+                          <Clock className="h-4 w-4" />
+                        </button>
                       )}
                       <button
                         onClick={() => {
@@ -455,9 +483,8 @@ const ProductTable = ({
                 return (
                   <React.Fragment key={product._id}>
                     <tr
-                      className={`${
-                        index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
-                      } hover:bg-blue-50 transition-colors`}
+                      className={`${index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                        } hover:bg-blue-50 transition-colors`}
                       onClick={() => toggleActions(product._id)}
                     >
                       {/* Product Info */}
@@ -480,15 +507,14 @@ const ProductTable = ({
                                     •
                                   </span>
                                   <span
-                                    className={`text-xs font-medium ${
-                                      product.stock === 0
-                                        ? "text-red-600"
-                                        : product.stock <= 10
+                                    className={`text-xs font-medium ${product.stock === 0
+                                      ? "text-red-600"
+                                      : product.stock <= 10
                                         ? "text-amber-600"
                                         : "text-green-600"
-                                    }`}
+                                      }`}
                                   >
-                                    {product.stock}
+                                    {Number(product.stock).toFixed(2)}
                                   </span>
                                 </>
                               )}
@@ -538,30 +564,17 @@ const ProductTable = ({
                               Edit
                             </button>
                             {product.isStockRequired && (
-                              <>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStockAdjust(product);
-                                    toggleActions(product._id);
-                                  }}
-                                  className="inline-flex items-center gap-1 px-2 py-1.5 bg-green-600 text-white rounded text-xs font-medium"
-                                >
-                                  <Package className="h-3 w-3" />
-                                  Stock
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onStockHistory(product);
-                                    toggleActions(product._id);
-                                  }}
-                                  className="inline-flex items-center gap-1 px-2 py-1.5 bg-purple-600 text-white rounded text-xs font-medium"
-                                >
-                                  <Clock className="h-3 w-3" />
-                                  History
-                                </button>
-                              </>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onStockHistory(product);
+                                  toggleActions(product._id);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-1.5 bg-purple-600 text-white rounded text-xs font-medium"
+                              >
+                                <Clock className="h-3 w-3" />
+                                History
+                              </button>
                             )}
                             <button
                               onClick={(e) => {

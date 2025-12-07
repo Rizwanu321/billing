@@ -22,6 +22,7 @@ import {
   Target,
   Activity,
   Zap,
+  Infinity,
 } from "lucide-react";
 import {
   LineChart,
@@ -52,6 +53,23 @@ const RevenueAnalytics = () => {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
   const [activeTab, setActiveTab] = useState("overview");
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      startDate: formatDate(firstDayOfMonth),
+      endDate: formatDate(today),
+    };
+  });
 
   const COLORS = {
     primary: "#3b82f6",
@@ -76,12 +94,16 @@ const RevenueAnalytics = () => {
 
   useEffect(() => {
     fetchAnalytics();
-  }, [selectedPeriod]);
+  }, [selectedPeriod, dateRange]);
 
   const fetchAnalytics = async () => {
     setLoading(true);
     try {
-      const data = await fetchRevenueAnalytics({ period: selectedPeriod });
+      const data = await fetchRevenueAnalytics({
+        period: selectedPeriod,
+        startDate: dateRange.startDate,
+        endDate: dateRange.endDate,
+      });
       setAnalyticsData(data);
     } catch (error) {
       console.error("Error fetching analytics:", error);
@@ -89,6 +111,71 @@ const RevenueAnalytics = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+    if (period === "custom") {
+      setShowCustomDatePicker(true);
+      return;
+    }
+    setShowCustomDatePicker(false);
+
+    const today = new Date();
+    let startDate, endDate;
+
+    today.setHours(0, 0, 0, 0);
+
+    switch (period) {
+      case "today":
+        startDate = new Date(today);
+        endDate = new Date(today);
+        break;
+      case "week":
+        const dayOfWeek = today.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        startDate = new Date(today);
+        startDate.setDate(today.getDate() - diffToMonday);
+        endDate = new Date(today);
+        break;
+      case "month":
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today);
+        break;
+      case "quarter":
+        const currentQuarter = Math.floor(today.getMonth() / 3);
+        startDate = new Date(today.getFullYear(), currentQuarter * 3, 1);
+        const quarterEndMonth = currentQuarter * 3 + 2;
+        endDate = new Date(today.getFullYear(), quarterEndMonth + 1, 0);
+        if (endDate > today) {
+          endDate = new Date(today);
+        }
+        break;
+      case "year":
+        startDate = new Date(today.getFullYear(), 0, 1);
+        endDate = new Date(today);
+        break;
+      case "all":
+        startDate = null;
+        endDate = new Date(today);
+        break;
+      default:
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        endDate = new Date(today);
+    }
+
+    const formatDate = (date) => {
+      if (!date) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    setDateRange({
+      startDate: formatDate(startDate),
+      endDate: formatDate(endDate),
+    });
   };
 
   const formatCurrency = (value) => {
@@ -208,6 +295,9 @@ const RevenueAnalytics = () => {
     );
   }
 
+  // Safe data access with defaults to prevent undefined errors
+  const safeAnalytics = analyticsData || {};
+
   return (
     <div className="min-h-screen bg-gray-50 -m-4 sm:-m-6 lg:-m-8 p-4 sm:p-6 lg:p-8">
       {/* Header */}
@@ -236,7 +326,8 @@ const RevenueAnalytics = () => {
 
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+              disabled={true}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>
@@ -246,19 +337,72 @@ const RevenueAnalytics = () => {
 
         {/* Period Selector */}
         <div className="mt-6 flex flex-wrap gap-2">
-          {["week", "month", "quarter", "year"].map((period) => (
-            <button
-              key={period}
-              onClick={() => setSelectedPeriod(period)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all text-sm ${selectedPeriod === period
-                  ? "bg-blue-600 text-white shadow-md"
+          {[
+            { label: "Today", value: "today", icon: Calendar },
+            { label: "Week", value: "week", icon: Activity },
+            { label: "Month", value: "month", icon: BarChart3 },
+            { label: "Quarter", value: "quarter", icon: TrendingUp },
+            { label: "Year", value: "year", icon: PieChartIcon },
+            { label: "All Time", value: "all", icon: Infinity },
+            { label: "Custom", value: "custom", icon: Filter },
+          ].map((period) => {
+            const Icon = period.icon;
+            return (
+              <button
+                key={period.value}
+                onClick={() => handlePeriodChange(period.value)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200 text-sm ${selectedPeriod === period.value
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-500/30"
                   : "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300"
-                }`}
-            >
-              {getPeriodLabel(period)}
-            </button>
-          ))}
+                  }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{period.label}</span>
+                <span className="sm:hidden">{period.label.slice(0, 3)}</span>
+              </button>
+            );
+          })}
         </div>
+
+        {/* Custom Date Range Picker */}
+        {showCustomDatePicker && (
+          <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) =>
+                    setDateRange({ ...dateRange, startDate: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) =>
+                    setDateRange({ ...dateRange, endDate: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <button
+                onClick={fetchAnalytics}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Tab Navigation */}
         <div className="mt-6 border-b border-gray-200">
@@ -273,8 +417,8 @@ const RevenueAnalytics = () => {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 font-medium transition-all text-sm ${activeTab === tab.id
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
                   }`}
               >
                 <tab.icon className="w-4 h-4" />
@@ -296,8 +440,8 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={TrendingUp}
                   title="Revenue Growth"
-                  value={formatPercentage(analyticsData.growthRate)}
-                  change={analyticsData.growthRate}
+                  value={formatPercentage(analyticsData?.growthRate || 0)}
+                  change={analyticsData?.growthRate}
                   color="bg-blue-500"
                   info="Compared to previous period"
                 />
@@ -305,7 +449,7 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={DollarSign}
                   title="Revenue Per Invoice"
-                  value={formatCurrency(analyticsData.revenuePerInvoice)}
+                  value={formatCurrency(analyticsData?.revenuePerInvoice || 0)}
                   color="bg-green-500"
                   info="Average transaction value"
                 />
@@ -313,7 +457,7 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={Percent}
                   title="Profit Margin"
-                  value={formatPercentage(analyticsData.profitMargin)}
+                  value={formatPercentage(analyticsData?.profitMargin || 0)}
                   color="bg-purple-500"
                   info="Net profit percentage"
                 />
@@ -321,8 +465,8 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={CreditCard}
                   title="Collection Rate"
-                  value={formatPercentage(analyticsData.collectionRate)}
-                  change={analyticsData.collectionGrowth}
+                  value={formatPercentage(analyticsData?.collectionRate || 0)}
+                  change={analyticsData?.collectionGrowth}
                   color="bg-indigo-500"
                   info="Payment collection efficiency"
                 />
@@ -336,38 +480,100 @@ const RevenueAnalytics = () => {
                 </h3>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-blue-100 text-sm mb-1">Total Revenue</p>
+                    <p className="text-blue-100 text-sm mb-1">Gross Revenue</p>
                     <p className="text-2xl font-bold">
                       {formatCompactCurrency(
-                        analyticsData.paymentSummary.totalRevenue
+                        analyticsData?.paymentSummary?.totalRevenue || 0
                       )}
                     </p>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                     <p className="text-blue-100 text-sm mb-1">
-                      Amount Received
+                      Collected Amount
                     </p>
                     <p className="text-2xl font-bold text-green-300">
                       {formatCompactCurrency(
-                        analyticsData.paymentSummary.actualReceived
+                        analyticsData?.paymentSummary?.actualReceived || 0
                       )}
                     </p>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-blue-100 text-sm mb-1">Pending Due</p>
+                    <p className="text-blue-100 text-sm mb-1">Current Due</p>
                     <p className="text-2xl font-bold text-orange-300">
                       {formatCompactCurrency(
-                        analyticsData.paymentSummary.totalDue
+                        analyticsData?.paymentSummary?.totalDue || 0
                       )}
                     </p>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-blue-100 text-sm mb-1">Credit Used</p>
+                    <p className="text-blue-100 text-sm mb-1">Credit Sales</p>
                     <p className="text-2xl font-bold text-purple-300">
                       {formatCompactCurrency(
-                        analyticsData.paymentSummary.totalCreditUsed
+                        analyticsData?.paymentSummary?.totalCreditUsed || 0
                       )}
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Returns & Net Revenue - Matching Dashboard */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 text-white">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    Total Returns
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-red-100 text-sm mb-1">All Returns</p>
+                      <p className="text-3xl font-bold">
+                        {formatCurrency(analyticsData?.returns?.total || 0)}
+                      </p>
+                      <p className="text-red-200 text-xs mt-1">
+                        {analyticsData?.returns?.count || 0} return transactions
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <CreditCard className="w-5 h-5" />
+                    Returns Breakdown
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <p className="text-orange-100 text-xs mb-1">Cash Refunds (Walk-in)</p>
+                      <p className="text-xl font-bold">
+                        {formatCurrency(analyticsData?.returns?.cashRefunds || 0)}
+                      </p>
+                      <p className="text-orange-200 text-xs">Money out - affects Total Collected</p>
+                    </div>
+                    <div className="bg-white/10 rounded-lg p-3">
+                      <p className="text-orange-100 text-xs mb-1">Credit Adjustments (Due)</p>
+                      <p className="text-xl font-bold">
+                        {formatCurrency(analyticsData?.returns?.creditAdjustments || 0)}
+                      </p>
+                      <p className="text-orange-200 text-xs">No cash out - dues reduced</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Net Revenue
+                  </h3>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-green-100 text-sm mb-1">After Returns</p>
+                      <p className="text-3xl font-bold">
+                        {formatCurrency(analyticsData?.netRevenue || 0)}
+                      </p>
+                      <p className="text-green-200 text-xs mt-1">
+                        Gross - Returns
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -377,7 +583,7 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={Target}
                   title="Conversion Rate"
-                  value={formatPercentage(analyticsData.conversionRate)}
+                  value={formatPercentage(analyticsData?.conversionRate || 0)}
                   color="bg-teal-500"
                   info="Draft to final invoice ratio"
                 />
@@ -385,7 +591,7 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={Users}
                   title="Customer Retention"
-                  value={formatPercentage(analyticsData.customerRetention)}
+                  value={formatPercentage(analyticsData?.customerRetention || 0)}
                   color="bg-pink-500"
                   info="Returning customers"
                 />
@@ -393,7 +599,7 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={ShoppingCart}
                   title="Avg. Order Frequency"
-                  value={analyticsData.averageOrderFrequency.toFixed(1)}
+                  value={(analyticsData?.averageOrderFrequency || 0).toFixed(1)}
                   subtitle="orders per customer"
                   color="bg-orange-500"
                 />
@@ -401,8 +607,8 @@ const RevenueAnalytics = () => {
                 <KPICard
                   icon={Zap}
                   title="Collection Growth"
-                  value={formatPercentage(analyticsData.collectionGrowth)}
-                  change={analyticsData.collectionGrowth}
+                  value={formatPercentage(analyticsData?.collectionGrowth || 0)}
+                  change={analyticsData?.collectionGrowth}
                   color="bg-yellow-500"
                   info="Payment collection improvement"
                 />
@@ -419,7 +625,7 @@ const RevenueAnalytics = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={analyticsData.paymentMethodPerformance}
+                          data={analyticsData?.paymentMethodPerformance || []}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
@@ -430,7 +636,7 @@ const RevenueAnalytics = () => {
                           fill="#8884d8"
                           dataKey="revenue"
                         >
-                          {analyticsData.paymentMethodPerformance.map(
+                          {(analyticsData?.paymentMethodPerformance || []).map(
                             (entry, index) => (
                               <Cell
                                 key={`cell-${index}`}
@@ -447,7 +653,7 @@ const RevenueAnalytics = () => {
                   </div>
 
                   <div className="space-y-3">
-                    {analyticsData.paymentMethodPerformance.map(
+                    {(analyticsData?.paymentMethodPerformance || []).map(
                       (method, index) => (
                         <div
                           key={method.method}
@@ -463,19 +669,19 @@ const RevenueAnalytics = () => {
                             />
                             <div>
                               <p className="font-medium text-gray-900">
-                                {method.method?.toUpperCase() || "Unknown"}
+                                {method?.method?.toUpperCase() || "Unknown"}
                               </p>
                               <p className="text-sm text-gray-500">
-                                {method.count} transactions
+                                {method?.count || 0} transactions
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className="font-semibold text-gray-900">
-                              {formatCompactCurrency(method.revenue)}
+                              {formatCompactCurrency(method?.revenue || 0)}
                             </p>
                             <p className="text-sm text-gray-500">
-                              Avg: {formatCurrency(method.avgTransactionValue)}
+                              Avg: {formatCurrency(method?.avgTransactionValue || 0)}
                             </p>
                           </div>
                         </div>
@@ -498,7 +704,7 @@ const RevenueAnalytics = () => {
                 </h3>
                 <div className="h-96">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={analyticsData.monthlyTrend}>
+                    <AreaChart data={analyticsData?.monthlyTrend || []}>
                       <defs>
                         <linearGradient
                           id="colorRevenue"
@@ -578,7 +784,7 @@ const RevenueAnalytics = () => {
                         stroke={COLORS.primary}
                         fillOpacity={1}
                         fill="url(#colorRevenue)"
-                        name="Total Revenue"
+                        name="Net Revenue"
                       />
                       <Area
                         type="monotone"
@@ -586,7 +792,7 @@ const RevenueAnalytics = () => {
                         stroke={COLORS.success}
                         fillOpacity={1}
                         fill="url(#colorReceived)"
-                        name="Received"
+                        name="Total Collected"
                       />
                       <Area
                         type="monotone"
@@ -623,7 +829,7 @@ const RevenueAnalytics = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {analyticsData.monthlyTrend.map((month, index) => (
+                      {(analyticsData?.monthlyTrend || []).map((month, index) => (
                         <tr
                           key={index}
                           className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -643,10 +849,10 @@ const RevenueAnalytics = () => {
                           <td className="text-right py-3 px-4">
                             <span
                               className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${month.collectionRate >= 80
-                                  ? "bg-green-100 text-green-800"
-                                  : month.collectionRate >= 60
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
+                                ? "bg-green-100 text-green-800"
+                                : month.collectionRate >= 60
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : "bg-red-100 text-red-800"
                                 }`}
                             >
                               {formatPercentage(month.collectionRate)}
@@ -669,7 +875,7 @@ const RevenueAnalytics = () => {
                   </h3>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={analyticsData.timeOfDayData}>
+                      <BarChart data={analyticsData?.timeOfDayData || []}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis
                           dataKey="hour"
@@ -690,7 +896,7 @@ const RevenueAnalytics = () => {
                         <Bar
                           dataKey="received"
                           fill={COLORS.success}
-                          name="Received"
+                          name="Total Collected"
                           radius={[8, 8, 0, 0]}
                         />
                         <Bar
@@ -709,9 +915,9 @@ const RevenueAnalytics = () => {
                       📊 Peak Business Hours
                     </p>
                     <p className="text-sm text-blue-700">
-                      {analyticsData.timeOfDayData.length > 0 &&
+                      {(analyticsData?.timeOfDayData || []).length > 0 &&
                         (() => {
-                          const peak = analyticsData.timeOfDayData.reduce(
+                          const peak = (analyticsData?.timeOfDayData || []).reduce(
                             (max, curr) =>
                               curr.revenue > max.revenue ? curr : max
                           );
@@ -731,7 +937,7 @@ const RevenueAnalytics = () => {
                   </h3>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={analyticsData.dayOfWeekData}>
+                      <BarChart data={analyticsData?.dayOfWeekData || []}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="day" tick={{ fontSize: 11 }} />
                         <YAxis
@@ -747,13 +953,13 @@ const RevenueAnalytics = () => {
                         <Bar
                           dataKey="revenue"
                           fill={COLORS.primary}
-                          name="Total Revenue"
+                          name="Net Revenue"
                           radius={[8, 8, 0, 0]}
                         />
                         <Bar
                           dataKey="received"
                           fill={COLORS.success}
-                          name="Received"
+                          name="Total Collected"
                           radius={[8, 8, 0, 0]}
                         />
                       </BarChart>
@@ -766,9 +972,9 @@ const RevenueAnalytics = () => {
                       🏆 Best Performing Day
                     </p>
                     <p className="text-sm text-green-700">
-                      {analyticsData.dayOfWeekData.length > 0 &&
+                      {(analyticsData?.dayOfWeekData || []).length > 0 &&
                         (() => {
-                          const best = analyticsData.dayOfWeekData.reduce(
+                          const best = (analyticsData?.dayOfWeekData || []).reduce(
                             (max, curr) =>
                               curr.revenue > max.revenue ? curr : max
                           );
@@ -797,7 +1003,7 @@ const RevenueAnalytics = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
-                          data={analyticsData.customerSegments}
+                          data={analyticsData?.customerSegments || []}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
@@ -843,11 +1049,23 @@ const RevenueAnalytics = () => {
                             {segment.value} customers
                           </span>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="grid grid-cols-3 gap-3 text-sm">
                           <div>
                             <p className="text-gray-500 mb-1">Revenue</p>
                             <p className="font-semibold text-gray-900">
                               {formatCurrency(segment.revenue)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 mb-1">Returns</p>
+                            <p className="font-semibold text-red-600">
+                              {formatCurrency(segment.returns || 0)}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500 mb-1">Tax</p>
+                            <p className="font-semibold text-gray-900">
+                              {formatCurrency(segment.tax || 0)}
                             </p>
                           </div>
                           <div>

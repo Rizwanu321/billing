@@ -186,16 +186,40 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                     message: `${returnProduct.name} was not in invoice ${selectedInvoice.invoiceNumber}`
                 });
             } else {
-                // Check if return quantity exceeds purchased quantity
-                if (returnProduct.adjustmentQuantity > invoiceItem.quantity) {
+                // Check against original quantity AND previously returned quantity
+                const alreadyReturned = invoiceItem.returnedQuantity || 0;
+                const originalQuantity = invoiceItem.quantity;
+                const maxReturnable = originalQuantity - alreadyReturned;
+                const currentReturnQty = returnProduct.adjustmentQuantity;
+
+                // Error: Exceeds available quantity
+                if (currentReturnQty > maxReturnable) {
                     errors.push({
                         product: returnProduct.name,
-                        message: `Cannot return ${returnProduct.adjustmentQuantity} ${returnProduct.unit} of ${returnProduct.name}. Invoice only had ${invoiceItem.quantity} ${invoiceItem.unit}.`
+                        message: `Cannot return ${currentReturnQty} ${returnProduct.unit} of ${returnProduct.name}. ` +
+                            `Purchased: ${originalQuantity}, Already Returned: ${alreadyReturned}. ` +
+                            `Max returnable: ${maxReturnable} ${invoiceItem.unit}.`
                     });
-                } else if (returnProduct.adjustmentQuantity === invoiceItem.quantity) {
+                }
+                // Warning: Returning all available quantity
+                else if (currentReturnQty === maxReturnable && maxReturnable > 0) {
+                    if (alreadyReturned > 0) {
+                        warnings.push({
+                            product: returnProduct.name,
+                            message: `Returning all remaining ${returnProduct.name} (${maxReturnable} ${invoiceItem.unit}). ${alreadyReturned} ${invoiceItem.unit} were previously returned.`
+                        });
+                    } else {
+                        warnings.push({
+                            product: returnProduct.name,
+                            message: `Full quantity of ${returnProduct.name} is being returned (${originalQuantity} ${invoiceItem.unit})`
+                        });
+                    }
+                }
+                // Info: Some items were previously returned
+                else if (alreadyReturned > 0 && currentReturnQty < maxReturnable) {
                     warnings.push({
                         product: returnProduct.name,
-                        message: `Full quantity of ${returnProduct.name} is being returned (${invoiceItem.quantity} ${invoiceItem.unit})`
+                        message: `Note: ${alreadyReturned} ${invoiceItem.unit} of ${returnProduct.name} were previously returned. Returning ${currentReturnQty} more.`
                     });
                 }
             }

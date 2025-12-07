@@ -1,6 +1,6 @@
 const PDFDocument = require("pdfkit");
 
-const generateCompactInvoicePDF = async (invoice) => {
+const generateCompactInvoicePDF = async (invoice, customerData = null, recentPayment = null, settings = null) => {
   return new Promise((resolve, reject) => {
     try {
       // Create a new PDF document with dynamic height
@@ -52,52 +52,72 @@ const generateCompactInvoicePDF = async (invoice) => {
       const contentWidth = rightMargin - leftMargin;
 
       // ===== HEADER SECTION =====
+      let yPos = 15;
+
+      // 1. Business Info (Top Priority)
+      const businessName = settings?.businessName || "Shop Management System";
       doc
-        .fontSize(14)
+        .fontSize(15) // Larger, professional font for business name
         .font("Helvetica-Bold")
-        .text("TAX INVOICE", leftMargin, 15, {
+        .text(businessName, leftMargin, yPos, {
           width: contentWidth,
           align: "center",
         });
 
-      // Decorative line
-      doc
-        .moveTo(leftMargin, 32)
-        .lineTo(rightMargin, 32)
-        .lineWidth(1.5)
-        .stroke();
+      yPos += 20;
 
-      // ===== BUSINESS INFO SECTION =====
-      let yPos = 38;
+      const businessAddress = settings?.businessAddress || "Your Business Address";
       doc
-        .fontSize(10)
-        .font("Helvetica-Bold")
-        .text("Shop Management System", leftMargin, yPos, {
-          width: contentWidth,
-          align: "center",
-        });
-
-      yPos += 12;
-      doc
-        .fontSize(7)
+        .fontSize(9)
         .font("Helvetica")
-        .text("Your Business Address", leftMargin, yPos, {
+        .text(businessAddress, leftMargin, yPos, {
           width: contentWidth,
           align: "center",
+          lineGap: 2,
         });
 
-      yPos += 10;
-      doc.text("Phone: +91 XXXXX XXXXX", leftMargin, yPos, {
+      // Calculate height of address text to adjust yPos dynamically
+      const addressHeight = doc.heightOfString(businessAddress, {
+        width: contentWidth,
+        align: "center",
+      });
+      yPos += addressHeight + 4;
+
+      const businessPhone = settings?.businessPhone || "+91 XXXXX XXXXX";
+      doc.text(`Phone: ${businessPhone}`, leftMargin, yPos, {
         width: contentWidth,
         align: "center",
       });
 
-      // Separator line
-      yPos += 12;
+      yPos += 15;
+
+      // 2. Document Title (Dynamic based on Tax)
+      // If tax > 0, it's a "TAX INVOICE", otherwise just an "INVOICE"
+      const invoiceTitle = invoice.tax > 0 ? "TAX INVOICE" : "INVOICE";
+
       doc
         .moveTo(leftMargin, yPos)
         .lineTo(rightMargin, yPos)
-        .lineWidth(0.5)
+        .lineWidth(1)
+        .stroke();
+
+      yPos += 5;
+
+      doc
+        .fontSize(12)
+        .font("Helvetica-Bold")
+        .text(invoiceTitle, leftMargin, yPos, {
+          width: contentWidth,
+          align: "center",
+          characterSpacing: 1, // Adds a professional touch
+        });
+
+      yPos += 15;
+
+      doc
+        .moveTo(leftMargin, yPos)
+        .lineTo(rightMargin, yPos)
+        .lineWidth(1)
         .stroke();
 
       // ===== INVOICE DETAILS SECTION =====
@@ -289,22 +309,64 @@ const generateCompactInvoicePDF = async (invoice) => {
         align: "right",
       });
 
-      // Amount paid
-      yPos += 10;
-      const amountPaid = invoice.total - (invoice.dueAmount || 0);
-      doc.text(`Paid:`, leftMargin, yPos, { continued: true });
-      doc.text(formatCurrency(amountPaid), {
-        align: "right",
-      });
-
-      // Due amount (if applicable)
-      if (invoice.paymentMethod === "due" && invoice.dueAmount > 0) {
+      // For due invoices with customer data, show comprehensive payment info
+      if (invoice.paymentMethod === "due" && customerData) {
         yPos += 10;
-        doc.font("Helvetica-Bold");
-        doc.text(`Balance Due:`, leftMargin, yPos, { continued: true });
-        doc.text(formatCurrency(invoice.dueAmount), {
+        doc.text(`This Invoice:`, leftMargin, yPos, { continued: true });
+        doc.font("Helvetica-Bold").text(formatCurrency(invoice.total), {
           align: "right",
         });
+
+        // Show recent payment if available
+        if (recentPayment) {
+          yPos += 10;
+          doc.font("Helvetica").text(`Recent Payment:`, leftMargin, yPos, {
+            continued: true
+          });
+          doc.font("Helvetica-Bold")
+            .fillColor("#10b981")
+            .text(formatCurrency(recentPayment.amount), {
+              align: "right",
+            });
+          doc.fillColor("#000000").font("Helvetica");
+        }
+
+        yPos += 10;
+        doc.font("Helvetica").text(`Customer Balance:`, leftMargin, yPos, {
+          continued: true
+        });
+        doc.text(formatCurrency(customerData.amountDue || 0), {
+          align: "right",
+        });
+
+        yPos += 10;
+        doc.text(`Total Paid:`, leftMargin, yPos, { continued: true });
+        doc.font("Helvetica-Bold")
+          .fillColor("#10b981")
+          .text(formatCurrency(customerData.totalPayments || 0), {
+            align: "right",
+          });
+        doc.fillColor("#000000").font("Helvetica");
+      }
+      // For cash/online/card invoices, show simple paid amount
+      else if (invoice.paymentMethod !== "due") {
+        yPos += 10;
+        doc.text(`Paid:`, leftMargin, yPos, { continued: true });
+        doc.font("Helvetica-Bold")
+          .fillColor("#10b981")
+          .text(formatCurrency(invoice.total), {
+            align: "right",
+          });
+        doc.fillColor("#000000").font("Helvetica");
+      }
+      // For due invoices without customer (walk-in), show basic info
+      else {
+        yPos += 10;
+        doc.text(`Amount Due:`, leftMargin, yPos, { continued: true });
+        doc.font("Helvetica-Bold").text(formatCurrency(invoice.total), {
+          align: "right",
+        });
+        doc.font("Helvetica");
       }
 
       // ===== FOOTER SECTION =====
@@ -365,7 +427,7 @@ const generateCompactInvoicePDF = async (invoice) => {
           .font("Helvetica")
           .text(
             invoice.notes ||
-              "Goods once sold cannot be returned. Subject to local jurisdiction.",
+            "Goods once sold cannot be returned. Subject to local jurisdiction.",
             leftMargin,
             yPos,
             {

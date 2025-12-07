@@ -31,6 +31,30 @@ const settingsSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    businessPhone: {
+      type: String,
+      default: "",
+    },
+    alertSettings: {
+      lowStockThreshold: {
+        type: Number,
+        default: 10,
+        min: 0
+      },
+      criticalStockThreshold: {
+        type: Number,
+        default: 5,
+        min: 0
+      },
+      emailNotifications: {
+        type: Boolean,
+        default: false
+      },
+      smsNotifications: {
+        type: Boolean,
+        default: false
+      }
+    }
   },
   { timestamps: true }
 );

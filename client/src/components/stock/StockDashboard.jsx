@@ -2,15 +2,16 @@
 import React, { useState, useEffect } from "react";
 import {
   Package,
-  TrendingUp,
-  TrendingDown,
   AlertTriangle,
-  BarChart3,
   ArrowUpRight,
   ArrowDownRight,
   Box,
   ShoppingCart,
   RefreshCw,
+  Clock,
+  TrendingDown,
+  TrendingUp,
+  Activity
 } from "lucide-react";
 import { fetchProducts } from "../../api/products";
 import { fetchStockAnalytics } from "../../api/stock";
@@ -33,6 +34,7 @@ const StockDashboard = () => {
     movementTrends: [],
   });
   const [products, setProducts] = useState([]);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
   useEffect(() => {
     loadDashboardData();
@@ -84,6 +86,7 @@ const StockDashboard = () => {
         calculatedAnalytics.stockByCategory = Object.values(categoryGroups);
         setAnalytics(calculatedAnalytics);
       }
+      setLastUpdated(new Date());
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       toast.error("Failed to load dashboard data");
@@ -92,118 +95,119 @@ const StockDashboard = () => {
     }
   };
 
-  const StatCard = ({ icon: Icon, title, value, change, color, trend }) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 hover:shadow-lg transition-all duration-300 animate-fadeIn">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-            <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${color} shadow-sm`}>
-              <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-            </div>
-            <h3 className="text-xs sm:text-sm font-medium text-gray-600 line-clamp-2">{title}</h3>
-          </div>
-          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1">{value}</p>
-          {change !== undefined && (
-            <div className="flex items-center gap-1 mt-2">
-              {trend === "up" ? (
-                <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
-              ) : (
-                <ArrowDownRight className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
-              )}
-              <span
-                className={`text-xs sm:text-sm font-medium ${
-                  trend === "up" ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {change}%
-              </span>
-              <span className="text-xs text-gray-500 hidden sm:inline">vs last month</span>
-            </div>
-          )}
+  const currencyFormatter = new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+  const StatCard = ({ icon: Icon, title, value, change, trend, colorName, colorBg }) => (
+    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-lg transition-all duration-300 group">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-xl ${colorBg} group-hover:scale-110 transition-transform duration-300`}>
+          <Icon className={`w-6 h-6 ${colorName}`} strokeWidth={2} />
         </div>
+        {change !== undefined && (
+          <div className={`flex items-center gap-1 text-sm font-semibold px-2.5 py-1 rounded-full ${trend === "up" ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+            }`}>
+            {trend === "up" ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            {change}%
+          </div>
+        )}
+      </div>
+      <div>
+        <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
+        <h3 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+          {typeof value === 'number' && title.toLowerCase().includes('value')
+            ? currencyFormatter.format(value)
+            : value}
+        </h3>
       </div>
     </div>
   );
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-4 border-blue-600 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-sm sm:text-base text-gray-600">Loading dashboard...</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 bg-white/50 backdrop-blur rounded-full"></div>
+            </div>
+          </div>
+          <p className="text-slate-500 font-medium animate-pulse">Loading Inventory...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-600 p-2.5 sm:p-3 rounded-xl shadow-lg">
-                <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight">
-                  Stock Dashboard
-                </h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-0.5 sm:mt-1">
-                  Monitor and manage your inventory in real-time
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={loadDashboardData}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all shadow-sm hover:shadow-md text-sm sm:text-base font-medium"
-            >
-              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
+    <div className="min-h-screen bg-slate-50/50 pb-12 font-sans">
+      {/* Header Section */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 sm:px-8 py-4 mb-8">
+        <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-center sm:text-left">
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Stock Overview</h1>
+            <p className="text-sm text-slate-500 flex items-center gap-2 mt-1 justify-center sm:justify-start">
+              <Clock size={14} /> Updated {lastUpdated.toLocaleTimeString()}
+            </p>
           </div>
-        </div>
 
+          <button
+            onClick={loadDashboardData}
+            className="p-2.5 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+            title="Refresh Data"
+          >
+            <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
+      </div>
+
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             icon={Package}
             title="Total Products"
             value={analytics.totalProducts}
-            color="bg-gradient-to-br from-blue-500 to-blue-600"
+            colorBg="bg-blue-50"
+            colorName="text-blue-600"
           />
           <StatCard
             icon={ShoppingCart}
             title="Total Stock Value"
-            value={`₹${analytics.totalValue.toFixed(2)}`}
-            color="bg-gradient-to-br from-green-500 to-green-600"
+            value={analytics.totalValue}
+            colorBg="bg-emerald-50"
+            colorName="text-emerald-600"
           />
           <StatCard
             icon={AlertTriangle}
             title="Low Stock Items"
             value={analytics.lowStockCount}
-            color="bg-gradient-to-br from-orange-500 to-orange-600"
+            colorBg="bg-amber-50"
+            colorName="text-amber-600"
           />
           <StatCard
             icon={Box}
             title="Out of Stock"
             value={analytics.outOfStockCount}
-            color="bg-gradient-to-br from-red-500 to-red-600"
+            colorBg="bg-rose-50"
+            colorName="text-rose-600"
           />
         </div>
 
-        {/* Charts Row - Only show if data exists */}
-        {(analytics.stockByCategory.length > 0 ||
-          analytics.movementTrends.length > 0) && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6 lg:mb-8">
+        {/* Charts Row */}
+        {(analytics.stockByCategory.length > 0 || analytics.movementTrends.length > 0) && (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             {analytics.stockByCategory.length > 0 && (
-              <div className="animate-fadeIn">
+              <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 sm:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <StockValueChart data={analytics.stockByCategory} />
               </div>
             )}
             {analytics.movementTrends.length > 0 && (
-              <div className="animate-fadeIn">
+              <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 sm:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
                 <StockMovementChart data={analytics.movementTrends} />
               </div>
             )}
@@ -211,15 +215,38 @@ const StockDashboard = () => {
         )}
 
         {/* Widgets Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <div className="animate-fadeIn">
-            <StockHealthCheck products={products} />
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <Activity size={18} className="text-indigo-500" /> Stock Health
+              </h3>
+            </div>
+            <div className="p-0">
+              <StockHealthCheck products={products} />
+            </div>
           </div>
-          <div className="animate-fadeIn">
-            <LowStockWidget products={products} />
+
+          <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <AlertTriangle size={18} className="text-amber-500" /> Low Stock Alerts
+              </h3>
+            </div>
+            <div className="p-4">
+              <LowStockWidget products={products} />
+            </div>
           </div>
-          <div className="animate-fadeIn">
-            <RecentMovementsWidget movements={analytics.recentMovements} />
+
+          <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <RefreshCw size={18} className="text-emerald-500" /> Recent Movements
+              </h3>
+            </div>
+            <div className="p-4">
+              <RecentMovementsWidget movements={analytics.recentMovements} />
+            </div>
           </div>
         </div>
       </div>

@@ -182,8 +182,8 @@ const InvoiceForm = ({
       )}
 
       {/* Customer Name Input */}
-      <div className="mb-6 sm:mb-8">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+      <div className="mb-8">
+        <label className="block text-sm font-semibold text-slate-700 mb-2">
           Customer Information
         </label>
         <input
@@ -197,27 +197,29 @@ const InvoiceForm = ({
               customer: { name: e.target.value },
             }));
           }}
-          className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium"
         />
       </div>
 
       {/* Payment Method Selection */}
-      <div className="mb-6 sm:mb-8">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
+      <div className="mb-8">
+        <h3 className="text-base font-bold text-slate-900 mb-3">
           Payment Method
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {["cash", "online", "due"].map((method) => (
             <button
               key={method}
               onClick={() => handlePaymentMethodChange(method)}
-              className={`flex items-center justify-center px-3 sm:px-5 py-2.5 sm:py-3 rounded-lg capitalize font-medium transition-all text-sm sm:text-base ${invoice.paymentMethod === method
-                ? "bg-indigo-600 text-white shadow-md"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              className={`flex items-center justify-center px-4 py-3 rounded-xl capitalize font-semibold transition-all border-2 ${invoice.paymentMethod === method
+                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100"
+                : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
                 }`}
             >
-              {paymentIcons[method]}
-              <span className="ml-2">{method} Payment</span>
+              <span className={`mr-2 ${invoice.paymentMethod === method ? "text-indigo-100" : "text-slate-400"}`}>
+                {paymentIcons[method]}
+              </span>
+              <span>{method} Payment</span>
             </button>
           ))}
         </div>
@@ -225,11 +227,12 @@ const InvoiceForm = ({
 
       {/* Due Payment Customer Selection */}
       {invoice.paymentMethod === "due" && (
-        <div className="mb-6 sm:mb-8 p-4 sm:p-5 bg-indigo-50 rounded-lg border border-indigo-100">
-          <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3">
-            Select Customer
+        <div className="mb-8 p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
+          <h3 className="text-base font-bold text-indigo-900 mb-3 flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Select Customer for Due Payment
           </h3>
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <CustomerAutocomplete
                 customers={customers}
@@ -247,14 +250,15 @@ const InvoiceForm = ({
                   }
                 }}
                 placeholder="Search Customer"
+                className="w-full bg-white rounded-xl border-0 ring-1 ring-indigo-200 focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <button
               onClick={() => setShowCustomerDetails(true)}
               disabled={!selectedCustomer}
-              className="px-4 py-2 bg-white rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 transition-colors flex items-center justify-center h-[42px]"
+              className="px-5 py-3 bg-white rounded-xl border border-indigo-200 text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 disabled:hover:bg-white transition-colors flex items-center justify-center shadow-sm"
             >
-              <User className="w-5 h-5 text-gray-600" />
+              <User className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -275,33 +279,33 @@ const InvoiceForm = ({
       />
 
       {/* Totals Section */}
-      <div className="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-        <div className="space-y-2 sm:space-y-3 text-sm sm:text-base">
-          <div className="flex justify-between">
-            <span className="text-gray-600"> Items:</span>
+      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
+        <div className="space-y-3">
+          <div className="flex justify-between items-center text-slate-600 text-sm">
+            <span className="font-medium">Total Items</span>
             {localInvoice.items.length > 0 && (
-              <span className="font-medium">{totalItems}</span>
+              <span className="font-bold bg-white px-2 py-1 rounded border border-slate-200">{totalItems}</span>
             )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Subtotal:</span>
-            <span className="font-medium">
+          <div className="flex justify-between items-center text-slate-600">
+            <span className="font-medium">Subtotal</span>
+            <span className="font-semibold text-slate-900">
               ₹{localInvoice.subtotal.toFixed(2)}
             </span>
           </div>
           {taxSettings.taxEnabled && (
-            <div className="flex justify-between">
-              <span className="text-gray-600">
-                Tax ({taxSettings.taxRate}%):
-              </span>
+            <div className="flex justify-between items-center text-slate-600 text-sm">
               <span className="font-medium">
+                Tax ({taxSettings.taxRate}%)
+              </span>
+              <span className="font-semibold text-slate-900">
                 ₹{localInvoice.tax.toFixed(2)}
               </span>
             </div>
           )}
-          <div className="flex justify-between text-base sm:text-lg font-bold pt-2 border-t border-gray-300">
-            <span>Total:</span>
-            <span className="text-indigo-700">
+          <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-200">
+            <span className="text-lg font-bold text-slate-900">Total Amount</span>
+            <span className="text-2xl font-bold text-indigo-600">
               ₹{localInvoice.total.toFixed(2)}
             </span>
           </div>
@@ -309,17 +313,17 @@ const InvoiceForm = ({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:justify-end">
+      <div className="flex flex-col sm:flex-row gap-4 sm:justify-end border-t border-slate-100 pt-6">
         <button
           onClick={handlePrimaryAction}
           disabled={isActionDisabled}
-          className={`w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors shadow-md text-sm sm:text-base ${isActionDisabled && "opacity-50 cursor-not-allowed"
+          className={`w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 font-bold transition-all shadow-lg shadow-indigo-200 active:scale-[0.98] ${isActionDisabled && "opacity-50 cursor-not-allowed shadow-none"
             }`}
         >
           {primaryButtonLabel === "Edit Invoice" ? (
-            <Edit3 className="w-4 h-4 mr-2" />
+            <Edit3 className="w-5 h-5 mr-2" />
           ) : (
-            <Save className="w-4 h-4 mr-2" />
+            <Save className="w-5 h-5 mr-2" />
           )}
           {primaryButtonLabel}
         </button>
@@ -331,25 +335,16 @@ const InvoiceForm = ({
             invoice.customer?._id &&
             invoice.dueAmount > 0;
 
-          console.log("Receive Payment Button Debug:", {
-            hasInvoiceId: !!invoice._id,
-            paymentMethod: invoice.paymentMethod,
-            hasCustomerId: !!invoice.customer?._id,
-            dueAmount: invoice.dueAmount,
-            showButton
-          });
-
           return showButton ? (
             <button
               onClick={() => {
-                // Trigger parent to open payment modal
                 if (window.openPaymentModal) {
                   window.openPaymentModal();
                 }
               }}
-              className="w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium transition-colors shadow-md text-sm sm:text-base"
+              className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold transition-all shadow-lg shadow-emerald-200 active:scale-[0.98]"
             >
-              <IndianRupee className="w-4 h-4 mr-2" />
+              <IndianRupee className="w-5 h-5 mr-2" />
               Receive Payment
             </button>
           ) : null;
@@ -358,11 +353,11 @@ const InvoiceForm = ({
         <button
           onClick={onPrint}
           disabled={!invoice._id || invoice.status !== "final"}
-          className={`w-full sm:w-auto flex items-center justify-center px-4 sm:px-5 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 font-medium transition-colors shadow-md text-sm sm:text-base ${(!invoice._id || invoice.status !== "final") &&
-            "opacity-50 cursor-not-allowed"
+          className={`w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 font-bold transition-all shadow-lg shadow-slate-200 active:scale-[0.98] ${(!invoice._id || invoice.status !== "final") &&
+            "opacity-50 cursor-not-allowed shadow-none"
             }`}
         >
-          <Printer className="w-4 h-4 mr-2" />
+          <Printer className="w-5 h-5 mr-2" />
           Print Invoice
         </button>
       </div>

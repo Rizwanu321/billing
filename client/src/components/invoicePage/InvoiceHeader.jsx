@@ -1,16 +1,22 @@
 import React from "react";
 import { Plus } from "lucide-react";
 
-const InvoiceHeader = ({ onNewBilling }) => {
+const InvoiceHeader = ({ onNewBilling, taxEnabled }) => {
+  const title = taxEnabled ? "Tax Invoice" : "Invoice";
+  const buttonText = taxEnabled ? "New Tax Invoice" : "New Invoice";
+
   return (
-    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
-      <h2 className="text-2xl sm:text-3xl font-bold text-gray-800">Billing</h2>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{title}</h2>
+        <p className="text-slate-500 mt-1">Manage billing and payments</p>
+      </div>
       <button
         onClick={onNewBilling}
-        className="w-full sm:w-auto px-4 sm:px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md font-medium flex items-center justify-center"
+        className="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 hover:shadow-indigo-300 font-semibold flex items-center justify-center active:scale-95"
       >
-        <Plus className="w-4 h-4 mr-2" />
-        New Billing
+        <Plus className="w-5 h-5 mr-2" />
+        {buttonText}
       </button>
     </div>
   );

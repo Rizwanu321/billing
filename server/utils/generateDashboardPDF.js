@@ -39,7 +39,7 @@ async function generateDashboardPDF(data, period) {
       doc.fontSize(12).font("Helvetica");
 
       const summaryData = [
-        ["Total Revenue", `$${data.revenue.total.toFixed(2)}`],
+        ["Total Revenue", `Rs. ${data.revenue.total.toFixed(2)}`],
         ["Total Orders", data.revenue.count.toString()],
         ["Total Customers", data.customers.toString()],
         ["Total Products", data.products.length.toString()],
@@ -94,7 +94,7 @@ async function generateDashboardPDF(data, period) {
           new Date(transaction.createdAt).toLocaleDateString(),
           transaction.invoiceNumber || "N/A",
           transaction.customer?.name || "Walk-in",
-          `$${transaction.total.toFixed(2)}`,
+          `Rs. ${transaction.total.toFixed(2)}`,
           transaction.status,
         ];
 
@@ -147,8 +147,8 @@ async function generateDashboardPDF(data, period) {
         const prodRowData = [
           product.name,
           product.stock.toString(),
-          `$${product.price.toFixed(2)}`,
-          `$${(product.stock * product.price).toFixed(2)}`,
+          `Rs. ${product.price.toFixed(2)}`,
+          `Rs. ${(product.stock * product.price).toFixed(2)}`,
         ];
 
         prodRowData.forEach((data, i) => {

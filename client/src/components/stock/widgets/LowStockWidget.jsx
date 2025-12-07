@@ -1,6 +1,6 @@
 // components/stock/widgets/LowStockWidget.jsx
 import React from "react";
-import { AlertTriangle, Package } from "lucide-react";
+import { AlertTriangle, Package, ChefHat } from "lucide-react";
 
 const LowStockWidget = ({ products }) => {
   const lowStockProducts = products
@@ -9,37 +9,42 @@ const LowStockWidget = ({ products }) => {
     .slice(0, 5);
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 hover:shadow-xl transition-shadow duration-300">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <h3 className="text-base sm:text-lg font-semibold text-gray-900">Low Stock Alert</h3>
-        <div className="bg-orange-100 p-2 rounded-lg">
-          <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
-        </div>
-      </div>
-
+    <div className="w-full">
       {lowStockProducts.length === 0 ? (
-        <div className="text-center py-6 sm:py-8">
-          <Package className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3" />
-          <p className="text-sm sm:text-base text-gray-500">All products have sufficient stock</p>
+        <div className="text-center py-12 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-4">
+            <Package className="w-8 h-8" strokeWidth={1.5} />
+          </div>
+          <p className="text-slate-800 font-bold">Stock Levels Healthy</p>
+          <p className="text-sm text-slate-500 mt-1">All products have sufficient stock</p>
         </div>
       ) : (
-        <div className="space-y-2 sm:space-y-3">
+        <div className="divide-y divide-slate-50">
           {lowStockProducts.map((product) => (
             <div
               key={product._id}
-              className="flex items-center justify-between p-2.5 sm:p-3 rounded-lg bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200 hover:shadow-md transition-all"
+              className="flex items-center justify-between p-4 hover:bg-slate-50 transition-all group"
             >
-              <div className="flex-1 min-w-0 pr-2">
-                <p className="font-medium text-sm sm:text-base text-gray-900 truncate">{product.name}</p>
-                <p className="text-xs sm:text-sm text-gray-600 truncate">
-                  {product.category?.name || "Uncategorized"}
-                </p>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-sm text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+                    {product.name}
+                  </p>
+                  <p className="text-xs font-semibold text-slate-400 truncate uppercase tracking-wider">
+                    {product.category?.name || "Uncategorized"}
+                  </p>
+                </div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <p className="font-bold text-sm sm:text-base text-orange-600">
-                  {product.stock} {product.unit}
+              <div className="text-right shrink-0">
+                <p className="font-bold text-sm text-amber-600">
+                  {product.stock} <span className="text-[10px] text-amber-400 font-medium uppercase">{product.unit || 'Units'}</span>
                 </p>
-                <p className="text-xs text-gray-500">Remaining</p>
+                <div className="w-full bg-slate-100 h-1 mt-1 rounded-full overflow-hidden">
+                  <div className="h-full bg-amber-500 rounded-full" style={{ width: `${Math.min((product.stock / 10) * 100, 100)}%` }} />
+                </div>
               </div>
             </div>
           ))}

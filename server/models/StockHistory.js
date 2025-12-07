@@ -76,6 +76,11 @@ const stockHistorySchema = new mongoose.Schema({
     ref: "Invoice",
     default: null,
   },
+  refundMethod: {
+    type: String,
+    enum: ["cash", "online", "card", "other"],
+    default: null, // Only applicable for returns
+  },
   timestamp: {
     type: Date,
     default: Date.now,

@@ -85,7 +85,7 @@ const ProductCard = ({
       };
     }
 
-    const stockDisplay = `${product.stock} ${formatUnitDisplay(
+    const stockDisplay = `${Number(product.stock).toFixed(2)} ${formatUnitDisplay(
       product.unit,
       product.stock
     )}`;
@@ -163,18 +163,17 @@ const ProductCard = ({
             <div className="flex justify-between text-xs text-gray-600 mb-2">
               <span>Stock Level</span>
               <span className="font-medium">
-                {product.stock} / {Math.max(product.stock, 100)} {product.unit}
+                {Number(product.stock).toFixed(2)} / {Math.max(product.stock, 100)} {product.unit}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  product.stock === 0
+                className={`h-full rounded-full transition-all duration-300 ${product.stock === 0
                     ? "bg-red-500"
                     : product.stock <= 10
-                    ? "bg-amber-500"
-                    : "bg-green-500"
-                }`}
+                      ? "bg-amber-500"
+                      : "bg-green-500"
+                  }`}
                 style={{
                   width: `${Math.min(
                     (product.stock / Math.max(product.stock, 100)) * 100,
@@ -274,7 +273,7 @@ const ProductListItem = ({
       };
     }
 
-    const stockDisplay = `${product.stock} ${formatUnitDisplay(
+    const stockDisplay = `${Number(product.stock).toFixed(2)} ${formatUnitDisplay(
       product.unit,
       product.stock
     )}`;

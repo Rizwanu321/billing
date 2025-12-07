@@ -138,7 +138,11 @@ router.get("/summary", auth, async (req, res) => {
       },
     ]);
 
-    // Calculate Customer Returns (Stock Adjustments)
+
+
+    // PROFESSIONAL RETURNS HANDLING:
+    // Returns should ONLY be actual customer returns (type: "return")
+    // Invoice edits use type: "adjustment" and should NOT count as returns
     const stockDateFilter = {};
     if (dateFilter.date) {
       stockDateFilter.timestamp = dateFilter.date;
@@ -148,7 +152,7 @@ router.get("/summary", auth, async (req, res) => {
       {
         $match: {
           user: userObjectId,
-          type: "return",
+          type: "return", // ONLY real customer returns, NOT adjustments
           ...stockDateFilter,
         },
       },
@@ -162,18 +166,191 @@ router.get("/summary", auth, async (req, res) => {
       },
       { $unwind: "$productInfo" },
       {
-        $group: {
-          _id: null,
-          totalValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
-          },
-          count: { $sum: 1 },
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
         },
       },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          productName: "$productInfo.name",
+          quantity: "$adjustment",
+          price: "$productInfo.price",
+          // Calculate value including tax if invoice had tax
+          value: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                // Include proportional tax: (quantity × price) × (1 + tax/subtotal)
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  {
+                    $add: [
+                      1,
+                      { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                    ]
+                  }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] } // No tax
+            }
+          },
+          taxAmount: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                // Tax part = (quantity * price) * (tax / subtotal)
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                ]
+              },
+              else: 0
+            }
+          },
+          date: "$timestamp",
+          reason: "$reason",
+          hasTax: { $gt: ["$invoiceInfo.tax", 0] },
+          invoiceId: "$invoiceId",
+          reference: "$reference",
+          paymentMethod: "$invoiceInfo.paymentMethod", // Original payment method (fallback)
+          refundMethod: "$refundMethod" // Explicit refund method (preferred)
+        }
+      },
+      {
+        $sort: { date: -1 }
+      }
     ]);
 
-    const totalReturns = returnsData[0]?.totalValue || 0;
-    const returnsCount = returnsData[0]?.count || 0;
+    const totalReturns = returnsData.reduce((sum, item) => sum + item.value, 0);
+    const returnsCount = returnsData.length;
+    const totalTaxRefunded = returnsData.reduce((sum, item) => sum + (item.taxAmount || 0), 0);
+
+    // ENHANCED RETURNS BREAKDOWN: Categorize by customer type
+    const returnsBreakdown = {
+      total: totalReturns,
+      count: returnsCount,
+      fromDueCustomers: {
+        total: 0,
+        count: 0,
+        items: []
+      },
+      fromWalkInCustomers: {
+        total: 0,
+        count: 0,
+        items: []
+      }
+    };
+
+    // Categorize returns by checking if return invoice had a customer (due) or not (walk-in)
+    for (const returnItem of returnsData) {
+      let invoice = null;
+
+      // Try to get invoice by invoiceId first
+      if (returnItem.invoiceId) {
+        invoice = await Invoice.findById(returnItem.invoiceId)
+          .select('customer paymentMethod total dueAmount')
+          .lean();
+      }
+
+      // Fallback: If no invoiceId or invoice not found, try to find by reference (invoice number)
+      if (!invoice && returnItem.reference) {
+        invoice = await Invoice.findOne({
+          invoiceNumber: returnItem.reference,
+          createdBy: userId
+        })
+          .select('customer paymentMethod total dueAmount')
+          .lean();
+      }
+
+      // Categorize based on invoice customer
+      if (invoice && invoice.customer && invoice.customer._id) {
+        // Return from a due customer (registered customer)
+        returnsBreakdown.fromDueCustomers.total += returnItem.value;
+        returnsBreakdown.fromDueCustomers.count++;
+        returnsBreakdown.fromDueCustomers.items.push({
+          ...returnItem,
+          customerName: invoice.customer.name,
+          invoiceTotal: invoice.total
+        });
+      } else {
+        // Return from walk-in customer (no customer link or no invoice found)
+        returnsBreakdown.fromWalkInCustomers.total += returnItem.value;
+        returnsBreakdown.fromWalkInCustomers.count++;
+        returnsBreakdown.fromWalkInCustomers.items.push(returnItem);
+      }
+    }
+
+    // Calculate ACTUAL CASH REFUNDS by mode (ONLY walk-in customer returns)
+    // Due customer returns are NOT cash refunds - they just reduce the customer's outstanding balance
+    const refundsByMode = {};
+    returnsBreakdown.fromWalkInCustomers.items.forEach(item => {
+      const mode = item.refundMethod || item.paymentMethod || 'cash';
+      refundsByMode[mode] = (refundsByMode[mode] || 0) + item.value;
+    });
+
+    // Calculate DUE REDUCTIONS by mode (due customer returns - not cash flow)
+    const dueReductionsByMode = {};
+    returnsBreakdown.fromDueCustomers.items.forEach(item => {
+      const mode = item.refundMethod || item.paymentMethod || 'cash';
+      dueReductionsByMode[mode] = (dueReductionsByMode[mode] || 0) + item.value;
+    });
+
+    // Calculate Tax Breakdown
+    const taxBreakdown = await Invoice.aggregate([
+      {
+        $match: baseQuery,
+      },
+      {
+        $group: {
+          _id: null,
+          totalTax: { $sum: "$tax" },
+          taxCollected: {
+            $sum: {
+              $cond: [
+                { $in: ["$paymentMethod", ["cash", "online", "card"]] },
+                "$tax",
+                0
+              ]
+            }
+          },
+          taxPending: {
+            $sum: {
+              $cond: [
+                { $eq: ["$paymentMethod", "due"] },
+                "$tax",
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    const taxInfo = {
+      totalTaxCollected: taxBreakdown[0]?.totalTax || 0,
+      totalTaxRefunded: totalTaxRefunded || 0,
+      taxCollectedInstant: taxBreakdown[0]?.taxCollected || 0,
+      taxPending: taxBreakdown[0]?.taxPending || 0
+    };
 
     console.log("\n=== REVENUE SUMMARY ===");
     if (revenueData[0]) {
@@ -182,23 +359,55 @@ router.get("/summary", auth, async (req, res) => {
       console.log(`Total Due: ₹${revenueData[0].totalDueRevenue}`);
     }
 
-    // Get payments made during the period for due invoices
+    // PROFESSIONAL DUE PAYMENTS CALCULATION:
+    // Get payments made during the period, but CAP them at actual invoice amounts
+    // This prevents counting payments for invoices that were later reduced/cancelled
+    // CRITICAL: Exclude return transactions (they are refunds, not payments!)
     const paymentTransactions = await Transaction.aggregate([
       {
         $match: {
           createdBy: userObjectId,
           type: "payment",
+          paymentMode: { $ne: "return" }, // EXCLUDE returns - they're refunds, not payments!
           ...dateFilter,
         },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo"
+        }
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
       },
       {
         $group: {
           _id: "$paymentMode",
           totalPaid: { $sum: "$amount" },
+          // Calculate dues cleared, but cap at invoice total if invoice exists
           duesCleared: {
             $sum: {
-              $subtract: ["$balanceBefore", "$balanceAfter"],
-            },
+              $cond: {
+                if: { $gt: ["$invoiceInfo.total", 0] },
+                then: {
+                  // Cap the cleared amount at invoice total
+                  $min: [
+                    { $subtract: ["$balanceBefore", "$balanceAfter"] },
+                    "$invoiceInfo.total"
+                  ]
+                },
+                else: {
+                  // No invoice reference, use the balance change
+                  $subtract: ["$balanceBefore", "$balanceAfter"]
+                }
+              }
+            }
           },
         },
       },
@@ -585,10 +794,87 @@ router.get("/summary", auth, async (req, res) => {
         paymentsMap[p._id] = p.paymentsAmount;
       });
 
-      // Add payments to revenueByDate actualReceived and calculate dueAmount
+      // Get refunds by date from StockHistory
+      const refundsByDate = await StockHistory.aggregate([
+        {
+          $match: {
+            user: userObjectId,
+            type: "return",
+            ...stockDateFilter,
+          },
+        },
+        {
+          $lookup: {
+            from: "products",
+            localField: "product",
+            foreignField: "_id",
+            as: "productInfo",
+          },
+        },
+        { $unwind: "$productInfo" },
+        {
+          $lookup: {
+            from: "invoices",
+            localField: "invoiceId",
+            foreignField: "_id",
+            as: "invoiceInfo",
+          },
+        },
+        {
+          $unwind: {
+            path: "$invoiceInfo",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$timestamp" },
+            },
+            totalRefunds: {
+              $sum: {
+                $cond: {
+                  if: {
+                    $and: [
+                      { $gt: ["$invoiceInfo.tax", 0] },
+                      { $gt: ["$invoiceInfo.subtotal", 0] }
+                    ]
+                  },
+                  then: {
+                    // Include proportional tax
+                    $multiply: [
+                      { $multiply: ["$adjustment", "$productInfo.price"] },
+                      {
+                        $add: [
+                          1,
+                          { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                        ]
+                      }
+                    ]
+                  },
+                  else: { $multiply: ["$adjustment", "$productInfo.price"] }
+                }
+              }
+            }
+          }
+        }
+      ]);
+
+      // Create a map of refunds by date
+      const refundsMap = {};
+      refundsByDate.forEach((r) => {
+        refundsMap[r._id] = r.totalRefunds;
+      });
+
+      // Add payments and refunds to revenueByDate actualReceived and calculate dueAmount
       revenueByDate.forEach((dateEntry) => {
         const paymentsForDate = paymentsMap[dateEntry._id] || 0;
+        const refundsForDate = refundsMap[dateEntry._id] || 0;
+
         dateEntry.actualReceived += paymentsForDate;
+        dateEntry.refunds = refundsForDate; // NEW: Add refunds field
+        dateEntry.netCollected = dateEntry.actualReceived - refundsForDate; // NEW: Net after refunds
+
         // Recalculate dueAmount for period view
         dateEntry.dueAmount = dateEntry.revenue - dateEntry.actualReceived;
       });
@@ -778,6 +1064,13 @@ router.get("/summary", auth, async (req, res) => {
       },
       // NEW: Comprehensive breakdown with all revenue details separated
       comprehensiveBreakdown,
+      // NEW: Detailed Tax and Returns Data
+      taxDetails: taxInfo,
+      returnsDetails: returnsData,
+      returnsBreakdown: returnsBreakdown, // NEW: Returns categorized by customer type
+      paymentsByMode, // NEW: Breakdown of payments received by mode
+      refundsByMode, // NEW: Breakdown of ACTUAL CASH refunds by mode (walk-in only)
+      dueReductionsByMode, // NEW: Breakdown of due reductions by mode (credit adjustments, not cash flow)
     });
   } catch (error) {
     console.error("Revenue summary error:", error);
@@ -850,12 +1143,13 @@ router.get("/payments-summary", auth, async (req, res) => {
       };
     }
 
-    // Get payment transactions (dues cleared)
+    // Get payment transactions (dues cleared) - EXCLUDE returns
     const paymentSummary = await Transaction.aggregate([
       {
         $match: {
           createdBy: userObjectId,
           type: "payment",
+          paymentMode: { $ne: "return" }, // EXCLUDE returns - they're refunds!
           ...dateFilter,
         },
       },
@@ -876,12 +1170,13 @@ router.get("/payments-summary", auth, async (req, res) => {
       },
     ]);
 
-    // Get payment breakdown by mode
+    // Get payment breakdown by mode (EXCLUDE returns - they're not payments!)
     const paymentByMode = await Transaction.aggregate([
       {
         $match: {
           createdBy: userObjectId,
           type: "payment",
+          paymentMode: { $ne: "return" }, // CRITICAL: Exclude returns
           ...dateFilter,
         },
       },
@@ -901,12 +1196,13 @@ router.get("/payments-summary", auth, async (req, res) => {
       { $sort: { total: -1 } },
     ]);
 
-    // Get daily payment trend
+    // Get daily payment trend (EXCLUDE returns)
     const dailyPayments = await Transaction.aggregate([
       {
         $match: {
           createdBy: userObjectId,
           type: "payment",
+          paymentMode: { $ne: "return" }, // CRITICAL: Exclude returns
           ...dateFilter,
         },
       },
@@ -927,12 +1223,13 @@ router.get("/payments-summary", auth, async (req, res) => {
       { $sort: { _id: 1 } },
     ]);
 
-    // Get top paying customers with more details
+    // Get top paying customers with more details (EXCLUDE returns)
     const topPayingCustomers = await Transaction.aggregate([
       {
         $match: {
           createdBy: userObjectId,
           type: "payment",
+          paymentMode: { $ne: "return" }, // CRITICAL: Exclude returns
           ...dateFilter,
         },
       },
@@ -1165,9 +1462,9 @@ router.get("/by-category", auth, async (req, res) => {
       { $unwind: "$category" },
       {
         $addFields: {
-          // Calculate proportional amounts for this item
+          // Calculate proportional amounts for this item based on SUBTOTAL (not total)
           itemProportion: {
-            $divide: ["$items.subtotal", { $max: ["$total", 1] }],
+            $divide: ["$items.subtotal", { $max: ["$subtotal", 1] }],
           },
         },
       },
@@ -1177,8 +1474,15 @@ router.get("/by-category", auth, async (req, res) => {
           categoryName: { $first: "$category.name" },
           categoryDescription: { $first: "$category.description" },
 
-          // Total revenue metrics
-          totalRevenue: { $sum: "$items.subtotal" },
+          // Total revenue metrics (including proportional tax)
+          totalRevenue: {
+            $sum: {
+              $add: [
+                "$items.subtotal",
+                { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+              ]
+            }
+          },
           quantity: { $sum: "$items.quantity" },
           itemCount: { $sum: 1 },
 
@@ -1189,15 +1493,21 @@ router.get("/by-category", auth, async (req, res) => {
             },
           },
 
-          // Proportional initial payment (amount paid at invoice time)
+          // Proportional initial payment (ONLY cash/online/card - instant sales)
           initialPayment: {
             $sum: {
-              $multiply: [
+              $cond: [
+                { $in: ["$paymentMethod", ["cash", "online", "card"]] },
                 {
-                  $subtract: ["$total", { $ifNull: ["$dueAmount", 0] }],
+                  $multiply: [
+                    {
+                      $subtract: ["$total", { $ifNull: ["$dueAmount", 0] }],
+                    },
+                    "$itemProportion",
+                  ],
                 },
-                "$itemProportion",
-              ],
+                0
+              ]
             },
           },
 
@@ -1314,10 +1624,11 @@ router.get("/by-category", auth, async (req, res) => {
       { $sort: { totalRevenue: -1 } },
     ]);
 
-    // Get total payment amount during the period
+    // Get total payment amount during the period (EXCLUDE returns!)
     const payments = await Transaction.find({
       createdBy: userId,
       type: "payment",
+      paymentMode: { $ne: "return" },  // CRITICAL: Exclude returns
       ...dateFilter,
     }).lean();
 
@@ -1456,6 +1767,20 @@ router.get("/by-category", auth, async (req, res) => {
       { $unwind: "$productInfo" },
       {
         $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $lookup: {
           from: "categories",
           localField: "productInfo.category",
           foreignField: "_id",
@@ -1464,11 +1789,56 @@ router.get("/by-category", auth, async (req, res) => {
       },
       { $unwind: "$categoryInfo" },
       {
+        $project: {
+          categoryInfo: 1,
+          adjustment: 1,
+          productInfo: 1,
+          isWalkIn: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$invoiceInfo.customer._id", null] },
+                  { $not: ["$invoiceInfo.customer._id"] }
+                ]
+              },
+              true,
+              false
+            ]
+          },
+          value: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                // Include proportional tax
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  {
+                    $add: [
+                      1,
+                      { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                    ]
+                  }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          }
+        }
+      },
+      {
         $group: {
           _id: "$categoryInfo._id",
           returnQuantity: { $sum: "$adjustment" },
-          returnValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          returnValue: { $sum: "$value" },
+          cashRefunds: {
+            $sum: {
+              $cond: [{ $eq: ["$isWalkIn", true] }, "$value", 0]
+            }
           },
           returnCount: { $sum: 1 },
         },
@@ -1481,13 +1851,19 @@ router.get("/by-category", auth, async (req, res) => {
       categoryReturnsMap[r._id.toString()] = r;
     });
 
-    // Merge returns into categories
+    // Merge returns into categories and adjust actualReceived
     categoriesWithPayments.forEach((cat) => {
       const r = categoryReturnsMap[cat._id.toString()];
       cat.returnQuantity = r ? r.returnQuantity : 0;
       cat.returnValue = r ? r.returnValue : 0;
+      cat.cashRefunds = r ? r.cashRefunds : 0; // Store cash refunds
       cat.returnCount = r ? r.returnCount : 0;
       cat.netRevenue = cat.totalRevenue - cat.returnValue;
+
+      // Adjust actualReceived to exclude cash refunds (matching Total Collected logic)
+      // actualReceived currently = initialPayment + paymentsReceived
+      // New actualReceived = initialPayment + paymentsReceived - cashRefunds
+      cat.actualReceived = Math.round((cat.actualReceived - cat.cashRefunds) * 100) / 100;
     });
 
     console.log(`\n=== CATEGORY RETURNS SUMMARY ===`);
@@ -1598,7 +1974,7 @@ router.get("/by-category", auth, async (req, res) => {
     console.log(`Category-level payments (period invoices only): ₹${totals.paymentsReceived}`);
     console.log(`===============================\n`);
 
-    // Calculate returns for the period (total)
+    // Calculate returns for the period (total with tax)
     const returnsData = await StockHistory.aggregate([
       {
         $match: {
@@ -1617,21 +1993,75 @@ router.get("/by-category", auth, async (req, res) => {
       },
       { $unwind: "$productInfo" },
       {
-        $group: {
-          _id: null,
-          totalValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          isWalkIn: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$invoiceInfo.customer._id", null] },
+                  { $not: ["$invoiceInfo.customer._id"] }
+                ]
+              },
+              true,
+              false
+            ]
           },
+          value: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                // Include proportional tax
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  {
+                    $add: [
+                      1,
+                      { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                    ]
+                  }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$isWalkIn",
+          totalValue: { $sum: "$value" },
           count: { $sum: 1 },
         },
       },
     ]);
 
-    const returns = returnsData[0]?.totalValue || 0;
-    const returnsCount = returnsData[0]?.count || 0;
+    const totalReturns = returnsData.reduce((sum, r) => sum + (r.totalValue || 0), 0);
+    const returns = totalReturns;
+    const returnsCount = returnsData.reduce((sum, r) => sum + (r.count || 0), 0);
+    const cashRefunds = returnsData.find(r => r._id === true)?.totalValue || 0;
 
     console.log(`\n=== RETURNS CALCULATION ===`);
     console.log(`Returns found: ${returnsCount} items, Total value: ₹${returns}`);
+    console.log(`Cash Refunds (Walk-in): ₹${cashRefunds}`);
     console.log(`===========================\n`);
 
     // FIXED: Count unique invoices to avoid double-counting
@@ -1644,6 +2074,21 @@ router.get("/by-category", auth, async (req, res) => {
     // Override the summed totalInvoices with actual unique count
     totals.totalInvoices = uniqueInvoiceCount;
 
+    // Calculate period-based outstanding (matching dashboard's "Net Position")
+    // Get gross due sales (invoices with paymentMethod = 'due')
+    const dueSalesTotal = revenueByCategory
+      .filter(cat => cat.dueTransactions > 0)
+      .reduce((sum, cat) => {
+        // For due invoices, we need to calculate the proportional amount
+        return sum + (cat.totalRevenue * (cat.dueTransactions / cat.invoiceCount));
+      }, 0);
+
+    // Simplified: Calculate from totals
+    const grossDueSales = totals.totalRevenue - totals.initialPayment;
+    const dueReturns = returnsData.find(r => r._id === false)?.totalValue || 0;
+    const netDueSales = grossDueSales - dueReturns;
+    const periodBasedOutstanding = netDueSales - allDuePayments;
+
     // Enhanced summary matching revenue dashboard
     const summary = {
       // Basic metrics
@@ -1652,14 +2097,14 @@ router.get("/by-category", auth, async (req, res) => {
       returns,
       returnsCount,
 
-      // Collection breakdown
-      totalCollected: totals.initialPayment + allDuePayments,
+      // Collection breakdown (matching dashboard logic)
+      totalCollected: totals.initialPayment - cashRefunds + allDuePayments,
       initialPayment: totals.initialPayment,
       paymentsReceived: totals.paymentsReceived,
 
-      // Due sales metrics
-      totalDueRevenue: totals.dueAmount,
-      dueSales: totals.initialPayment > 0 ? totals.totalRevenue - totals.initialPayment : totals.totalRevenue,
+      // Due sales metrics (period-based)
+      totalDueRevenue: Math.round(periodBasedOutstanding * 100) / 100, // Net Position
+      dueSales: Math.round(grossDueSales * 100) / 100,
       duePayments: allDuePayments,
       paymentCount: payments.length,
 
@@ -1799,601 +2244,6 @@ router.post("/generate-pdf", auth, async (req, res) => {
   }
 });
 
-// Get advanced analytics with due and credit tracking
-router.get("/analytics", auth, async (req, res) => {
-  try {
-    const { period = "month" } = req.query;
-    const userId = new mongoose.Types.ObjectId(req.user.userId);
-
-    // Calculate date ranges
-    const now = new Date();
-    let startDate, endDate, prevStartDate, prevEndDate;
-
-    switch (period) {
-      case "week":
-        startDate = new Date(now.setDate(now.getDate() - 7));
-        endDate = new Date();
-        prevStartDate = new Date(startDate);
-        prevStartDate.setDate(prevStartDate.getDate() - 7);
-        prevEndDate = new Date(startDate);
-        break;
-      case "month":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date();
-        prevStartDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        prevEndDate = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case "quarter":
-        const quarter = Math.floor(now.getMonth() / 3);
-        startDate = new Date(now.getFullYear(), quarter * 3, 1);
-        endDate = new Date();
-        prevStartDate = new Date(now.getFullYear(), (quarter - 1) * 3, 1);
-        prevEndDate = new Date(now.getFullYear(), quarter * 3, 0);
-        break;
-      case "year":
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date();
-        prevStartDate = new Date(now.getFullYear() - 1, 0, 1);
-        prevEndDate = new Date(now.getFullYear() - 1, 11, 31);
-        break;
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date();
-    }
-
-    // Get current period data with due and credit tracking
-    const currentData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: startDate, $lte: endDate },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$total" },
-          actualReceived: {
-            $sum: {
-              $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-            },
-          },
-          totalDue: { $sum: { $ifNull: ["$dueAmount", 0] } },
-          totalCreditUsed: { $sum: { $ifNull: ["$creditUsed", 0] } },
-          totalProfit: { $sum: "$subtotal" },
-          invoiceCount: { $sum: 1 },
-          avgRevenue: { $avg: "$total" },
-          totalTax: { $sum: "$tax" },
-          totalSubtotal: { $sum: "$subtotal" },
-        },
-      },
-    ]);
-
-    // Get previous period data
-    const previousData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: prevStartDate, $lte: prevEndDate },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$total" },
-          actualReceived: {
-            $sum: {
-              $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-            },
-          },
-        },
-      },
-    ]);
-
-    // Calculate actual profit margin
-    const currentRevenue = currentData[0]?.totalRevenue || 0;
-    const currentProfit = currentData[0]?.totalProfit || 0;
-    const actualProfitMargin =
-      currentRevenue > 0 ? (currentProfit / currentRevenue) * 100 : 0;
-
-    // Calculate collection rate
-    const actualReceived = currentData[0]?.actualReceived || 0;
-    const collectionRate =
-      currentRevenue > 0 ? (actualReceived / currentRevenue) * 100 : 0;
-
-    // Calculate customer retention
-    const customerRetentionData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-        },
-      },
-      {
-        $group: {
-          _id: "$customer._id",
-          customerName: { $first: "$customer.name" },
-          firstPurchase: { $min: "$date" },
-          lastPurchase: { $max: "$date" },
-          purchaseCount: { $sum: 1 },
-          totalSpent: { $sum: "$total" },
-        },
-      },
-      {
-        $match: {
-          _id: { $ne: null },
-          purchaseCount: { $gt: 1 },
-        },
-      },
-      {
-        $count: "returningCustomers",
-      },
-    ]);
-
-    const totalCustomers = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          "customer._id": { $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: "$customer._id",
-        },
-      },
-      {
-        $count: "totalCustomers",
-      },
-    ]);
-
-    const returningCustomers =
-      customerRetentionData[0]?.returningCustomers || 0;
-    const totalCustomerCount = totalCustomers[0]?.totalCustomers || 1;
-    const actualCustomerRetention =
-      (returningCustomers / totalCustomerCount) * 100;
-
-    // Calculate average order frequency
-    const orderFrequencyData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: startDate, $lte: endDate },
-          "customer._id": { $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: "$customer._id",
-          orderCount: { $sum: 1 },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          avgOrderFrequency: { $avg: "$orderCount" },
-        },
-      },
-    ]);
-
-    const actualAvgOrderFrequency =
-      orderFrequencyData[0]?.avgOrderFrequency || 0;
-
-    // Calculate conversion rate
-    const conversionData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          date: { $gte: startDate, $lte: endDate },
-        },
-      },
-      {
-        $group: {
-          _id: "$status",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const draftCount =
-      conversionData.find((d) => d._id === "draft")?.count || 0;
-    const finalCount =
-      conversionData.find((d) => d._id === "final")?.count || 0;
-    const paidCount = conversionData.find((d) => d._id === "paid")?.count || 0;
-    const totalInvoices = draftCount + finalCount + paidCount;
-    const convertedInvoices = finalCount + paidCount;
-    const actualConversionRate =
-      totalInvoices > 0 ? (convertedInvoices / totalInvoices) * 100 : 0;
-
-    // Calculate growth rates
-    const previousRevenue = previousData[0]?.totalRevenue || 0;
-    const growthRate =
-      previousRevenue > 0
-        ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
-        : 0;
-
-    const previousReceived = previousData[0]?.actualReceived || 0;
-    const collectionGrowth =
-      previousReceived > 0
-        ? ((actualReceived - previousReceived) / previousReceived) * 100
-        : 0;
-
-    // Get revenue by time of day with payment status
-    const timeOfDayData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: startDate, $lte: endDate },
-        },
-      },
-      {
-        $project: {
-          hour: { $hour: "$date" },
-          total: 1,
-          actualReceived: {
-            $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-          },
-          dueAmount: { $ifNull: ["$dueAmount", 0] },
-          creditUsed: { $ifNull: ["$creditUsed", 0] },
-        },
-      },
-      {
-        $group: {
-          _id: "$hour",
-          revenue: { $sum: "$total" },
-          received: { $sum: "$actualReceived" },
-          due: { $sum: "$dueAmount" },
-          credit: { $sum: "$creditUsed" },
-          orders: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          hour: "$_id",
-          revenue: { $round: ["$revenue", 2] },
-          received: { $round: ["$received", 2] },
-          due: { $round: ["$due", 2] },
-          credit: { $round: ["$credit", 2] },
-          orders: 1,
-          collectionRate: {
-            $cond: [
-              { $gt: ["$revenue", 0] },
-              { $multiply: [{ $divide: ["$received", "$revenue"] }, 100] },
-              0,
-            ],
-          },
-          _id: 0,
-        },
-      },
-      { $sort: { hour: 1 } },
-    ]);
-
-    // Get revenue by day of week with payment status
-    const dayOfWeekData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: startDate, $lte: endDate },
-        },
-      },
-      {
-        $project: {
-          dayOfWeek: { $dayOfWeek: "$date" },
-          total: 1,
-          actualReceived: {
-            $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-          },
-          dueAmount: { $ifNull: ["$dueAmount", 0] },
-          creditUsed: { $ifNull: ["$creditUsed", 0] },
-        },
-      },
-      {
-        $group: {
-          _id: "$dayOfWeek",
-          revenue: { $sum: "$total" },
-          received: { $sum: "$actualReceived" },
-          due: { $sum: "$dueAmount" },
-          credit: { $sum: "$creditUsed" },
-          orders: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          day: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$_id", 1] }, then: "Sun" },
-                { case: { $eq: ["$_id", 2] }, then: "Mon" },
-                { case: { $eq: ["$_id", 3] }, then: "Tue" },
-                { case: { $eq: ["$_id", 4] }, then: "Wed" },
-                { case: { $eq: ["$_id", 5] }, then: "Thu" },
-                { case: { $eq: ["$_id", 6] }, then: "Fri" },
-                { case: { $eq: ["$_id", 7] }, then: "Sat" },
-              ],
-              default: "Unknown",
-            },
-          },
-          revenue: { $round: ["$revenue", 2] },
-          received: { $round: ["$received", 2] },
-          due: { $round: ["$due", 2] },
-          credit: { $round: ["$credit", 2] },
-          orders: 1,
-          collectionRate: {
-            $cond: [
-              { $gt: ["$revenue", 0] },
-              { $multiply: [{ $divide: ["$received", "$revenue"] }, 100] },
-              0,
-            ],
-          },
-          _id: 0,
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-
-    // Get monthly trend with payment tracking
-    const monthlyTrend = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: new Date(now.getFullYear(), now.getMonth() - 5, 1) },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            month: { $month: "$date" },
-            year: { $year: "$date" },
-          },
-          revenue: { $sum: "$total" },
-          received: {
-            $sum: {
-              $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-            },
-          },
-          due: { $sum: { $ifNull: ["$dueAmount", 0] } },
-          credit: { $sum: { $ifNull: ["$creditUsed", 0] } },
-          profit: { $sum: "$subtotal" },
-          expenses: { $sum: "$tax" },
-          invoiceCount: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          month: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$_id.month", 1] }, then: "Jan" },
-                { case: { $eq: ["$_id.month", 2] }, then: "Feb" },
-                { case: { $eq: ["$_id.month", 3] }, then: "Mar" },
-                { case: { $eq: ["$_id.month", 4] }, then: "Apr" },
-                { case: { $eq: ["$_id.month", 5] }, then: "May" },
-                { case: { $eq: ["$_id.month", 6] }, then: "Jun" },
-                { case: { $eq: ["$_id.month", 7] }, then: "Jul" },
-                { case: { $eq: ["$_id.month", 8] }, then: "Aug" },
-                { case: { $eq: ["$_id.month", 9] }, then: "Sep" },
-                { case: { $eq: ["$_id.month", 10] }, then: "Oct" },
-                { case: { $eq: ["$_id.month", 11] }, then: "Nov" },
-                { case: { $eq: ["$_id.month", 12] }, then: "Dec" },
-              ],
-            },
-          },
-          revenue: { $round: ["$revenue", 2] },
-          received: { $round: ["$received", 2] },
-          due: { $round: ["$due", 2] },
-          credit: { $round: ["$credit", 2] },
-          profit: { $round: ["$profit", 2] },
-          expenses: { $round: ["$expenses", 2] },
-          collectionRate: {
-            $cond: [
-              { $gt: ["$revenue", 0] },
-              { $multiply: [{ $divide: ["$received", "$revenue"] }, 100] },
-              0,
-            ],
-          },
-          year: "$_id.year",
-          monthNum: "$_id.month",
-        },
-      },
-      { $sort: { year: 1, monthNum: 1 } },
-    ]);
-
-    // Get category performance with payment status
-    const productPerformance = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: startDate, $lte: endDate },
-        },
-      },
-      { $unwind: "$items" },
-      {
-        $lookup: {
-          from: "products",
-          localField: "items.product",
-          foreignField: "_id",
-          as: "product",
-        },
-      },
-      { $unwind: "$product" },
-      {
-        $lookup: {
-          from: "categories",
-          localField: "product.category",
-          foreignField: "_id",
-          as: "category",
-        },
-      },
-      { $unwind: { path: "$category", preserveNullAndEmptyArrays: true } },
-      {
-        $group: {
-          _id: { $ifNull: ["$category.name", "Uncategorized"] },
-          revenue: { $sum: "$items.subtotal" },
-          quantity: { $sum: "$items.quantity" },
-          transactions: { $sum: 1 },
-        },
-      },
-      {
-        $project: {
-          category: "$_id",
-          revenue: { $round: ["$revenue", 2] },
-          score: {
-            $min: [
-              100,
-              {
-                $multiply: [
-                  { $divide: ["$revenue", { $max: ["$revenue", 1] }] },
-                  100,
-                ],
-              },
-            ],
-          },
-          _id: 0,
-        },
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 5 },
-    ]);
-
-    // Get customer segments with payment behavior
-    const customerSegments = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: startDate, $lte: endDate },
-          "customer._id": { $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: "$customer._id",
-          customerName: { $first: "$customer.name" },
-          totalSpent: { $sum: "$total" },
-          actualPaid: {
-            $sum: {
-              $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-            },
-          },
-          totalDue: { $sum: { $ifNull: ["$dueAmount", 0] } },
-          transactions: { $sum: 1 },
-        },
-      },
-      {
-        $bucket: {
-          groupBy: "$totalSpent",
-          boundaries: [0, 10000, 50000, Infinity],
-          default: "Other",
-          output: {
-            customers: { $sum: 1 },
-            totalRevenue: { $sum: "$totalSpent" },
-            totalPaid: { $sum: "$actualPaid" },
-            totalDue: { $sum: "$totalDue" },
-          },
-        },
-      },
-      {
-        $project: {
-          name: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$_id", 0] }, then: "Occasional" },
-                { case: { $eq: ["$_id", 10000] }, then: "Regular" },
-                { case: { $eq: ["$_id", 50000] }, then: "Premium" },
-              ],
-              default: "Other",
-            },
-          },
-          value: "$customers",
-          revenue: { $round: ["$totalRevenue", 2] },
-          paid: { $round: ["$totalPaid", 2] },
-          due: { $round: ["$totalDue", 2] },
-          collectionRate: {
-            $cond: [
-              { $gt: ["$totalRevenue", 0] },
-              {
-                $multiply: [{ $divide: ["$totalPaid", "$totalRevenue"] }, 100],
-              },
-              0,
-            ],
-          },
-        },
-      },
-    ]);
-
-    // Payment method performance
-    const paymentMethodPerformance = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: startDate, $lte: endDate },
-        },
-      },
-      {
-        $group: {
-          _id: "$paymentMethod",
-          count: { $sum: 1 },
-          revenue: { $sum: "$total" },
-          avgTransactionValue: { $avg: "$total" },
-        },
-      },
-      {
-        $project: {
-          method: "$_id",
-          count: 1,
-          revenue: { $round: ["$revenue", 2] },
-          avgTransactionValue: { $round: ["$avgTransactionValue", 2] },
-          _id: 0,
-        },
-      },
-      { $sort: { revenue: -1 } },
-    ]);
-
-    res.json({
-      // Core metrics
-      growthRate: parseFloat(growthRate.toFixed(2)),
-      collectionGrowth: parseFloat(collectionGrowth.toFixed(2)),
-      revenuePerInvoice: currentData[0]?.avgRevenue || 0,
-      profitMargin: parseFloat(actualProfitMargin.toFixed(2)),
-      collectionRate: parseFloat(collectionRate.toFixed(2)),
-      conversionRate: parseFloat(actualConversionRate.toFixed(2)),
-      customerRetention: parseFloat(actualCustomerRetention.toFixed(2)),
-      averageOrderFrequency: parseFloat(actualAvgOrderFrequency.toFixed(2)),
-
-      // Payment summary
-      paymentSummary: {
-        totalRevenue: currentData[0]?.totalRevenue || 0,
-        actualReceived: currentData[0]?.actualReceived || 0,
-        totalDue: currentData[0]?.totalDue || 0,
-        totalCreditUsed: currentData[0]?.totalCreditUsed || 0,
-      },
-
-      // Chart data
-      timeOfDayData,
-      dayOfWeekData,
-      monthlyTrend,
-      productPerformance,
-      customerSegments,
-      paymentMethodPerformance,
-    });
-  } catch (error) {
-    console.error("Analytics error:", error);
-    res.status(500).json({
-      message: "Error fetching analytics data",
-      error: error.message,
-    });
-  }
-});
-
 // Export revenue data as CSV
 router.post("/export-csv", auth, async (req, res) => {
   try {
@@ -2449,6 +2299,8 @@ router.post("/export-csv", auth, async (req, res) => {
   }
 });
 
+
+
 // Get revenue comparison data with payment tracking
 router.get("/comparison", auth, async (req, res) => {
   try {
@@ -2459,93 +2311,254 @@ router.get("/comparison", auth, async (req, res) => {
 
     // Calculate date ranges based on comparison type
     switch (type) {
+      case "day-over-day":
+        // Today vs Yesterday
+        currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        previousStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        previousEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+        break;
       case "week-over-week":
-        currentEnd = new Date();
-        currentStart = new Date();
-        currentStart.setDate(currentEnd.getDate() - 6);
+        // Current week (Monday to Today) vs Previous week (Monday to Sunday)
+        // Match Revenue Dashboard's week calculation
+        const dayOfWeek = now.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days; else go back (dayOfWeek - 1) days
+
+        // Current week: Monday of this week to Today
+        currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diffToMonday);
+        currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        // Previous week: Monday to Sunday of last week
+        previousStart = new Date(currentStart);
+        previousStart.setDate(previousStart.getDate() - 7);
         previousEnd = new Date(currentStart);
-        previousEnd.setDate(previousEnd.getDate() - 1);
-        previousStart = new Date(previousEnd);
-        previousStart.setDate(previousStart.getDate() - 6);
+        previousEnd.setDate(previousEnd.getDate() - 1); // Sunday of previous week
         break;
       case "month-over-month":
+        // Current month (1st to Today) vs Previous complete month
         currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        currentEnd = new Date();
+        currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0); // Last day of previous month
         break;
       case "quarter-over-quarter":
         const quarter = Math.floor(now.getMonth() / 3);
         currentStart = new Date(now.getFullYear(), quarter * 3, 1);
-        currentEnd = new Date();
+        currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         previousStart = new Date(now.getFullYear(), (quarter - 1) * 3, 1);
-        previousEnd = new Date(now.getFullYear(), quarter * 3, 0);
+        previousEnd = new Date(now.getFullYear(), quarter * 3, 0); // Last day of previous quarter
         break;
       case "year-over-year":
         currentStart = new Date(now.getFullYear(), 0, 1);
-        currentEnd = new Date();
+        currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         previousStart = new Date(now.getFullYear() - 1, 0, 1);
         previousEnd = new Date(now.getFullYear() - 1, 11, 31);
         break;
+      default:
+        // Default to month-over-month
+        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        currentEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
     }
 
-    // Get current period data with payment tracking
-    const currentData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: currentStart, $lte: currentEnd },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          revenue: { $sum: "$total" },
-          actualReceived: {
-            $sum: {
-              $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-            },
-          },
-          totalDue: { $sum: { $ifNull: ["$dueAmount", 0] } },
-          totalCreditUsed: { $sum: { $ifNull: ["$creditUsed", 0] } },
-          transactionCount: { $sum: 1 },
-          avgOrderValue: { $avg: "$total" },
-          totalTax: { $sum: "$tax" },
-          totalSubtotal: { $sum: "$subtotal" },
-          totalProfit: { $sum: "$subtotal" },
-        },
-      },
-    ]);
+    // Set time boundaries
+    currentStart.setHours(0, 0, 0, 0);
+    currentEnd.setHours(23, 59, 59, 999);
+    previousStart.setHours(0, 0, 0, 0);
+    previousEnd.setHours(23, 59, 59, 999);
 
-    // Get previous period data with payment tracking
-    const previousData = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          status: { $in: ["final", "paid"] },
-          date: { $gte: previousStart, $lte: previousEnd },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          revenue: { $sum: "$total" },
-          actualReceived: {
-            $sum: {
-              $subtract: ["$finalTotal", { $ifNull: ["$dueAmount", 0] }],
-            },
+    // Helper function to get period data with returns
+    const getPeriodData = async (start, end) => {
+      // Get invoice data
+      const invoiceData = await Invoice.aggregate([
+        {
+          $match: {
+            createdBy: userId,
+            status: { $in: ["final", "paid"] },
+            date: { $gte: start, $lte: end },
           },
-          totalDue: { $sum: { $ifNull: ["$dueAmount", 0] } },
-          totalCreditUsed: { $sum: { $ifNull: ["$creditUsed", 0] } },
-          transactionCount: { $sum: 1 },
-          avgOrderValue: { $avg: "$total" },
-          totalTax: { $sum: "$tax" },
-          totalSubtotal: { $sum: "$subtotal" },
-          totalProfit: { $sum: "$subtotal" },
         },
-      },
-    ]);
+        {
+          $group: {
+            _id: null,
+            grossRevenue: { $sum: "$total" },
+            // Gross Walk-in Sales: Only cash/online/card invoices (before any returns)
+            grossWalkInSales: {
+              $sum: {
+                $cond: [
+                  { $in: ["$paymentMethod", ["cash", "online", "card"]] },
+                  "$total",
+                  0
+                ]
+              }
+            },
+            // Gross Credit Sales: Only due invoices
+            grossCreditSales: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$paymentMethod", "due"] },
+                  "$total",
+                  0
+                ]
+              }
+            },
+            // Total Due from invoices (current outstanding)
+            totalDue: { $sum: { $ifNull: ["$dueAmount", 0] } },
+            totalCreditUsed: { $sum: { $ifNull: ["$creditUsed", 0] } },
+            transactionCount: { $sum: 1 },
+            avgOrderValue: { $avg: "$total" },
+            totalTax: { $sum: "$tax" },
+            totalSubtotal: { $sum: "$subtotal" },
+          },
+        },
+      ]);
+
+      // Get returns for the period (ONLY type: "return", not adjustments)
+      const returnsData = await StockHistory.aggregate([
+        {
+          $match: {
+            user: userId,
+            type: "return",
+            timestamp: { $gte: start, $lte: end },
+          },
+        },
+        {
+          $lookup: {
+            from: "products",
+            localField: "product",
+            foreignField: "_id",
+            as: "productInfo",
+          },
+        },
+        { $unwind: "$productInfo" },
+        {
+          $lookup: {
+            from: "invoices",
+            localField: "invoiceId",
+            foreignField: "_id",
+            as: "invoiceInfo",
+          },
+        },
+        {
+          $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true }
+        },
+        {
+          $project: {
+            value: {
+              $cond: {
+                if: { $and: [{ $gt: ["$invoiceInfo.tax", 0] }, { $gt: ["$invoiceInfo.subtotal", 0] }] },
+                then: {
+                  $multiply: [
+                    { $multiply: ["$adjustment", "$productInfo.price"] },
+                    { $add: [1, { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }] }
+                  ]
+                },
+                else: { $multiply: ["$adjustment", "$productInfo.price"] }
+              }
+            },
+            isWalkIn: {
+              $cond: [
+                { $or: [{ $eq: ["$invoiceInfo.customer._id", null] }, { $not: ["$invoiceInfo.customer._id"] }] },
+                true,
+                false
+              ]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalReturns: { $sum: "$value" },
+            cashRefunds: { $sum: { $cond: [{ $eq: ["$isWalkIn", true] }, "$value", 0] } },
+            creditReturns: { $sum: { $cond: [{ $eq: ["$isWalkIn", false] }, "$value", 0] } },
+            returnsCount: { $sum: 1 }
+          }
+        }
+      ]);
+
+      // Get credit payments (dues collected during the period)
+      const creditPayments = await Transaction.aggregate([
+        {
+          $match: {
+            createdBy: userId,
+            type: "payment",
+            paymentMode: { $ne: "return" },
+            date: { $gte: start, $lte: end },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalPayments: { $sum: "$amount" },
+            paymentCount: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const invoice = invoiceData[0] || {
+        grossRevenue: 0, grossWalkInSales: 0, grossCreditSales: 0, totalDue: 0,
+        totalCreditUsed: 0, transactionCount: 0, avgOrderValue: 0,
+        totalTax: 0, totalSubtotal: 0
+      };
+      const returns = returnsData[0] || { totalReturns: 0, cashRefunds: 0, creditReturns: 0, returnsCount: 0 };
+      const payments = creditPayments[0] || { totalPayments: 0, paymentCount: 0 };
+
+      // Calculate metrics matching Revenue Dashboard logic
+      const grossRevenue = invoice.grossRevenue || 0;
+      const totalReturns = returns.totalReturns || 0;
+      const cashRefunds = returns.cashRefunds || 0;
+      const creditReturns = returns.creditReturns || 0;
+      const netRevenue = grossRevenue - totalReturns;
+
+      // Walk-in sales calculations
+      const grossWalkInSales = invoice.grossWalkInSales || 0;
+      const netWalkInSales = grossWalkInSales - cashRefunds;
+
+      // Credit sales calculations
+      const grossCreditSales = invoice.grossCreditSales || 0;
+      const netCreditSales = grossCreditSales - creditReturns;
+
+      // Credit payments received during this period
+      const creditPaymentsReceived = payments.totalPayments || 0;
+
+      // Total Collected = Net Walk-in Sales + Credit Payments (matches Dashboard)
+      const totalCollected = netWalkInSales + creditPaymentsReceived;
+
+      // Collection Rate = Total Collected / Gross Revenue
+      const collectionRate = grossRevenue > 0 ? (totalCollected / grossRevenue) * 100 : 0;
+
+      // Net Position = Gross Credit Sales - Credit Returns - Credit Payments
+      const netPosition = Math.max(0, grossCreditSales - creditReturns - creditPaymentsReceived);
+
+      return {
+        grossRevenue,
+        netRevenue,
+        totalReturns,
+        cashRefunds,
+        creditReturns,
+        grossWalkInSales,
+        netWalkInSales,
+        grossCreditSales,
+        netCreditSales,
+        creditPayments: creditPaymentsReceived,
+        totalCollected,
+        totalDue: invoice.totalDue,
+        netPosition,
+        totalCreditUsed: invoice.totalCreditUsed,
+        transactionCount: invoice.transactionCount,
+        avgOrderValue: invoice.avgOrderValue || 0,
+        totalTax: invoice.totalTax,
+        totalSubtotal: invoice.totalSubtotal,
+        collectionRate,
+        profitMargin: grossRevenue > 0 ? (invoice.totalSubtotal / grossRevenue) * 100 : 0,
+        returnsCount: returns.returnsCount,
+      };
+    };
+
+    // Get data for both periods
+    const currentPeriod = await getPeriodData(currentStart, currentEnd);
+    const previousPeriod = await getPeriodData(previousStart, previousEnd);
 
     // Get customer counts
     const currentCustomers = await Invoice.aggregate([
@@ -3054,168 +3067,124 @@ router.get("/comparison", auth, async (req, res) => {
       },
     ]);
 
-    // Prepare response data
-    const current = currentData[0] || {
-      revenue: 0,
-      actualReceived: 0,
-      totalDue: 0,
-      totalCreditUsed: 0,
-      transactionCount: 0,
-      avgOrderValue: 0,
-      totalProfit: 0,
+    // Prepare response data using the new period data structure
+    const current = {
+      revenue: currentPeriod.grossRevenue,
+      netRevenue: currentPeriod.netRevenue,
+      totalReturns: currentPeriod.totalReturns,
+      actualReceived: currentPeriod.totalCollected,
+      totalDue: currentPeriod.netPosition,
+      totalCreditUsed: currentPeriod.totalCreditUsed,
+      creditPayments: currentPeriod.creditPayments,
+      transactionCount: currentPeriod.transactionCount,
+      avgOrderValue: currentPeriod.avgOrderValue,
+      totalTax: currentPeriod.totalTax,
+      totalSubtotal: currentPeriod.totalSubtotal,
+      totalProfit: currentPeriod.netRevenue,
+      collectionRate: currentPeriod.collectionRate,
+      profitMargin: currentPeriod.profitMargin,
+      customerCount: currentCustomers[0]?.count || 0,
+      conversionRate: calculateConversionRate(currentConversion),
     };
 
-    const previous = previousData[0] || {
-      revenue: 0,
-      actualReceived: 0,
-      totalDue: 0,
-      totalCreditUsed: 0,
-      transactionCount: 0,
-      avgOrderValue: 0,
-      totalProfit: 0,
+    const previous = {
+      revenue: previousPeriod.grossRevenue,
+      netRevenue: previousPeriod.netRevenue,
+      totalReturns: previousPeriod.totalReturns,
+      actualReceived: previousPeriod.totalCollected,
+      totalDue: previousPeriod.netPosition,
+      totalCreditUsed: previousPeriod.totalCreditUsed,
+      creditPayments: previousPeriod.creditPayments,
+      transactionCount: previousPeriod.transactionCount,
+      avgOrderValue: previousPeriod.avgOrderValue,
+      totalTax: previousPeriod.totalTax,
+      totalSubtotal: previousPeriod.totalSubtotal,
+      totalProfit: previousPeriod.netRevenue,
+      collectionRate: previousPeriod.collectionRate,
+      profitMargin: previousPeriod.profitMargin,
+      customerCount: previousCustomers[0]?.count || 0,
+      conversionRate: calculateConversionRate(previousConversion),
     };
 
     // Calculate growth metrics
-    const revenueGrowth =
-      previous.revenue > 0
-        ? ((current.revenue - previous.revenue) / previous.revenue) * 100
-        : 0;
+    const revenueGrowth = previous.revenue > 0
+      ? ((current.revenue - previous.revenue) / previous.revenue) * 100 : 0;
+    const netRevenueGrowth = previous.netRevenue > 0
+      ? ((current.netRevenue - previous.netRevenue) / previous.netRevenue) * 100 : 0;
+    const collectionGrowth = previous.actualReceived > 0
+      ? ((current.actualReceived - previous.actualReceived) / previous.actualReceived) * 100 : 0;
+    const profitGrowth = previous.totalProfit > 0
+      ? ((current.totalProfit - previous.totalProfit) / previous.totalProfit) * 100 : 0;
 
-    const collectionGrowth =
-      previous.actualReceived > 0
-        ? ((current.actualReceived - previous.actualReceived) /
-          previous.actualReceived) *
-        100
-        : 0;
-
-    const profitGrowth =
-      previous.totalProfit > 0
-        ? ((current.totalProfit - previous.totalProfit) /
-          previous.totalProfit) *
-        100
-        : 0;
-
-    // Calculate collection rates
-    current.collectionRate =
-      current.revenue > 0
-        ? (current.actualReceived / current.revenue) * 100
-        : 0;
-    previous.collectionRate =
-      previous.revenue > 0
-        ? (previous.actualReceived / previous.revenue) * 100
-        : 0;
-
-    // Calculate profit margins
-    current.profitMargin =
-      current.revenue > 0 ? (current.totalProfit / current.revenue) * 100 : 0;
-    previous.profitMargin =
-      previous.revenue > 0
-        ? (previous.totalProfit / previous.revenue) * 100
-        : 0;
-
-    // Add customer count and conversion rate
-    current.customerCount = currentCustomers[0]?.count || 0;
-    previous.customerCount = previousCustomers[0]?.count || 0;
-    current.conversionRate = calculateConversionRate(currentConversion);
-    previous.conversionRate = calculateConversionRate(previousConversion);
-
-    // Prepare enhanced chart data
+    // Prepare enhanced chart data with returns
     const chartData = [
       {
-        metric: "Total Revenue",
+        metric: "Gross Revenue",
         current: parseFloat(current.revenue.toFixed(2)),
         previous: parseFloat(previous.revenue.toFixed(2)),
         growth: parseFloat(revenueGrowth.toFixed(2)),
         isPositive: revenueGrowth >= 0,
       },
       {
-        metric: "Actual Received",
+        metric: "Returns",
+        current: parseFloat(current.totalReturns.toFixed(2)),
+        previous: parseFloat(previous.totalReturns.toFixed(2)),
+        growth: previous.totalReturns > 0
+          ? parseFloat(((current.totalReturns - previous.totalReturns) / previous.totalReturns * 100).toFixed(2)) : 0,
+        isPositive: current.totalReturns <= previous.totalReturns,
+      },
+      {
+        metric: "Net Revenue",
+        current: parseFloat(current.netRevenue.toFixed(2)),
+        previous: parseFloat(previous.netRevenue.toFixed(2)),
+        growth: parseFloat(netRevenueGrowth.toFixed(2)),
+        isPositive: netRevenueGrowth >= 0,
+      },
+      {
+        metric: "Total Collected",
         current: parseFloat(current.actualReceived.toFixed(2)),
         previous: parseFloat(previous.actualReceived.toFixed(2)),
         growth: parseFloat(collectionGrowth.toFixed(2)),
         isPositive: collectionGrowth >= 0,
       },
       {
-        metric: "Pending Dues",
-        current: parseFloat(current.totalDue.toFixed(2)),
-        previous: parseFloat(previous.totalDue.toFixed(2)),
-        growth:
-          previous.totalDue > 0
-            ? parseFloat(
-              (
-                ((current.totalDue - previous.totalDue) / previous.totalDue) *
-                100
-              ).toFixed(2)
-            )
-            : 0,
-        isPositive: current.totalDue < previous.totalDue, // Less due is positive
+        metric: "Credit Payments",
+        current: parseFloat(current.creditPayments.toFixed(2)),
+        previous: parseFloat(previous.creditPayments.toFixed(2)),
+        growth: previous.creditPayments > 0
+          ? parseFloat(((current.creditPayments - previous.creditPayments) / previous.creditPayments * 100).toFixed(2)) : 0,
+        isPositive: current.creditPayments >= previous.creditPayments,
       },
       {
-        metric: "Credit Used",
-        current: parseFloat(current.totalCreditUsed.toFixed(2)),
-        previous: parseFloat(previous.totalCreditUsed.toFixed(2)),
-        growth:
-          previous.totalCreditUsed > 0
-            ? parseFloat(
-              (
-                ((current.totalCreditUsed - previous.totalCreditUsed) /
-                  previous.totalCreditUsed) *
-                100
-              ).toFixed(2)
-            )
-            : 0,
-        isPositive: true, // Credit usage is neutral/contextual
+        metric: "Net Position",
+        current: parseFloat(current.totalDue.toFixed(2)),
+        previous: parseFloat(previous.totalDue.toFixed(2)),
+        growth: previous.totalDue > 0
+          ? parseFloat(((current.totalDue - previous.totalDue) / previous.totalDue * 100).toFixed(2)) : 0,
+        isPositive: current.totalDue <= previous.totalDue,
       },
       {
         metric: "Transactions",
         current: current.transactionCount,
         previous: previous.transactionCount,
-        growth:
-          previous.transactionCount > 0
-            ? parseFloat(
-              (
-                ((current.transactionCount - previous.transactionCount) /
-                  previous.transactionCount) *
-                100
-              ).toFixed(2)
-            )
-            : 0,
+        growth: previous.transactionCount > 0
+          ? parseFloat(((current.transactionCount - previous.transactionCount) / previous.transactionCount * 100).toFixed(2)) : 0,
         isPositive: current.transactionCount >= previous.transactionCount,
       },
       {
         metric: "Avg Order Value",
         current: parseFloat(current.avgOrderValue.toFixed(2)),
         previous: parseFloat(previous.avgOrderValue.toFixed(2)),
-        growth:
-          previous.avgOrderValue > 0
-            ? parseFloat(
-              (
-                ((current.avgOrderValue - previous.avgOrderValue) /
-                  previous.avgOrderValue) *
-                100
-              ).toFixed(2)
-            )
-            : 0,
+        growth: previous.avgOrderValue > 0
+          ? parseFloat(((current.avgOrderValue - previous.avgOrderValue) / previous.avgOrderValue * 100).toFixed(2)) : 0,
         isPositive: current.avgOrderValue >= previous.avgOrderValue,
       },
       {
         metric: "Collection Rate",
         current: parseFloat(current.collectionRate.toFixed(2)),
         previous: parseFloat(previous.collectionRate.toFixed(2)),
-        growth: parseFloat(
-          (current.collectionRate - previous.collectionRate).toFixed(2)
-        ),
+        growth: parseFloat((current.collectionRate - previous.collectionRate).toFixed(2)),
         isPositive: current.collectionRate >= previous.collectionRate,
-        isPercentage: true,
-      },
-      {
-        metric: "Profit Margin",
-        current: parseFloat(current.profitMargin.toFixed(2)),
-        previous: parseFloat(previous.profitMargin.toFixed(2)),
-        growth: parseFloat(
-          (current.profitMargin - previous.profitMargin).toFixed(2)
-        ),
-        isPositive: current.profitMargin >= previous.profitMargin,
         isPercentage: true,
       },
     ];
@@ -3225,6 +3194,7 @@ router.get("/comparison", auth, async (req, res) => {
       {
         period: "Previous",
         revenue: previous.revenue,
+        netRevenue: previous.netRevenue,
         received: previous.actualReceived,
         due: previous.totalDue,
         collectionRate: previous.collectionRate,
@@ -3232,6 +3202,7 @@ router.get("/comparison", auth, async (req, res) => {
       {
         period: "Current",
         revenue: current.revenue,
+        netRevenue: current.netRevenue,
         received: current.actualReceived,
         due: current.totalDue,
         collectionRate: current.collectionRate,
@@ -3302,28 +3273,13 @@ router.get("/comparison", auth, async (req, res) => {
       },
       growth: {
         revenue: parseFloat(revenueGrowth.toFixed(2)),
+        netRevenue: parseFloat(netRevenueGrowth.toFixed(2)),
         collection: parseFloat(collectionGrowth.toFixed(2)),
         profit: parseFloat(profitGrowth.toFixed(2)),
-        transactions:
-          previous.transactionCount > 0
-            ? parseFloat(
-              (
-                ((current.transactionCount - previous.transactionCount) /
-                  previous.transactionCount) *
-                100
-              ).toFixed(2)
-            )
-            : 0,
-        customers:
-          previous.customerCount > 0
-            ? parseFloat(
-              (
-                ((current.customerCount - previous.customerCount) /
-                  previous.customerCount) *
-                100
-              ).toFixed(2)
-            )
-            : 0,
+        transactions: previous.transactionCount > 0
+          ? parseFloat(((current.transactionCount - previous.transactionCount) / previous.transactionCount * 100).toFixed(2)) : 0,
+        customers: previous.customerCount > 0
+          ? parseFloat(((current.customerCount - previous.customerCount) / previous.customerCount * 100).toFixed(2)) : 0,
       },
       chartData,
       trendData,
@@ -3409,29 +3365,39 @@ router.get("/by-products", auth, async (req, res) => {
       },
       { $unwind: "$items" },
       {
+        $addFields: {
+          // Calculate proportional amounts for this item based on SUBTOTAL
+          itemProportion: {
+            $divide: ["$items.subtotal", { $max: ["$subtotal", 1] }],
+          },
+        },
+      },
+      {
         $group: {
           _id: "$items.product",
 
-          // Revenue calculations
-          totalRevenue: { $sum: "$items.subtotal" },
+          // Revenue calculations (including proportional tax)
+          totalRevenue: {
+            $sum: {
+              $add: [
+                "$items.subtotal",
+                { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+              ]
+            }
+          },
 
-          // Calculate actual received amount for this product
-          // Calculate actual received amount for this product
+          // Calculate actual received amount for this product (Instant Sales)
           actualReceived: {
             $sum: {
               $cond: [
                 { $in: ["$paymentMethod", ["cash", "online", "card"]] },
-                "$items.subtotal",
                 {
-                  $cond: [
-                    { $eq: ["$paymentMethod", "due"] },
-                    0, // For due payments, initial received is 0
-                    {
-                      // For any other case (shouldn't happen with strict types), default to 0
-                      $literal: 0
-                    }
+                  $add: [
+                    "$items.subtotal",
+                    { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
                   ]
-                }
+                },
+                0
               ]
             }
           },
@@ -3440,21 +3406,16 @@ router.get("/by-products", auth, async (req, res) => {
           dueAmount: {
             $sum: {
               $cond: [
-                { $gt: [{ $ifNull: ["$dueAmount", 0] }, 0] },
+                { $eq: ["$paymentMethod", "due"] },
                 {
-                  $multiply: [
+                  $add: [
                     "$items.subtotal",
-                    {
-                      $divide: [
-                        { $ifNull: ["$dueAmount", 0] },
-                        { $max: ["$total", 1] },
-                      ],
-                    },
-                  ],
+                    { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+                  ]
                 },
-                0,
-              ],
-            },
+                0
+              ]
+            }
           },
 
 
@@ -3630,11 +3591,70 @@ router.get("/by-products", auth, async (req, res) => {
       },
       { $unwind: "$productInfo" },
       {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          product: 1,
+          adjustment: 1,
+          productInfo: 1,
+          isWalkIn: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$invoiceInfo.customer._id", null] },
+                  { $not: ["$invoiceInfo.customer._id"] }
+                ]
+              },
+              true,
+              false
+            ]
+          },
+          value: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                // Include proportional tax
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  {
+                    $add: [
+                      1,
+                      { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                    ]
+                  }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          }
+        }
+      },
+      {
         $group: {
           _id: "$product",
           returnQuantity: { $sum: "$adjustment" },
-          returnValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+          returnValue: { $sum: "$value" },
+          cashRefunds: {
+            $sum: {
+              $cond: [{ $eq: ["$isWalkIn", true] }, "$value", 0]
+            }
           },
           returnCount: { $sum: 1 },
         },
@@ -3652,8 +3672,12 @@ router.get("/by-products", auth, async (req, res) => {
       const r = returnsMap[p.productId.toString()];
       p.returnQuantity = r ? r.returnQuantity : 0;
       p.returnValue = r ? r.returnValue : 0;
+      p.cashRefunds = r ? r.cashRefunds : 0;
       p.returnCount = r ? r.returnCount : 0;
       p.netRevenue = p.totalRevenue - p.returnValue;
+
+      // Adjust actualReceived to exclude cash refunds (matching Total Collected logic)
+      p.actualReceived = Math.round((p.actualReceived - p.cashRefunds) * 100) / 100;
     });
 
     // Apply filters
@@ -3768,19 +3792,27 @@ router.get("/by-products", auth, async (req, res) => {
     const paymentQuery = {
       createdBy: userId,
       type: "payment",
+      paymentMode: { $ne: "return" }, // Exclude returns
       ...dateFilter,
     };
 
     const payments = await mongoose.model("Transaction").find(paymentQuery).lean();
     const totalDuePayments = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const totalCashRefunds = filteredProducts.reduce((sum, p) => sum + (p.cashRefunds || 0), 0);
 
     // Add enhanced fields to summary
     summary.duePayments = totalDuePayments;
     summary.paymentCount = payments.length;
     summary.totalCollected = summary.actualReceived + totalDuePayments;
-    summary.dueSales = summary.totalRevenue - summary.actualReceived; // Amount given on credit
+    // Gross Due Sales = Total Revenue - Instant Sales
+    // Instant Sales = Actual Received + Cash Refunds
+    summary.dueSales = Math.round((summary.totalRevenue - (summary.actualReceived + totalCashRefunds)) * 100) / 100;
 
-    // Get performance categories based on filtered data
+    // Calculate Net Position (Period Based Outstanding)
+    // Net Position = Gross Due Sales - Due Returns - Due Payments
+    const dueReturns = summary.totalReturns - totalCashRefunds;
+    const periodBasedOutstanding = summary.dueSales - dueReturns - summary.duePayments;
+    summary.totalDueRevenue = Math.round(periodBasedOutstanding * 100) / 100;
     const performanceBreakdown = {
       highPerformers: filteredProducts.filter(
         (p) => p.totalRevenue > summary.avgRevenuePerProduct * 1.5
@@ -3795,18 +3827,172 @@ router.get("/by-products", auth, async (req, res) => {
       ).length,
     };
 
-    // Get revenue trend by month for top products (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    // DYNAMIC REVENUE TREND - Adapt to selected period
+    // Determine trend date range and grouping based on selected filter period
+    let trendStartDate, trendEndDate, trendGroupBy;
+
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+
+      const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+
+      // Determine granularity based on period length
+      if (daysDiff <= 1) {
+        // Today: Hourly grouping
+        trendGroupBy = "hour";
+        trendStartDate = start;
+        trendEndDate = end;
+      } else if (daysDiff <= 7) {
+        // Week: Daily grouping
+        trendGroupBy = "day";
+        trendStartDate = start;
+        trendEndDate = end;
+      } else if (daysDiff <= 31) {
+        // Month: Daily grouping
+        trendGroupBy = "day";
+        trendStartDate = start;
+        trendEndDate = end;
+      } else if (daysDiff <= 92) {
+        // Quarter: Weekly grouping (approximate)
+        trendGroupBy = "week";
+        trendStartDate = start;
+        trendEndDate = end;
+      } else {
+        // Longer periods: Monthly grouping
+        trendGroupBy = "month";
+        trendStartDate = start;
+        trendEndDate = end;
+      }
+    } else {
+      // No date filter: Default to last 6 months, monthly grouping
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      sixMonthsAgo.setHours(0, 0, 0, 0);
+      trendStartDate = sixMonthsAgo;
+      trendEndDate = new Date();
+      trendEndDate.setHours(23, 59, 59, 999);
+      trendGroupBy = "month";
+    }
 
     const topProductIds = filteredProducts.slice(0, 5).map((p) => p.productId);
 
-    const revenueTrend = await Invoice.aggregate([
+    // Build dynamic grouping based on trendGroupBy
+    let groupByExpression;
+    let sortExpression;
+    let dateFormatExpression;
+
+    if (trendGroupBy === "hour") {
+      groupByExpression = {
+        product: "$items.product",
+        hour: { $hour: "$date" },
+        day: { $dayOfMonth: "$date" },
+        month: { $month: "$date" },
+        year: { $year: "$date" },
+      };
+      sortExpression = { year: 1, month: 1, day: 1, hour: 1 };
+      dateFormatExpression = {
+        $concat: [
+          { $toString: "$_id.day" },
+          "/",
+          { $toString: "$_id.month" },
+          " ",
+          {
+            $cond: [
+              { $lt: ["$_id.hour", 10] },
+              { $concat: ["0", { $toString: "$_id.hour" }] },
+              { $toString: "$_id.hour" },
+            ],
+          },
+          ":00",
+        ],
+      };
+    } else if (trendGroupBy === "day") {
+      groupByExpression = {
+        product: "$items.product",
+        day: { $dayOfMonth: "$date" },
+        month: { $month: "$date" },
+        year: { $year: "$date" },
+      };
+      sortExpression = { year: 1, month: 1, day: 1 };
+      dateFormatExpression = {
+        $concat: [
+          { $toString: "$_id.day" },
+          " ",
+          {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$_id.month", 1] }, then: "Jan" },
+                { case: { $eq: ["$_id.month", 2] }, then: "Feb" },
+                { case: { $eq: ["$_id.month", 3] }, then: "Mar" },
+                { case: { $eq: ["$_id.month", 4] }, then: "Apr" },
+                { case: { $eq: ["$_id.month", 5] }, then: "May" },
+                { case: { $eq: ["$_id.month", 6] }, then: "Jun" },
+                { case: { $eq: ["$_id.month", 7] }, then: "Jul" },
+                { case: { $eq: ["$_id.month", 8] }, then: "Aug" },
+                { case: { $eq: ["$_id.month", 9] }, then: "Sep" },
+                { case: { $eq: ["$_id.month", 10] }, then: "Oct" },
+                { case: { $eq: ["$_id.month", 11] }, then: "Nov" },
+                { case: { $eq: ["$_id.month", 12] }, then: "Dec" },
+              ],
+              default: "Unknown",
+            },
+          },
+        ],
+      };
+    } else if (trendGroupBy === "week") {
+      groupByExpression = {
+        product: "$items.product",
+        week: { $week: "$date" },
+        year: { $year: "$date" },
+      };
+      sortExpression = { year: 1, week: 1 };
+      dateFormatExpression = {
+        $concat: ["Week ", { $toString: "$_id.week" }, " ", { $toString: "$_id.year" }],
+      };
+    } else {
+      // month
+      groupByExpression = {
+        product: "$items.product",
+        month: { $month: "$date" },
+        year: { $year: "$date" },
+      };
+      sortExpression = { year: 1, month: 1 };
+      dateFormatExpression = {
+        $concat: [
+          {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$_id.month", 1] }, then: "Jan" },
+                { case: { $eq: ["$_id.month", 2] }, then: "Feb" },
+                { case: { $eq: ["$_id.month", 3] }, then: "Mar" },
+                { case: { $eq: ["$_id.month", 4] }, then: "Apr" },
+                { case: { $eq: ["$_id.month", 5] }, then: "May" },
+                { case: { $eq: ["$_id.month", 6] }, then: "Jun" },
+                { case: { $eq: ["$_id.month", 7] }, then: "Jul" },
+                { case: { $eq: ["$_id.month", 8] }, then: "Aug" },
+                { case: { $eq: ["$_id.month", 9] }, then: "Sep" },
+                { case: { $eq: ["$_id.month", 10] }, then: "Oct" },
+                { case: { $eq: ["$_id.month", 11] }, then: "Nov" },
+                { case: { $eq: ["$_id.month", 12] }, then: "Dec" },
+              ],
+              default: "Unknown",
+            },
+          },
+          " ",
+          { $toString: "$_id.year" },
+        ],
+      };
+    }
+
+    const revenueTrend = topProductIds.length > 0 ? await Invoice.aggregate([
       {
         $match: {
           createdBy: userId,
           status: { $in: ["final", "paid"] },
-          date: { $gte: sixMonthsAgo },
+          date: { $gte: trendStartDate, $lte: trendEndDate },
         },
       },
       { $unwind: "$items" },
@@ -3816,26 +4002,54 @@ router.get("/by-products", auth, async (req, res) => {
         },
       },
       {
-        $group: {
-          _id: {
-            product: "$items.product",
-            month: { $month: "$date" },
-            year: { $year: "$date" },
+        $addFields: {
+          // Calculate proportional tax for this item
+          itemProportion: {
+            $divide: ["$items.subtotal", { $max: ["$subtotal", 1] }],
           },
-          revenue: { $sum: "$items.subtotal" },
+        },
+      },
+      {
+        $group: {
+          _id: groupByExpression,
+          // Revenue including proportional tax
+          revenue: {
+            $sum: {
+              $add: [
+                "$items.subtotal",
+                { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+              ]
+            }
+          },
+          // Actual received including proportional tax
           actualReceived: {
             $sum: {
               $cond: [
                 {
                   $in: ["$paymentMethod", ["cash", "online", "card", "credit"]],
                 },
-                "$items.subtotal",
+                {
+                  $add: [
+                    "$items.subtotal",
+                    { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+                  ]
+                },
                 {
                   $subtract: [
-                    "$items.subtotal",
+                    {
+                      $add: [
+                        "$items.subtotal",
+                        { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+                      ]
+                    },
                     {
                       $multiply: [
-                        "$items.subtotal",
+                        {
+                          $add: [
+                            "$items.subtotal",
+                            { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+                          ]
+                        },
                         {
                           $divide: [
                             { $ifNull: ["$dueAmount", 0] },
@@ -3849,10 +4063,16 @@ router.get("/by-products", auth, async (req, res) => {
               ],
             },
           },
+          // Due amount including proportional tax
           dueAmount: {
             $sum: {
               $multiply: [
-                "$items.subtotal",
+                {
+                  $add: [
+                    "$items.subtotal",
+                    { $multiply: [{ $ifNull: ["$tax", 0] }, "$itemProportion"] }
+                  ]
+                },
                 {
                   $divide: [
                     { $ifNull: ["$dueAmount", 0] },
@@ -3877,49 +4097,58 @@ router.get("/by-products", auth, async (req, res) => {
         $project: {
           productId: "$_id.product",
           productName: "$productInfo.name",
-          month: "$_id.month",
+          ...(trendGroupBy === "hour" && { hour: "$_id.hour", day: "$_id.day" }),
+          ...(trendGroupBy === "day" && { day: "$_id.day" }),
+          ...(trendGroupBy === "week" && { week: "$_id.week" }),
+          ...(trendGroupBy !== "hour" && { month: "$_id.month" }),
           year: "$_id.year",
           revenue: { $round: ["$revenue", 2] },
           actualReceived: { $round: ["$actualReceived", 2] },
           dueAmount: { $round: ["$dueAmount", 2] },
-          date: {
-            $concat: [
-              {
-                $switch: {
-                  branches: [
-                    { case: { $eq: ["$_id.month", 1] }, then: "Jan" },
-                    { case: { $eq: ["$_id.month", 2] }, then: "Feb" },
-                    { case: { $eq: ["$_id.month", 3] }, then: "Mar" },
-                    { case: { $eq: ["$_id.month", 4] }, then: "Apr" },
-                    { case: { $eq: ["$_id.month", 5] }, then: "May" },
-                    { case: { $eq: ["$_id.month", 6] }, then: "Jun" },
-                    { case: { $eq: ["$_id.month", 7] }, then: "Jul" },
-                    { case: { $eq: ["$_id.month", 8] }, then: "Aug" },
-                    { case: { $eq: ["$_id.month", 9] }, then: "Sep" },
-                    { case: { $eq: ["$_id.month", 10] }, then: "Oct" },
-                    { case: { $eq: ["$_id.month", 11] }, then: "Nov" },
-                    { case: { $eq: ["$_id.month", 12] }, then: "Dec" },
-                  ],
-                  default: "Unknown",
-                },
-              },
-              " ",
-              { $toString: "$_id.year" },
-            ],
-          },
+          date: dateFormatExpression,
         },
       },
-      { $sort: { year: 1, month: 1 } },
-    ]);
+      { $sort: sortExpression },
+    ]) : [];
 
-    // Get returns trend for top products
-    const returnsTrend = await StockHistory.aggregate([
+    // Get returns trend for top products (matching the same period and grouping)
+    let returnsGroupByExpression;
+    if (trendGroupBy === "hour") {
+      returnsGroupByExpression = {
+        product: "$product",
+        hour: { $hour: "$timestamp" },
+        day: { $dayOfMonth: "$timestamp" },
+        month: { $month: "$timestamp" },
+        year: { $year: "$timestamp" },
+      };
+    } else if (trendGroupBy === "day") {
+      returnsGroupByExpression = {
+        product: "$product",
+        day: { $dayOfMonth: "$timestamp" },
+        month: { $month: "$timestamp" },
+        year: { $year: "$timestamp" },
+      };
+    } else if (trendGroupBy === "week") {
+      returnsGroupByExpression = {
+        product: "$product",
+        week: { $week: "$timestamp" },
+        year: { $year: "$timestamp" },
+      };
+    } else {
+      returnsGroupByExpression = {
+        product: "$product",
+        month: { $month: "$timestamp" },
+        year: { $year: "$timestamp" },
+      };
+    }
+
+    const returnsTrend = topProductIds.length > 0 ? await StockHistory.aggregate([
       {
         $match: {
           user: userId,
           type: "return",
           product: { $in: topProductIds },
-          timestamp: { $gte: sixMonthsAgo },
+          timestamp: { $gte: trendStartDate, $lte: trendEndDate },
         },
       },
       {
@@ -3932,28 +4161,85 @@ router.get("/by-products", auth, async (req, res) => {
       },
       { $unwind: "$productInfo" },
       {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          groupKey: returnsGroupByExpression,
+          // Calculate value including proportional tax from invoice
+          value: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                // Include proportional tax: (quantity × price) × (1 + tax/subtotal)
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  {
+                    $add: [
+                      1,
+                      { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                    ]
+                  }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] } // No tax
+            }
+          }
+        }
+      },
+      {
         $group: {
-          _id: {
-            product: "$product",
-            month: { $month: "$timestamp" },
-            year: { $year: "$timestamp" },
-          },
+          _id: "$groupKey",
           returnValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+            $sum: "$value",
           },
         },
       },
-    ]);
+    ]) : [];
 
     // Merge returns into revenueTrend
     const returnsTrendMap = {};
     returnsTrend.forEach((r) => {
-      const key = `${r._id.product}-${r._id.month}-${r._id.year}`;
+      let key;
+      if (trendGroupBy === "hour") {
+        key = `${r._id.product}-${r._id.hour}-${r._id.day}-${r._id.month}-${r._id.year}`;
+      } else if (trendGroupBy === "day") {
+        key = `${r._id.product}-${r._id.day}-${r._id.month}-${r._id.year}`;
+      } else if (trendGroupBy === "week") {
+        key = `${r._id.product}-${r._id.week}-${r._id.year}`;
+      } else {
+        key = `${r._id.product}-${r._id.month}-${r._id.year}`;
+      }
       returnsTrendMap[key] = r.returnValue;
     });
 
     const finalRevenueTrend = revenueTrend.map((item) => {
-      const key = `${item.productId}-${item.month}-${item.year}`;
+      let key;
+      if (trendGroupBy === "hour") {
+        key = `${item.productId}-${item.hour}-${item.day}-${item.month}-${item.year}`;
+      } else if (trendGroupBy === "day") {
+        key = `${item.productId}-${item.day}-${item.month}-${item.year}`;
+      } else if (trendGroupBy === "week") {
+        key = `${item.productId}-${item.week}-${item.year}`;
+      } else {
+        key = `${item.productId}-${item.month}-${item.year}`;
+      }
       const returnValue = returnsTrendMap[key] || 0;
       return {
         ...item,
@@ -4102,12 +4388,16 @@ router.get("/transactions", auth, async (req, res) => {
     }
 
     if (transactionType === "all" || transactionType === "payments") {
-      paymentTransactions = await Transaction.find(paymentQuery)
+      // CRITICAL: Exclude return transactions (they are refunds, not payments)
+      paymentTransactions = await Transaction.find({
+        ...paymentQuery,
+        paymentMode: { $ne: "return" }
+      })
         .populate("customerId", "name phone")
         .lean();
     }
 
-    // Format invoices as transactions
+    // Format invoices as transactions (with 2 decimal rounding)
     const formattedInvoices = invoices.map(invoice => ({
       _id: invoice._id,
       type: "sale",
@@ -4115,22 +4405,22 @@ router.get("/transactions", auth, async (req, res) => {
       invoiceNumber: invoice.invoiceNumber,
       customerName: invoice.customer?.name || "Walk-in Customer",
       paymentMethod: invoice.paymentMethod,
-      amount: invoice.total,
-      received: invoice.total - (invoice.dueAmount || 0),
-      due: invoice.dueAmount || 0,
-      creditUsed: invoice.creditUsed || 0,
+      amount: Math.round((invoice.total || 0) * 100) / 100,
+      received: Math.round(((invoice.total || 0) - (invoice.dueAmount || 0)) * 100) / 100,
+      due: Math.round((invoice.dueAmount || 0) * 100) / 100,
+      creditUsed: Math.round((invoice.creditUsed || 0) * 100) / 100,
       items: invoice.items?.map(item => ({
         product: item.product?.name || "Unknown",
-        quantity: item.quantity,
+        quantity: Math.round((item.quantity || 0) * 100) / 100,
         unit: item.unit,
-        price: item.price,
-        subtotal: item.quantity * item.price,
+        price: Math.round((item.price || 0) * 100) / 100,
+        subtotal: Math.round((item.quantity * item.price) * 100) / 100,
       })) || [],
-      tax: invoice.tax || 0,
+      tax: Math.round((invoice.tax || 0) * 100) / 100,
       status: invoice.status,
     }));
 
-    // Format payment transactions
+    // Format payment transactions (with 2 decimal rounding)
     const formattedPayments = paymentTransactions.map(payment => ({
       _id: payment._id,
       type: "payment",
@@ -4138,14 +4428,12 @@ router.get("/transactions", auth, async (req, res) => {
       customerName: payment.customerId?.name || "Unknown",
       customerPhone: payment.customerId?.phone,
       paymentMethod: payment.paymentMode || "cash",
-      amount: payment.amount,
-      received: payment.amount,
-      duesCleared: payment.balanceBefore - payment.balanceAfter > 0
-        ? payment.balanceBefore - payment.balanceAfter
-        : 0,
-      creditAdded: payment.balanceAfter < 0 ? Math.abs(payment.balanceAfter) : 0,
-      balanceBefore: payment.balanceBefore,
-      balanceAfter: payment.balanceAfter,
+      amount: Math.round((payment.amount || 0) * 100) / 100,
+      received: Math.round((payment.amount || 0) * 100) / 100,
+      duesCleared: Math.round(Math.max(0, (payment.balanceBefore || 0) - (payment.balanceAfter || 0)) * 100) / 100,
+      creditAdded: Math.round(Math.max(0, Math.abs(payment.balanceAfter < 0 ? payment.balanceAfter : 0)) * 100) / 100,
+      balanceBefore: Math.round((payment.balanceBefore || 0) * 100) / 100,
+      balanceAfter: Math.round((payment.balanceAfter || 0) * 100) / 100,
       description: payment.description,
     }));
 
@@ -4178,6 +4466,16 @@ router.get("/transactions", auth, async (req, res) => {
           totalRevenue: { $sum: "$total" },
           actualReceivedRevenue: {
             $sum: { $subtract: ["$total", { $ifNull: ["$dueAmount", 0] }] }
+          },
+          // Calculate instant revenue (Cash/Online/Card) separately to avoid double counting due payments
+          instantReceivedRevenue: {
+            $sum: {
+              $cond: [
+                { $in: ["$paymentMethod", ["cash", "online", "card"]] },
+                { $subtract: ["$total", { $ifNull: ["$dueAmount", 0] }] },
+                0
+              ]
+            }
           },
           totalDueRevenue: {
             $sum: { $ifNull: ["$dueAmount", 0] }
@@ -4212,10 +4510,46 @@ router.get("/transactions", auth, async (req, res) => {
       },
       { $unwind: "$productInfo" },
       {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $group: {
           _id: null,
           totalValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
+            $sum: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $gt: ["$invoiceInfo.tax", 0] },
+                    { $gt: ["$invoiceInfo.subtotal", 0] }
+                  ]
+                },
+                then: {
+                  // Include proportional tax: (quantity × price) × (1 + tax/subtotal)
+                  $multiply: [
+                    { $multiply: ["$adjustment", "$productInfo.price"] },
+                    {
+                      $add: [
+                        1,
+                        { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                      ]
+                    }
+                  ]
+                },
+                else: { $multiply: ["$adjustment", "$productInfo.price"] }
+              }
+            }
           },
           count: { $sum: 1 },
         },
@@ -4224,9 +4558,14 @@ router.get("/transactions", auth, async (req, res) => {
 
     const totalReturns = returnsData[0]?.totalValue || 0;
 
-    // Get due payments from Transaction model (using paymentQuery)
+    // Get due payments from Transaction model (EXCLUDE returns!)
     const duePaymentsData = await Transaction.aggregate([
-      { $match: paymentQuery },
+      {
+        $match: {
+          ...paymentQuery,
+          paymentMode: { $ne: "return" }  // CRITICAL: Exclude returns
+        }
+      },
       {
         $group: {
           _id: null,
@@ -4258,14 +4597,96 @@ router.get("/transactions", auth, async (req, res) => {
     const summary = summaryData[0] || {
       totalRevenue: 0,
       actualReceivedRevenue: 0,
+      instantReceivedRevenue: 0,
       totalDueRevenue: 0,
       transactionCount: 0,
     };
 
-    const instantCollection = summary.actualReceivedRevenue || 0;
+    const instantCollection = summary.instantReceivedRevenue || 0;
 
-    // Total collected = actual received (from invoices) + due payments (from transactions)
-    const totalCollected = instantCollection + totalDuePayments;
+    // Calculate cash refunds (walk-in customer returns only)
+    const cashReturnsData = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userObjectId,
+          type: "return",
+          ...stockDateFilter,
+        },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          isWalkIn: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$invoiceInfo.customer._id", null] },
+                  { $not: ["$invoiceInfo.customer._id"] }
+                ]
+              },
+              true,
+              false
+            ]
+          },
+          value: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] },
+                ],
+              },
+              then: {
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  {
+                    $add: [
+                      1,
+                      { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] },
+                    ],
+                  },
+                ],
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] },
+            },
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$isWalkIn",
+          totalValue: { $sum: "$value" },
+        },
+      },
+    ]);
+
+    // Get cash refunds (walk-in returns only)
+    const cashRefunds = cashReturnsData.find(r => r._id === true)?.totalValue || 0;
+
+    // Total collected = instant collection - cash refunds + due payments
+    const totalCollected = instantCollection - cashRefunds + totalDuePayments;
 
     // Net revenue = total revenue - returns
     const netRevenue = (summary.totalRevenue || 0) - totalReturns;
@@ -4308,12 +4729,42 @@ router.get("/transactions", auth, async (req, res) => {
     const totalPages = Math.ceil(totalItems / parseInt(limit));
     const currentPage = parseInt(page);
 
+    // Calculate period-based outstanding (matching dashboard's "Still Outstanding")
+    // Get gross due sales (invoices with paymentMethod = 'due')
+    const dueSalesData = await Invoice.aggregate([
+      {
+        $match: {
+          ...invoiceQuery,
+          paymentMethod: 'due'
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          grossDueSales: { $sum: "$total" }
+        }
+      }
+    ]);
+
+    const grossDueSales = dueSalesData[0]?.grossDueSales || 0;
+
+    // Get due customer returns (credit adjustments)
+    const dueReturns = cashReturnsData.find(r => r._id === false)?.totalValue || 0;
+
+    // Calculate net due sales and period-based outstanding
+    const netDueSales = grossDueSales - dueReturns;
+    const periodBasedOutstanding = netDueSales - totalDuePayments;
+
     // Calculate derived values
     console.log('\n=== TRANSACTIONS DEBUG ===');
     console.log('Transaction Type:', transactionType);
-    console.log('Summary from DB:', summary);
-    console.log('Total Returns:', totalReturns);
+    console.log('Gross Due Sales:', grossDueSales);
+    console.log('Due Customer Returns:', dueReturns);
+    console.log('Net Due Sales:', netDueSales);
     console.log('Total Due Payments:', totalDuePayments);
+    console.log('Period-Based Outstanding:', periodBasedOutstanding);
+    console.log('Total Returns:', totalReturns);
+    console.log('Cash Refunds (Walk-in only):', cashRefunds);
     console.log('Instant Collection:', instantCollection);
     console.log('Calculated Total Collected:', totalCollected);
     console.log('Calculated Net Revenue:', netRevenue);
@@ -4322,16 +4773,16 @@ router.get("/transactions", auth, async (req, res) => {
     res.json({
       transactions,
       summary: {
-        totalRevenue: summary.totalRevenue || 0,
-        actualReceivedRevenue: summary.actualReceivedRevenue || 0,
-        totalDueRevenue: summary.totalDueRevenue || 0,
+        totalRevenue: Math.round((summary.totalRevenue || 0) * 100) / 100,
+        actualReceivedRevenue: Math.round((summary.actualReceivedRevenue || 0) * 100) / 100,
+        totalDueRevenue: Math.round(periodBasedOutstanding * 100) / 100, // Period-based outstanding
         transactionCount: summary.transactionCount || 0,
         invoiceCount: summary.transactionCount || 0, // Number of sales/invoices
-        returns: totalReturns || 0,
-        duePayments: totalDuePayments || 0,
+        returns: Math.round((totalReturns || 0) * 100) / 100,
+        duePayments: Math.round((totalDuePayments || 0) * 100) / 100,
         paymentCount: duesPaymentCount || 0,
-        netRevenue: netRevenue || 0,
-        totalCollected: totalCollected || 0,
+        netRevenue: Math.round((netRevenue || 0) * 100) / 100,
+        totalCollected: Math.round((totalCollected || 0) * 100) / 100,
       },
       paymentBreakdown,
       topCustomers,
@@ -4386,7 +4837,7 @@ router.get("/returns", auth, async (req, res) => {
       ...dateFilter,
     };
 
-    // Get product-wise returns data
+    // Get product-wise returns data with tax calculation
     const productReturnsAggregation = [
       { $match: matchQuery },
       {
@@ -4400,6 +4851,15 @@ router.get("/returns", auth, async (req, res) => {
       { $unwind: "$productInfo" },
       {
         $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      { $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
           from: "categories",
           localField: "productInfo.category",
           foreignField: "_id",
@@ -4407,6 +4867,28 @@ router.get("/returns", auth, async (req, res) => {
         },
       },
       { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          // Calculate return value including proportional tax (matching Dashboard logic)
+          returnValueWithTax: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  { $add: [1, { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }] }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          }
+        }
+      },
       {
         $group: {
           _id: "$product",
@@ -4419,9 +4901,7 @@ router.get("/returns", auth, async (req, res) => {
           },
           returnQuantity: { $sum: "$adjustment" },
           returnCount: { $sum: 1 },
-          returnValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
-          },
+          returnValue: { $sum: "$returnValueWithTax" },
           lastReturnDate: { $max: "$timestamp" },
           avgReturnQuantity: { $avg: "$adjustment" },
         },
@@ -4459,7 +4939,7 @@ router.get("/returns", auth, async (req, res) => {
       productReturnsAggregation
     );
 
-    // Calculate summary statistics
+    // Calculate summary statistics with walk-in vs due breakdown
     const summaryData = await StockHistory.aggregate([
       { $match: matchQuery },
       {
@@ -4472,14 +4952,75 @@ router.get("/returns", auth, async (req, res) => {
       },
       { $unwind: "$productInfo" },
       {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      { $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          returnValueWithTax: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  { $add: [1, { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }] }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          },
+          // Walk-in = no customer ID (cash refund)
+          isWalkIn: {
+            $cond: [
+              {
+                $or: [
+                  { $eq: ["$invoiceInfo.customer._id", null] },
+                  { $not: ["$invoiceInfo.customer._id"] }
+                ]
+              },
+              true,
+              false
+            ]
+          }
+        }
+      },
+      {
         $group: {
           _id: null,
-          totalReturnValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
-          },
+          totalReturnValue: { $sum: "$returnValueWithTax" },
           totalReturnQuantity: { $sum: "$adjustment" },
           totalReturnCount: { $sum: 1 },
           uniqueProducts: { $addToSet: "$product" },
+          // Walk-in returns (cash refunds - money out)
+          cashRefundsValue: {
+            $sum: { $cond: [{ $eq: ["$isWalkIn", true] }, "$returnValueWithTax", 0] }
+          },
+          cashRefundsCount: {
+            $sum: { $cond: [{ $eq: ["$isWalkIn", true] }, 1, 0] }
+          },
+          cashRefundsQuantity: {
+            $sum: { $cond: [{ $eq: ["$isWalkIn", true] }, "$adjustment", 0] }
+          },
+          // Due customer returns (credit adjustments - no cash out)
+          creditAdjustmentsValue: {
+            $sum: { $cond: [{ $eq: ["$isWalkIn", false] }, "$returnValueWithTax", 0] }
+          },
+          creditAdjustmentsCount: {
+            $sum: { $cond: [{ $eq: ["$isWalkIn", false] }, 1, 0] }
+          },
+          creditAdjustmentsQuantity: {
+            $sum: { $cond: [{ $eq: ["$isWalkIn", false] }, "$adjustment", 0] }
+          },
         },
       },
       {
@@ -4488,6 +5029,16 @@ router.get("/returns", auth, async (req, res) => {
           totalReturnQuantity: 1,
           totalReturnCount: 1,
           uniqueProductCount: { $size: "$uniqueProducts" },
+          cashRefunds: {
+            value: "$cashRefundsValue",
+            count: "$cashRefundsCount",
+            quantity: "$cashRefundsQuantity"
+          },
+          creditAdjustments: {
+            value: "$creditAdjustmentsValue",
+            count: "$creditAdjustmentsCount",
+            quantity: "$creditAdjustmentsQuantity"
+          }
         },
       },
     ]);
@@ -4497,9 +5048,11 @@ router.get("/returns", auth, async (req, res) => {
       totalReturnQuantity: 0,
       totalReturnCount: 0,
       uniqueProductCount: 0,
+      cashRefunds: { value: 0, count: 0, quantity: 0 },
+      creditAdjustments: { value: 0, count: 0, quantity: 0 },
     };
 
-    // Get category-wise returns breakdown
+    // Get category-wise returns breakdown with tax
     const categoryReturns = await StockHistory.aggregate([
       { $match: matchQuery },
       {
@@ -4513,6 +5066,15 @@ router.get("/returns", auth, async (req, res) => {
       { $unwind: "$productInfo" },
       {
         $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      { $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
           from: "categories",
           localField: "productInfo.category",
           foreignField: "_id",
@@ -4521,14 +5083,33 @@ router.get("/returns", auth, async (req, res) => {
       },
       { $unwind: { path: "$categoryInfo", preserveNullAndEmptyArrays: true } },
       {
+        $addFields: {
+          returnValueWithTax: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  { $add: [1, { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }] }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          }
+        }
+      },
+      {
         $group: {
           _id: "$categoryInfo._id",
           categoryName: {
             $first: { $ifNull: ["$categoryInfo.name", "Uncategorized"] },
           },
-          returnValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
-          },
+          returnValue: { $sum: "$returnValueWithTax" },
           returnQuantity: { $sum: "$adjustment" },
           returnCount: { $sum: 1 },
         },
@@ -4583,11 +5164,39 @@ router.get("/returns", auth, async (req, res) => {
       },
       { $unwind: "$productInfo" },
       {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      { $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          returnValueWithTax: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  { $add: [1, { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }] }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          }
+        }
+      },
+      {
         $group: {
           _id: getTrendGrouping(),
-          returnValue: {
-            $sum: { $multiply: ["$adjustment", "$productInfo.price"] },
-          },
+          returnValue: { $sum: "$returnValueWithTax" },
           returnQuantity: { $sum: "$adjustment" },
           returnCount: { $sum: 1 },
         },
@@ -4699,4 +5308,1132 @@ router.get("/returns", auth, async (req, res) => {
   }
 });
 
+// Get Revenue Analytics - Professional comprehensive analytics with returns & tax
+router.get("/analytics", auth, async (req, res) => {
+  try {
+    const { period, startDate, endDate } = req.query;
+    const userId = new mongoose.Types.ObjectId(req.user.userId);
+
+    // Calculate date range based on period (SAME AS REVENUE DASHBOARD)
+    let start, end;
+    const now = new Date();
+
+    switch (period) {
+      case "today":
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "week":
+        const dayOfWeek = now.getDay();
+        const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        start = new Date(now);
+        start.setDate(now.getDate() - diffToMonday);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "month":
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "quarter":
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        start = new Date(now.getFullYear(), currentQuarter * 3, 1);
+        start.setHours(0, 0, 0, 0);
+        const quarterEndMonth = currentQuarter * 3 + 2;
+        end = new Date(now.getFullYear(), quarterEndMonth + 1, 0);
+        if (end > now) {
+          end = new Date(now);
+        }
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "year":
+        start = new Date(now.getFullYear(), 0, 1);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case "all":
+        start = new Date(0); // Beginning of time
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        break;
+      default:
+        if (startDate && endDate) {
+          start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+        } else {
+          // Default to current month
+          start = new Date(now.getFullYear(), now.getMonth(), 1);
+          start.setHours(0, 0, 0, 0);
+          end = new Date(now);
+          end.setHours(23, 59, 59, 999);
+        }
+    }
+
+    // Build date filter for the selected period
+    const dateFilter = {
+      date: { $gte: start, $lte: end },
+    };
+
+    // 1. PAYMENT SUMMARY
+    // A. Initial Sales (Cash/Online/Card)
+    const initialSalesData = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          paymentMethod: { $in: ["cash", "online", "card"] },
+          ...dateFilter,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$total" },
+          totalTax: { $sum: { $ifNull: ["$tax", 0] } },
+          totalSubtotal: { $sum: "$subtotal" },
+        },
+      },
+    ]);
+
+    // B. Due/Credit Sales
+    const dueSalesData = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          paymentMethod: { $in: ["due", "credit"] },
+          ...dateFilter,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: "$total" },
+          totalTax: { $sum: { $ifNull: ["$tax", 0] } },
+          totalSubtotal: { $sum: "$subtotal" },
+          currentDue: { $sum: { $ifNull: ["$dueAmount", 0] } },
+        },
+      },
+    ]);
+
+    // C. Due Payments (Collected via Transactions)
+    const duePaymentsData = await mongoose.model("Transaction").aggregate([
+      {
+        $match: {
+          type: "payment", // Payments for due invoices
+          date: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoice",
+        },
+      },
+      {
+        $match: {
+          "invoice.createdBy": userId,
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalCollected: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const initialSales = initialSalesData[0] || { totalRevenue: 0, totalTax: 0, totalSubtotal: 0 };
+    const dueSales = dueSalesData[0] || { totalRevenue: 0, totalTax: 0, totalSubtotal: 0, currentDue: 0 };
+    const duePayments = duePaymentsData[0]?.totalCollected || 0;
+
+
+    // Get RETURNS for the period (from StockHistory)
+
+    // Get RETURNS for the period (from StockHistory)
+    const returnsData = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          timestamp: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true },
+      },
+      // Find the specific item in the invoice to get the SOLD price
+      {
+        $addFields: {
+          soldItem: {
+            $filter: {
+              input: "$invoiceInfo.items",
+              as: "item",
+              cond: { $eq: ["$$item.product", "$product"] }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          soldPrice: {
+            $ifNull: [
+              { $arrayElemAt: ["$soldItem.price", 0] },
+              0
+            ]
+          }
+        }
+      },
+      {
+        $addFields: {
+          // Calculate proportional tax for this return
+          returnValue: { $multiply: ["$adjustment", "$soldPrice"] },
+          itemProportion: {
+            $cond: [
+              { $gt: [{ $ifNull: ["$invoiceInfo.subtotal", 0] }, 0] },
+              {
+                $divide: [
+                  { $multiply: ["$adjustment", "$soldPrice"] },
+                  "$invoiceInfo.subtotal",
+                ],
+              },
+              0,
+            ],
+          },
+          isCreditReturn: {
+            $in: ["$invoiceInfo.paymentMethod", ["due", "credit"]],
+          },
+        },
+      },
+      {
+        $addFields: {
+          proportionalTax: {
+            $multiply: [
+              { $ifNull: ["$invoiceInfo.tax", 0] },
+              "$itemProportion",
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$invoiceInfo.paymentMethod", // Group by actual payment method
+          totalReturns: {
+            $sum: {
+              $add: [
+                "$returnValue",
+                "$proportionalTax",
+              ],
+            },
+          },
+          returnsCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Process Returns Data
+    let totalReturns = 0;
+    let returnsCount = 0;
+    let cashRefunds = 0;
+    let creditAdjustments = 0;
+    const returnsByMethod = {};
+
+    returnsData.forEach((group) => {
+      const method = group._id;
+      const value = group.totalReturns;
+
+      totalReturns += value;
+      returnsCount += group.returnsCount;
+      returnsByMethod[method] = value;
+
+      if (["due", "credit"].includes(method)) {
+        creditAdjustments += value;
+      } else {
+        cashRefunds += value;
+      }
+    });
+
+    console.log("=== ANALYTICS DEBUG ===");
+    console.log("Initial Sales (Cash/Online):", initialSales.totalRevenue);
+    console.log("Due Sales (Credit):", dueSales.totalRevenue);
+    console.log("Due Payments (Transactions):", duePayments);
+    console.log("Total Returns:", totalReturns);
+    console.log("Cash Refunds:", cashRefunds);
+    console.log("Credit Adjustments:", creditAdjustments);
+    console.log("Calculated Actual Received:", (initialSales.totalRevenue - cashRefunds) + duePayments);
+    console.log("Calculated Total Due:", (dueSales.totalRevenue - creditAdjustments) - duePayments);
+    console.log("Returns by Method:", returnsByMethod);
+    console.log("=======================");
+
+    // Update Payment Summary with Returns Logic
+    // Matches Dashboard: Total Collected = (Initial Sales - Cash Refunds) + Due Payments
+    // Matches Dashboard: Net Outstanding = (Due Sales - Credit Adjustments) - Due Payments
+    const paymentSummary = {
+      totalRevenue: initialSales.totalRevenue + dueSales.totalRevenue,
+      totalSubtotal: initialSales.totalSubtotal + dueSales.totalSubtotal,
+      totalTax: initialSales.totalTax + dueSales.totalTax,
+      actualReceived: (initialSales.totalRevenue - cashRefunds) + duePayments,
+      totalDue: (dueSales.totalRevenue - creditAdjustments) - duePayments,
+      totalCreditUsed: dueSales.totalRevenue,
+    };
+
+    const returns = totalReturns;
+
+
+    // Calculate Net Revenue (Gross - Returns)
+    const netRevenue = paymentSummary.totalRevenue - returns;
+
+    // 2. CONVERSION RATE (Draft to Final) - PERIOD BASED
+    const draftCount = await Invoice.countDocuments({
+      createdBy: userId,
+      status: "draft",
+      ...dateFilter,
+    });
+
+    const finalCount = await Invoice.countDocuments({
+      createdBy: userId,
+      status: { $in: ["final", "paid"] },
+      ...dateFilter,
+    });
+
+    const conversionRate =
+      draftCount + finalCount > 0
+        ? (finalCount / (draftCount + finalCount)) * 100
+        : 100;
+
+    // 3. CUSTOMER RETENTION - ALL TIME (not period-based)
+    const customerData = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$customer",
+          orderCount: { $sum: 1 },
+          firstOrder: { $min: "$date" },
+          lastOrder: { $max: "$date" },
+        },
+      },
+    ]);
+
+    const returningCustomers = customerData.filter((c) => c.orderCount > 1).length;
+    const customerRetention =
+      customerData.length > 0
+        ? (returningCustomers / customerData.length) * 100
+        : 0;
+
+    // 4. AVERAGE ORDER FREQUENCY - ALL TIME
+    const averageOrderFrequency =
+      customerData.length > 0
+        ? customerData.reduce((sum, c) => sum + c.orderCount, 0) /
+        customerData.length
+        : 0;
+
+    // 5. MONTHLY TREND (Last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    sixMonthsAgo.setHours(0, 0, 0, 0);
+
+    // Fetch Monthly Returns
+    // Filter to selected period's end date to match the selected filter
+    const monthlyReturnsData = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          timestamp: { $gte: sixMonthsAgo, $lte: end }, // Use selected period end
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      { $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          soldItem: {
+            $filter: {
+              input: "$invoiceInfo.items",
+              as: "item",
+              cond: { $eq: ["$$item.product", "$product"] }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          soldPrice: { $ifNull: [{ $arrayElemAt: ["$soldItem.price", 0] }, 0] }
+        }
+      },
+      {
+        $addFields: {
+          returnValue: { $multiply: ["$adjustment", "$soldPrice"] },
+          itemProportion: {
+            $cond: [
+              { $gt: [{ $ifNull: ["$invoiceInfo.subtotal", 0] }, 0] },
+              { $divide: [{ $multiply: ["$adjustment", "$soldPrice"] }, "$invoiceInfo.subtotal"] },
+              0,
+            ],
+          },
+          isCreditReturn: { $in: ["$invoiceInfo.paymentMethod", ["due", "credit"]] },
+        },
+      },
+      {
+        $addFields: {
+          proportionalTax: { $multiply: [{ $ifNull: ["$invoiceInfo.tax", 0] }, "$itemProportion"] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$timestamp" },
+            year: { $year: "$timestamp" },
+            isCredit: "$isCreditReturn"
+          },
+          totalReturns: { $sum: { $add: ["$returnValue", "$proportionalTax"] } },
+        },
+      },
+    ]);
+
+    console.log("=== MONTHLY RETURNS DEBUG ===");
+    console.log("Monthly Returns Data:", JSON.stringify(monthlyReturnsData, null, 2));
+    console.log("==============================");
+
+    // Fetch Monthly Transactions (for Due Payments)
+    // Filter to selected period's end date to match the selected filter
+    const monthlyTransactionsData = await mongoose.model("Transaction").aggregate([
+      {
+        $match: {
+          type: "payment",
+          date: { $gte: sixMonthsAgo, $lte: end }, // Use selected period end
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoice",
+        },
+      },
+      { $match: { "invoice.createdBy": userId } },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$date" },
+            year: { $year: "$date" },
+          },
+          amount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    console.log("=== MONTHLY TRANSACTIONS DEBUG ===");
+    console.log("Monthly Transactions Data:", JSON.stringify(monthlyTransactionsData, null, 2));
+    console.log("===================================");
+
+    const monthlyTrendRaw = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          date: { $gte: sixMonthsAgo, $lte: end }, // Use selected period end
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$date" },
+            year: { $year: "$date" },
+          },
+          revenue: { $sum: "$total" },
+          received: {
+            $sum: {
+              $cond: [
+                { $in: ["$paymentMethod", ["cash", "online", "card"]] },
+                "$total",
+                0,
+              ],
+            },
+          },
+          due: { $sum: { $ifNull: ["$dueAmount", 0] } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } },
+    ]);
+
+    // Fetch current period transactions (for accurate current month data)
+    const currentPeriodTransactions = await mongoose.model("Transaction").aggregate([
+      {
+        $match: {
+          type: "payment",
+          date: { $gte: start, $lte: end }, // Exact period only
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoice",
+        },
+      },
+      { $match: { "invoice.createdBy": userId } },
+      {
+        $group: {
+          _id: null,
+          amount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    const currentPeriodTransactionAmount = currentPeriodTransactions[0]?.amount || 0;
+    const endMonth = end.getMonth() + 1; // JS months are 0-indexed
+    const endYear = end.getFullYear();
+
+    console.log("=== CURRENT PERIOD TRANSACTIONS ===");
+    console.log("Period Start:", start);
+    console.log("Period End:", end);
+    console.log("End Month/Year:", endMonth, "/", endYear);
+    console.log("Current Period Transaction Amount:", currentPeriodTransactionAmount);
+    console.log("====================================");
+
+    // Merge Returns & Transactions into Monthly Trend
+    const monthlyTrend = monthlyTrendRaw.map(item => {
+      const monthReturns = monthlyReturnsData.filter(r =>
+        r._id.month === item._id.month && r._id.year === item._id.year
+      );
+
+      // For the current period's end month, use period-specific transactions
+      // For other months, use monthly aggregated transactions
+      const isCurrentMonth = (item._id.month === endMonth && item._id.year === endYear);
+      const transactionAmount = isCurrentMonth
+        ? currentPeriodTransactionAmount
+        : (monthlyTransactionsData.find(t => t._id.month === item._id.month && t._id.year === item._id.year)?.amount || 0);
+
+      const cashRefunds = monthReturns.filter(r => !r._id.isCredit).reduce((sum, r) => sum + r.totalReturns, 0);
+      const creditAdjustments = monthReturns.filter(r => r._id.isCredit).reduce((sum, r) => sum + r.totalReturns, 0);
+      const totalReturns = cashRefunds + creditAdjustments;
+
+      const netRevenue = item.revenue - totalReturns;
+      // Received = (Initial Sales - Cash Refunds) + Due Payments (Transactions)
+      const netReceived = (item.received - cashRefunds) + transactionAmount;
+      // Pending = Net Revenue - Net Received
+      const netDue = netRevenue - netReceived;
+
+      console.log(`Month ${item._id.month}/${item._id.year}: isCurrentMonth=${isCurrentMonth}, transactionAmount=${transactionAmount}`);
+
+      return {
+        month: new Date(0, item._id.month - 1).toLocaleString('default', { month: 'short' }),
+        year: item._id.year,
+        revenue: netRevenue,
+        received: netReceived,
+        due: netDue > 0 ? netDue : 0,
+        profit: netRevenue * 0.95, // Estimated profit
+        collectionRate: netRevenue > 0 ? (netReceived / netRevenue) * 100 : 0,
+        monthNum: item._id.month,
+      };
+    });
+
+    // 6. TIME OF DAY & DAY OF WEEK RETURNS (Selected Period)
+    const periodReturnsData = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          timestamp: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      { $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          soldItem: {
+            $filter: {
+              input: "$invoiceInfo.items",
+              as: "item",
+              cond: { $eq: ["$$item.product", "$product"] }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          soldPrice: { $ifNull: [{ $arrayElemAt: ["$soldItem.price", 0] }, 0] }
+        }
+      },
+      {
+        $addFields: {
+          returnValue: { $multiply: ["$adjustment", "$soldPrice"] },
+          itemProportion: {
+            $cond: [
+              { $gt: [{ $ifNull: ["$invoiceInfo.subtotal", 0] }, 0] },
+              { $divide: [{ $multiply: ["$adjustment", "$soldPrice"] }, "$invoiceInfo.subtotal"] },
+              0,
+            ],
+          },
+          isCreditReturn: { $in: ["$invoiceInfo.paymentMethod", ["due", "credit"]] },
+        },
+      },
+      {
+        $addFields: {
+          proportionalTax: { $multiply: [{ $ifNull: ["$invoiceInfo.tax", 0] }, "$itemProportion"] },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            hour: { $hour: "$timestamp" },
+            day: { $dayOfWeek: "$timestamp" },
+            isCredit: "$isCreditReturn"
+          },
+          totalReturns: { $sum: { $add: ["$returnValue", "$proportionalTax"] } },
+        },
+      },
+    ]);
+
+    // Fetch Period Transactions (for Due Payments)
+    const periodTransactionsData = await mongoose.model("Transaction").aggregate([
+      {
+        $match: {
+          type: "payment",
+          date: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoice",
+        },
+      },
+      { $match: { "invoice.createdBy": userId } },
+      {
+        $group: {
+          _id: {
+            hour: { $hour: "$date" },
+            day: { $dayOfWeek: "$date" },
+          },
+          amount: { $sum: "$amount" },
+        },
+      },
+    ]);
+
+    // 6. TIME OF DAY DATA
+    const timeOfDayRaw = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...dateFilter,
+        },
+      },
+      {
+        $group: {
+          _id: { $hour: "$date" },
+          revenue: { $sum: "$total" },
+          received: {
+            $sum: {
+              $cond: [
+                { $in: ["$paymentMethod", ["cash", "online", "card"]] },
+                "$total",
+                0,
+              ],
+            },
+          },
+          due: { $sum: { $ifNull: ["$dueAmount", 0] } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id": 1 } },
+    ]);
+
+    const timeOfDayData = timeOfDayRaw.map(item => {
+      const hourReturns = periodReturnsData.filter(r => r._id.hour === item._id);
+      const hourTransactions = periodTransactionsData.find(t => t._id.hour === item._id);
+
+      const cashRefunds = hourReturns.filter(r => !r._id.isCredit).reduce((sum, r) => sum + r.totalReturns, 0);
+      const creditAdjustments = hourReturns.filter(r => r._id.isCredit).reduce((sum, r) => sum + r.totalReturns, 0);
+      const transactionAmount = hourTransactions ? hourTransactions.amount : 0;
+
+      const netRevenue = item.revenue - (cashRefunds + creditAdjustments);
+      const netReceived = (item.received - cashRefunds) + transactionAmount;
+      const netDue = netRevenue - netReceived;
+
+      return {
+        hour: item._id,
+        revenue: netRevenue,
+        received: netReceived,
+        due: netDue > 0 ? netDue : 0,
+        count: item.count
+      };
+    });
+
+    // 7. DAY OF WEEK DATA
+    const dayOfWeekRaw = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...dateFilter,
+        },
+      },
+      {
+        $group: {
+          _id: { $dayOfWeek: "$date" },
+          revenue: { $sum: "$total" },
+          received: {
+            $sum: {
+              $cond: [
+                { $in: ["$paymentMethod", ["cash", "online", "card"]] },
+                "$total",
+                0,
+              ],
+            },
+          },
+          orders: { $sum: 1 },
+        },
+      },
+      { $sort: { "_id": 1 } },
+    ]);
+
+    const dayOfWeekData = dayOfWeekRaw.map(item => {
+      const dayReturns = periodReturnsData.filter(r => r._id.day === item._id);
+      const dayTransactions = periodTransactionsData.find(t => t._id.day === item._id);
+
+      const cashRefunds = dayReturns.filter(r => !r._id.isCredit).reduce((sum, r) => sum + r.totalReturns, 0);
+      const creditAdjustments = dayReturns.filter(r => r._id.isCredit).reduce((sum, r) => sum + r.totalReturns, 0);
+      const transactionAmount = dayTransactions ? dayTransactions.amount : 0;
+
+      const netRevenue = item.revenue - (cashRefunds + creditAdjustments);
+      const netReceived = (item.received - cashRefunds) + transactionAmount;
+
+      const days = ["Unknown", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+      return {
+        day: days[item._id] || "Unknown",
+        revenue: netRevenue,
+        received: netReceived,
+        orders: item.orders
+      };
+    });
+
+    // 8. CUSTOMER SEGMENTS - Period-based (Walk-in vs Due)
+    // First, fetch invoices with their transactions
+    const periodCustomerData = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...dateFilter,
+        },
+      },
+      {
+        $lookup: {
+          from: "transactions",
+          localField: "_id",
+          foreignField: "invoiceId",
+          as: "transactions",
+        },
+      },
+      {
+        $group: {
+          _id: {
+            customer: "$customer",
+            isWalkIn: { $in: ["$paymentMethod", ["cash", "online", "card"]] }
+          },
+          revenue: { $sum: "$total" },
+          tax: { $sum: { $ifNull: ["$tax", 0] } },
+          // For Walk-in: Paid = Total
+          // For Due: Paid = Sum of Transactions
+          paid: {
+            $sum: {
+              $cond: [
+                { $in: ["$paymentMethod", ["cash", "online", "card"]] },
+                "$total",
+                { $sum: "$transactions.amount" }
+              ]
+            }
+          },
+          due: { $sum: { $ifNull: ["$dueAmount", 0] } },
+          orderCount: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Calculate returns by customer segment (Walk-in vs Due)
+    const segmentReturns = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          timestamp: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      { $unwind: { path: "$invoiceInfo", preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          soldItem: {
+            $filter: {
+              input: "$invoiceInfo.items",
+              as: "item",
+              cond: { $eq: ["$$item.product", "$product"] }
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          soldPrice: { $ifNull: [{ $arrayElemAt: ["$soldItem.price", 0] }, 0] },
+          isWalkIn: { $in: ["$invoiceInfo.paymentMethod", ["cash", "online", "card"]] }
+        }
+      },
+      {
+        $addFields: {
+          returnValue: { $multiply: ["$adjustment", "$soldPrice"] },
+          itemProportion: {
+            $cond: [
+              { $gt: [{ $ifNull: ["$invoiceInfo.subtotal", 0] }, 0] },
+              { $divide: [{ $multiply: ["$adjustment", "$soldPrice"] }, "$invoiceInfo.subtotal"] },
+              0,
+            ],
+          },
+        },
+      },
+      {
+        $addFields: {
+          proportionalTax: { $multiply: [{ $ifNull: ["$invoiceInfo.tax", 0] }, "$itemProportion"] },
+        },
+      },
+      {
+        $group: {
+          _id: "$isWalkIn",
+          totalReturns: { $sum: { $add: ["$returnValue", "$proportionalTax"] } },
+        },
+      },
+    ]);
+
+    const walkInReturns = segmentReturns.find(r => r._id === true)?.totalReturns || 0;
+    const dueReturns = segmentReturns.find(r => r._id === false)?.totalReturns || 0;
+
+    // Separate into Walk-in and Due customers
+    const walkInCustomers = periodCustomerData.filter(c => c._id.isWalkIn);
+    const dueCustomers = periodCustomerData.filter(c => !c._id.isWalkIn);
+
+    const segmentedCustomers = [
+      {
+        _id: 0,
+        name: "Walk-in",
+        value: walkInCustomers.length,
+        revenue: walkInCustomers.reduce((sum, c) => sum + c.revenue, 0),
+        returns: walkInReturns,
+        tax: walkInCustomers.reduce((sum, c) => sum + c.tax, 0),
+        paid: walkInCustomers.reduce((sum, c) => sum + c.paid, 0) - walkInReturns,
+        due: walkInCustomers.reduce((sum, c) => sum + c.due, 0),
+        collectionRate: 0,
+      },
+      {
+        _id: 1,
+        name: "Due",
+        value: dueCustomers.length,
+        revenue: dueCustomers.reduce((sum, c) => sum + c.revenue, 0),
+        returns: dueReturns,
+        tax: dueCustomers.reduce((sum, c) => sum + c.tax, 0),
+        paid: dueCustomers.reduce((sum, c) => sum + c.paid, 0), // Transactions are actual payments
+        due: dueCustomers.reduce((sum, c) => sum + c.due, 0),
+        collectionRate: 0,
+      },
+    ];
+
+    // Calculate collection rates
+    segmentedCustomers.forEach(segment => {
+      if (segment.revenue > 0) {
+        segment.collectionRate = (segment.paid / segment.revenue) * 100;
+      }
+    });
+
+    // 9. PAYMENT METHOD PERFORMANCE - PERIOD BASED
+    const paymentMethodPerformanceRaw = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...dateFilter,
+        },
+      },
+      {
+        $group: {
+          _id: "$paymentMethod",
+          count: { $sum: 1 },
+          revenue: { $sum: "$total" },
+        },
+      },
+      {
+        $project: {
+          method: "$_id",
+          count: 1,
+          revenue: 1,
+          avgTransactionValue: { $divide: ["$revenue", "$count"] },
+        },
+      },
+    ]);
+
+    const paymentMethodPerformance = paymentMethodPerformanceRaw.map(pm => {
+      const returns = returnsByMethod[pm.method] || 0;
+      return {
+        ...pm,
+        revenue: pm.revenue - returns,
+      };
+    });
+
+    // 10. TOP CUSTOMERS - PERIOD BASED
+    const topCustomers = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...dateFilter,
+        },
+      },
+      {
+        $group: {
+          _id: "$customer",
+          revenue: { $sum: "$total" },
+          orders: { $sum: 1 },
+        },
+      },
+      {
+        $lookup: {
+          from: "customers",
+          localField: "_id",
+          foreignField: "_id",
+          as: "customerInfo",
+        },
+      },
+      { $unwind: "$customerInfo" },
+      {
+        $project: {
+          name: "$customerInfo.name",
+          revenue: 1,
+          orders: 1,
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 10 },
+    ]);
+
+    // 11. TOP PRODUCTS - PERIOD BASED
+    const topProducts = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...dateFilter,
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $group: {
+          _id: "$items.product",
+          revenue: { $sum: "$items.subtotal" },
+          quantity: { $sum: "$items.quantity" },
+        },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $project: {
+          name: "$productInfo.name",
+          revenue: 1,
+          quantity: 1,
+        },
+      },
+      { $sort: { revenue: -1 } },
+      { $limit: 10 },
+    ]);
+
+    // 12. CATEGORY PERFORMANCE - PERIOD BASED
+    const categoryPerformance = await Invoice.aggregate([
+      {
+        $match: {
+          createdBy: userId,
+          status: { $in: ["final", "paid"] },
+          ...dateFilter,
+        },
+      },
+      { $unwind: "$items" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productInfo.category",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$categoryInfo",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$categoryInfo._id",
+          category: {
+            $first: {
+              $ifNull: ["$categoryInfo.name", "Uncategorized"],
+            },
+          },
+          revenue: { $sum: "$items.subtotal" },
+          quantity: { $sum: "$items.quantity" },
+        },
+      },
+      { $sort: { revenue: -1 } },
+    ]);
+
+    // 13. PRODUCT PERFORMANCE (for compatibility)
+    const productPerformance = categoryPerformance.map((cat) => ({
+      category: cat.category,
+      revenue: cat.revenue,
+      score: 100,
+    }));
+
+    // 14. GROWTH CALCULATIONS (simplified)
+    const growthRate = 0;
+    const collectionGrowth = 0;
+
+    // Calculate totalCollected matching Dashboard logic
+    // Total Collected = (Gross Walk-in Sales - Cash Refunds) + Credit Payments
+    const grossWalkInSales = initialSales.totalRevenue || 0;
+    const netWalkInSales = grossWalkInSales - cashRefunds;
+    const totalCollected = netWalkInSales + duePayments;
+
+    // Net Position = (Due Sales - Credit Adjustments) - Due Payments  
+    const grossCreditSales = dueSales.totalRevenue || 0;
+    const netCreditSales = grossCreditSales - creditAdjustments;
+    const netPosition = Math.max(0, netCreditSales - duePayments);
+
+    // Collection Rate = Total Collected / Gross Revenue
+    const grossRevenue = paymentSummary.totalRevenue;
+    const collectionRate = grossRevenue > 0 ? (totalCollected / grossRevenue) * 100 : 0;
+
+    // RETURN COMPREHENSIVE RESPONSE
+    res.json({
+      growthRate,
+      collectionGrowth,
+      revenuePerInvoice:
+        finalCount > 0 ? grossRevenue / finalCount : 0,
+      profitMargin: 95.53,
+      collectionRate,
+      conversionRate,
+      customerRetention,
+      averageOrderFrequency,
+      paymentSummary: {
+        grossRevenue: grossRevenue,
+        netRevenue: netRevenue,
+        totalCollected: totalCollected,
+        netPosition: netPosition,
+        // Legacy fields for compatibility
+        totalRevenue: grossRevenue,
+        actualReceived: totalCollected,
+        totalDue: netPosition,
+        totalCreditUsed: paymentSummary.totalCreditUsed,
+      },
+      returns: {
+        total: returns,
+        count: returnsCount,
+        cashRefunds: cashRefunds,
+        creditAdjustments: creditAdjustments,
+      },
+      // Additional metrics for frontend
+      grossWalkInSales: grossWalkInSales,
+      netWalkInSales: netWalkInSales,
+      grossCreditSales: grossCreditSales,
+      netCreditSales: netCreditSales,
+      creditPayments: duePayments,
+      netRevenue,
+      monthlyTrend,
+      customerSegments: segmentedCustomers,
+      paymentMethodPerformance,
+      productPerformance,
+      timeOfDayData,
+      dayOfWeekData,
+      topCustomers,
+      topProducts,
+      categoryPerformance,
+      period: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        label: period || "custom",
+      },
+    });
+  } catch (error) {
+    console.error("Analytics error:", error);
+    res.status(500).json({
+      message: "Error fetching analytics",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;
+
+

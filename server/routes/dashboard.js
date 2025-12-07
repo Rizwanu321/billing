@@ -7,11 +7,12 @@ const Customer = require("../models/Customer");
 const Category = require("../models/Category");
 const auth = require("../middleware/auth");
 const mongoose = require("mongoose");
+const StockHistory = require("../models/StockHistory");
 
 // Helper function to calculate date ranges
+const generateDashboardPDF = require("../utils/generateDashboardPDF");
+
 // server/routes/dashboard.js - VERIFY THIS DATE CALCULATION
-
-// Helper function to calculate date ranges
 function getDateRange(period, customStart, customEnd) {
   const now = new Date();
   let start,
@@ -44,7 +45,11 @@ function getDateRange(period, customStart, customEnd) {
       );
       break;
     case "week":
-      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      // Start from Monday
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+      start = new Date(now.setDate(diff));
+      start.setHours(0, 0, 0, 0);
       break;
     case "month":
       start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -92,7 +97,11 @@ router.get("/", auth, async (req, res) => {
     // ==========================================
     // 1. GET REVENUE DATA FOR CHART
     // ==========================================
-    const revenueData = await Invoice.aggregate([
+    // ==========================================
+    // 1. GET REVENUE DATA FOR CHART (NET REVENUE)
+    // ==========================================
+    // 1a. Get Gross Revenue by Date
+    const grossRevenueData = await Invoice.aggregate([
       {
         $match: {
           createdBy: userId,
@@ -115,20 +124,109 @@ router.get("/", auth, async (req, res) => {
           count: { $sum: 1 },
         },
       },
+    ]);
+
+    // 1b. Get Returns by Date (with tax logic)
+    const returnsByDate = await StockHistory.aggregate([
       {
-        $sort: { _id: 1 },
+        $match: {
+          user: userId,
+          type: "return",
+          timestamp: { $gte: currentRange.start, $lte: currentRange.end },
+        },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $lookup: {
+          from: "invoices",
+          localField: "invoiceId",
+          foreignField: "_id",
+          as: "invoiceInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$invoiceInfo",
+          preserveNullAndEmptyArrays: true
+        }
       },
       {
         $project: {
-          _id: 0,
-          date: "$_id",
-          revenue: 1,
-          count: 1,
-        },
+          date: { $dateToString: { format: "%Y-%m-%d", date: "$timestamp" } },
+          value: {
+            $cond: {
+              if: {
+                $and: [
+                  { $gt: ["$invoiceInfo.tax", 0] },
+                  { $gt: ["$invoiceInfo.subtotal", 0] }
+                ]
+              },
+              then: {
+                $multiply: [
+                  { $multiply: ["$adjustment", "$productInfo.price"] },
+                  {
+                    $add: [
+                      1,
+                      { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                    ]
+                  }
+                ]
+              },
+              else: { $multiply: ["$adjustment", "$productInfo.price"] }
+            }
+          }
+        }
       },
+      {
+        $group: {
+          _id: "$date",
+          totalReturns: { $sum: "$value" }
+        }
+      }
     ]);
 
-    console.log("Revenue data:", revenueData.length, "records");
+    // 1c. Merge Gross - Returns = Net
+    const netRevenueMap = new Map();
+
+    // Init map with gross data
+    grossRevenueData.forEach(item => {
+      netRevenueMap.set(item._id, {
+        date: item._id,
+        revenue: item.revenue,
+        count: item.count
+      });
+    });
+
+    // Subtract returns
+    returnsByDate.forEach(ret => {
+      const date = ret._id;
+      if (netRevenueMap.has(date)) {
+        const item = netRevenueMap.get(date);
+        item.revenue -= ret.totalReturns;
+      } else {
+        // If there are returns on a day with no sales, technically net revenue is negative
+        // But charts might behave oddly, let's allow negative or zero
+        netRevenueMap.set(date, {
+          date: date,
+          revenue: -ret.totalReturns,
+          count: 0
+        });
+      }
+    });
+
+    // Convert map to array and sort
+    const revenueData = Array.from(netRevenueMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    console.log("Revenue data (Net):", revenueData.length, "records");
 
     // ==========================================
     // 2. GET TOP PRODUCTS
@@ -176,9 +274,10 @@ router.get("/", auth, async (req, res) => {
     console.log("Top products:", topProducts.length, "products");
 
     // ==========================================
-    // 3. GET SALES BY CATEGORY
+    // 3. GET SALES BY CATEGORY (NET SALES)
     // ==========================================
-    const salesByCategory = await Invoice.aggregate([
+    // 3a. Gross Sales by Category
+    const grossSalesByCategory = await Invoice.aggregate([
       {
         $match: {
           createdBy: userId,
@@ -229,8 +328,79 @@ router.get("/", auth, async (req, res) => {
           totalValue: { $sum: "$items.subtotal" },
         },
       },
-      { $sort: { totalValue: -1 } },
     ]);
+
+    // 3b. Returns by Category
+    const returnsByCategory = await StockHistory.aggregate([
+      {
+        $match: {
+          user: userId,
+          type: "return",
+          timestamp: { $gte: currentRange.start, $lte: currentRange.end },
+        },
+      },
+      {
+        $lookup: {
+          from: "products",
+          localField: "product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      { $unwind: "$productInfo" },
+      {
+        $lookup: {
+          from: "categories",
+          localField: "productInfo.category",
+          foreignField: "_id",
+          as: "categoryInfo",
+        },
+      },
+      {
+        $unwind: {
+          path: "$categoryInfo",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $project: {
+          categoryId: "$categoryInfo._id",
+          value: { $multiply: ["$adjustment", "$productInfo.price"] } // Category breakdown usually on subtotal basis (pre-tax)
+        }
+      },
+      {
+        $group: {
+          _id: "$categoryId",
+          returnedValue: { $sum: "$value" }
+        }
+      }
+    ]);
+
+    // 3c. Merge Gross - Returns = Net
+    const netCategoryMap = new Map();
+
+    grossSalesByCategory.forEach(cat => {
+      netCategoryMap.set(cat._id.toString(), {
+        name: cat.name,
+        totalValue: cat.totalValue
+      });
+    });
+
+    returnsByCategory.forEach(ret => {
+      const catId = ret._id.toString();
+      if (netCategoryMap.has(catId)) {
+        const cat = netCategoryMap.get(catId);
+        cat.totalValue -= ret.returnedValue;
+      }
+      // If returns exist for a category with no sales in this period, we could add it,
+      // but usually for a 'Sales by Category' chart we focus on active sales logic.
+      // Ignoring purely negative category performance for now to avoid pie chart errors.
+    });
+
+    const salesByCategory = Array.from(netCategoryMap.values())
+      .filter(cat => cat.totalValue > 0) // Pie charts don't like negative values
+      .sort((a, b) => b.totalValue - a.totalValue);
+
 
     // Calculate percentages
     const totalCategoryValue = salesByCategory.reduce(
@@ -247,7 +417,7 @@ router.get("/", auth, async (req, res) => {
       totalValue: cat.totalValue,
     }));
 
-    console.log("Sales by category:", formattedCategories.length, "categories");
+    console.log("Sales by category (Net):", formattedCategories.length, "categories");
 
     // ==========================================
     // 4. GET RECENT TRANSACTIONS
@@ -294,105 +464,148 @@ router.get("/", auth, async (req, res) => {
     console.log("Stock alerts:", stockAlerts.length, "alerts");
 
     // ==========================================
-    // 6. CALCULATE STATISTICS
+    // 6. CALCULATE STATISTICS (NET REVENUE)
     // ==========================================
 
-    // Current period stats
-    const currentStats = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          createdAt: {
-            $gte: currentRange.start,
-            $lte: currentRange.end,
+    // Helper to calculate Net Revenue (Gross - Returns)
+    const calculatePeriodFinancials = async (uid, start, end) => {
+      // 1. Gross Revenue & Orders
+      const salesStats = await Invoice.aggregate([
+        {
+          $match: {
+            createdBy: uid,
+            createdAt: { $gte: start, $lte: end },
+            status: { $in: ["final", "paid"] },
           },
-          status: { $in: ["final", "paid"] },
         },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$total" },
-          totalOrders: { $sum: 1 },
-        },
-      },
-    ]);
-
-    // Previous period stats
-    const previousStats = await Invoice.aggregate([
-      {
-        $match: {
-          createdBy: userId,
-          createdAt: {
-            $gte: previousRange.start,
-            $lte: previousRange.end,
+        {
+          $group: {
+            _id: null,
+            grossRevenue: { $sum: "$total" },
+            orders: { $sum: 1 },
           },
-          status: { $in: ["final", "paid"] },
         },
-      },
-      {
-        $group: {
-          _id: null,
-          totalRevenue: { $sum: "$total" },
-          totalOrders: { $sum: 1 },
-        },
-      },
-    ]);
+      ]);
+      const grossRevenue = salesStats[0]?.grossRevenue || 0;
+      const orders = salesStats[0]?.orders || 0;
 
-    // Customer stats
+      // 2. Returns Value - MATCH REVENUE DASHBOARD LOGIC (INCLUDE TAX)
+      const returnsStats = await StockHistory.aggregate([
+        {
+          $match: {
+            user: uid,
+            type: "return",
+            timestamp: { $gte: start, $lte: end },
+          },
+        },
+        {
+          $lookup: {
+            from: "products",
+            localField: "product",
+            foreignField: "_id",
+            as: "productInfo",
+          },
+        },
+        { $unwind: "$productInfo" },
+        {
+          $lookup: {
+            from: "invoices",
+            localField: "invoiceId",
+            foreignField: "_id",
+            as: "invoiceInfo",
+          },
+        },
+        {
+          $unwind: {
+            path: "$invoiceInfo",
+            preserveNullAndEmptyArrays: true
+          }
+        },
+        {
+          $project: {
+            value: {
+              $cond: {
+                if: {
+                  $and: [
+                    { $gt: ["$invoiceInfo.tax", 0] },
+                    { $gt: ["$invoiceInfo.subtotal", 0] }
+                  ]
+                },
+                then: {
+                  // Include proportional tax: (quantity × price) × (1 + tax/subtotal)
+                  $multiply: [
+                    { $multiply: ["$adjustment", "$productInfo.price"] },
+                    {
+                      $add: [
+                        1,
+                        { $divide: ["$invoiceInfo.tax", "$invoiceInfo.subtotal"] }
+                      ]
+                    }
+                  ]
+                },
+                else: { $multiply: ["$adjustment", "$productInfo.price"] } // No tax
+              }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalReturns: { $sum: "$value" }
+          }
+        }
+      ]);
+      const totalReturns = returnsStats[0]?.totalReturns || 0;
+
+      // 3. Customers (New in period)
+      const customers = await Customer.countDocuments({
+        createdBy: uid,
+        createdAt: { $gte: start, $lte: end },
+      });
+
+      return {
+        revenue: grossRevenue - totalReturns, // Net Revenue
+        orders,
+        customers,
+        grossRevenue,
+        returns: totalReturns
+      };
+    };
+
+    const currentFinancials = await calculatePeriodFinancials(
+      userId,
+      currentRange.start,
+      currentRange.end
+    );
+
+    const previousFinancials = await calculatePeriodFinancials(
+      userId,
+      previousRange.start,
+      previousRange.end
+    );
+
+    // Total Customers (All Time)
     const totalCustomers = await Customer.countDocuments({
       createdBy: userId,
     });
 
-    const currentPeriodCustomers = await Customer.countDocuments({
-      createdBy: userId,
-      createdAt: {
-        $gte: currentRange.start,
-        $lte: currentRange.end,
-      },
-    });
+    const currentRevenue = currentFinancials.revenue;
+    const previousRevenue = previousFinancials.revenue;
+    const currentOrders = currentFinancials.orders;
+    const previousOrders = previousFinancials.orders;
 
-    const previousPeriodCustomers = await Customer.countDocuments({
-      createdBy: userId,
-      createdAt: {
-        $gte: previousRange.start,
-        $lte: previousRange.end,
-      },
-    });
+    const calculatePercentChange = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
 
-    // Extract values
-    const currentRevenue = currentStats[0]?.totalRevenue || 0;
-    const previousRevenue = previousStats[0]?.totalRevenue || 0;
-    const currentOrders = currentStats[0]?.totalOrders || 0;
-    const previousOrders = previousStats[0]?.totalOrders || 0;
-
-    // Calculate percentage changes
-    const revenueChange =
-      previousRevenue > 0
-        ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
-        : currentRevenue > 0
-        ? 100
-        : 0;
-
-    const ordersChange =
-      previousOrders > 0
-        ? ((currentOrders - previousOrders) / previousOrders) * 100
-        : currentOrders > 0
-        ? 100
-        : 0;
-
-    const customersChange =
-      previousPeriodCustomers > 0
-        ? ((currentPeriodCustomers - previousPeriodCustomers) /
-            previousPeriodCustomers) *
-          100
-        : currentPeriodCustomers > 0
-        ? 100
-        : 0;
+    const revenueChange = calculatePercentChange(currentFinancials.revenue, previousFinancials.revenue);
+    const ordersChange = calculatePercentChange(currentFinancials.orders, previousFinancials.orders);
+    const customersChange = calculatePercentChange(currentFinancials.customers, previousFinancials.customers);
 
     const statistics = {
       revenue: {
-        value: currentRevenue,
+        value: currentFinancials.revenue,
         change: Math.abs(parseFloat(revenueChange.toFixed(1))),
         isPositive: revenueChange >= 0,
       },
@@ -402,7 +615,7 @@ router.get("/", auth, async (req, res) => {
         isPositive: customersChange >= 0,
       },
       orders: {
-        value: currentOrders,
+        value: currentFinancials.orders,
         change: Math.abs(parseFloat(ordersChange.toFixed(1))),
         isPositive: ordersChange >= 0,
       },
@@ -696,9 +909,8 @@ function generateDashboardCSV(data) {
   csv += "Recent Transactions\n";
   csv += "Date,Invoice Number,Customer,Total,Status\n";
   data.transactions.forEach((t) => {
-    csv += `${new Date(t.createdAt).toLocaleDateString()},${t.invoiceNumber},"${
-      t.customer?.name || "Walk-in"
-    }",${t.total},${t.status}\n`;
+    csv += `${new Date(t.createdAt).toLocaleDateString()},${t.invoiceNumber},"${t.customer?.name || "Walk-in"
+      }",${t.total},${t.status}\n`;
   });
 
   csv += "\n\nProducts\n";
@@ -795,25 +1007,25 @@ router.get("/sales-analytics", auth, async (req, res) => {
           period:
             period === "weekly"
               ? {
-                  $concat: [
-                    "W",
-                    { $toString: "$_id.week" },
-                    "-",
-                    { $toString: "$_id.year" },
-                  ],
-                }
+                $concat: [
+                  "W",
+                  { $toString: "$_id.week" },
+                  "-",
+                  { $toString: "$_id.year" },
+                ],
+              }
               : {
-                  $dateToString: {
-                    format: dateFormat,
-                    date: {
-                      $dateFromParts: {
-                        year: "$_id.year", // Always include year
-                        month: { $ifNull: ["$_id.month", 1] },
-                        day: { $ifNull: ["$_id.day", 1] },
-                      },
+                $dateToString: {
+                  format: dateFormat,
+                  date: {
+                    $dateFromParts: {
+                      year: "$_id.year", // Always include year
+                      month: { $ifNull: ["$_id.month", 1] },
+                      day: { $ifNull: ["$_id.day", 1] },
                     },
                   },
                 },
+              },
           sales: 1,
           count: 1,
         },
@@ -939,12 +1151,12 @@ router.get("/sales-analytics", auth, async (req, res) => {
             period === "monthly"
               ? { $month: "$createdAt" }
               : period === "weekly"
-              ? { $week: "$createdAt" }
-              : period === "daily"
-              ? {
-                  $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-                }
-              : { $year: "$createdAt" },
+                ? { $week: "$createdAt" }
+                : period === "daily"
+                  ? {
+                    $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+                  }
+                  : { $year: "$createdAt" },
           sales: { $sum: "$total" },
         },
       },
@@ -960,31 +1172,31 @@ router.get("/sales-analytics", auth, async (req, res) => {
           period:
             period === "monthly"
               ? {
-                  $let: {
-                    vars: {
-                      monthsInString: [
-                        "January",
-                        "February",
-                        "March",
-                        "April",
-                        "May",
-                        "June",
-                        "July",
-                        "August",
-                        "September",
-                        "October",
-                        "November",
-                        "December",
-                      ],
-                    },
-                    in: {
-                      $arrayElemAt: [
-                        "$$monthsInString",
-                        { $subtract: ["$_id", 1] },
-                      ],
-                    },
+                $let: {
+                  vars: {
+                    monthsInString: [
+                      "January",
+                      "February",
+                      "March",
+                      "April",
+                      "May",
+                      "June",
+                      "July",
+                      "August",
+                      "September",
+                      "October",
+                      "November",
+                      "December",
+                    ],
                   },
-                }
+                  in: {
+                    $arrayElemAt: [
+                      "$$monthsInString",
+                      { $subtract: ["$_id", 1] },
+                    ],
+                  },
+                },
+              }
               : "$_id",
           sales: 1,
         },

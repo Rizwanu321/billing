@@ -18,7 +18,6 @@ import {
   Home,
   LogOut,
   UserCircle,
-  Activity,
   PieChart,
   RotateCcw,
 } from "lucide-react";
@@ -143,11 +142,6 @@ const Sidebar = ({
         { icon: Users, label: "Add Customer", path: "/customers/new" },
         { icon: BarChart2, label: "View Customers", path: "/customers/list" },
         { icon: PieChart, label: "Customer Stats", path: "/customers/stats" }, // NEW
-        {
-          icon: Activity,
-          label: "Recent Activity",
-          path: "/customers/activity",
-        }, // NEW
       ],
     },
     { icon: Settings, label: "Settings", path: "/settings", single: true },

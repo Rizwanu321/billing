@@ -390,7 +390,7 @@ const ProductReturns = () => {
                             </button>
                             <button
                                 onClick={exportToCSV}
-                                disabled={returnsData.length === 0}
+                                disabled={true}
                                 className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Download className="w-4 h-4" />
@@ -499,6 +499,91 @@ const ProductReturns = () => {
                             }
                             color="bg-gradient-to-br from-rose-500 to-rose-600"
                         />
+                    </div>
+                )}
+
+                {/* Returns Breakdown Section - Similar to Dashboard */}
+                {summary && (summary.cashRefunds || summary.creditAdjustments) && (
+                    <div className="bg-white rounded-xl shadow-md p-6 mb-8">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <RotateCcw className="w-5 h-5 text-orange-600" />
+                            Returns Breakdown
+                        </h3>
+                        <p className="text-gray-600 text-sm mb-6">
+                            Understanding how returns impact your cash flow
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Total Returns */}
+                            <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-5 border border-orange-200">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-orange-500 rounded-lg">
+                                        <TrendingDown className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900">Total Returns</h4>
+                                        <p className="text-xs text-gray-600">{summary.totalReturnCount || 0} return transactions</p>
+                                    </div>
+                                </div>
+                                <p className="text-2xl font-bold text-orange-600">
+                                    {formatCurrency(summary.totalReturnValue || 0)}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    All returns (walk-in + due customer)
+                                </p>
+                            </div>
+
+                            {/* Cash Refunds - Walk-in Returns */}
+                            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-5 border border-red-200">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-red-500 rounded-lg">
+                                        <IndianRupee className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900">Cash Refunds</h4>
+                                        <p className="text-xs text-gray-600">Walk-in Returns</p>
+                                    </div>
+                                </div>
+                                <p className="text-2xl font-bold text-red-600">
+                                    {formatCurrency(summary.cashRefunds?.value || 0)}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    {summary.cashRefunds?.count || 0} walk-in customer returns (money out)
+                                </p>
+                            </div>
+
+                            {/* Credit Adjustments - Due Customer Returns */}
+                            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-5 border border-amber-200">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="p-2 bg-amber-500 rounded-lg">
+                                        <Tag className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-gray-900">Credit Adjustments</h4>
+                                        <p className="text-xs text-gray-600">Due Customer Returns</p>
+                                    </div>
+                                </div>
+                                <p className="text-2xl font-bold text-amber-600">
+                                    {formatCurrency(summary.creditAdjustments?.value || 0)}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    {summary.creditAdjustments?.count || 0} returns from credit customers (no cash out)
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Explanation Box */}
+                        <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-100">
+                            <h4 className="font-semibold text-blue-900 mb-2">Understanding Return Types</h4>
+                            <div className="space-y-2 text-sm text-blue-800">
+                                <p>
+                                    <span className="font-medium">Cash Refunds:</span> Money refunded to walk-in customers who returned products. This reduces your "Total Collected" amount.
+                                </p>
+                                <p>
+                                    <span className="font-medium">Credit Adjustments:</span> Returns from customers with credit accounts. No money was refunded - instead, their outstanding balance was reduced. This does NOT affect "Total Collected".
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 )}
 

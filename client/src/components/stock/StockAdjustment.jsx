@@ -39,6 +39,8 @@ const StockAdjustment = () => {
   const [showCustomerReturnDialog, setShowCustomerReturnDialog] = useState(false);
   const [customerReturnData, setCustomerReturnData] = useState(null);
   const [linkToDueCustomer, setLinkToDueCustomer] = useState(false);
+  const [refundMethod, setRefundMethod] = useState("cash"); // How the refund was given
+  const [activeTab, setActiveTab] = useState("additions");
 
   // Professional adjustment types with proper categorization
   const adjustmentTypes = {
@@ -178,7 +180,7 @@ const StockAdjustment = () => {
   const loadProducts = async () => {
     try {
       const data = await fetchProducts();
-      setProducts(data.filter((p) => p.isStockRequired));
+      setProducts(data); // Show all products, not just stock-required ones
     } catch (error) {
       toast.error("Failed to load products");
     }
@@ -357,6 +359,11 @@ const StockAdjustment = () => {
         adjustmentPayload.returnSubtotal = customerReturnData.subtotal;
       }
 
+      // Add refund method for walk-in customer returns
+      if (adjustmentType === "return_from_customer" && !linkToDueCustomer && refundMethod) {
+        adjustmentPayload.refundMethod = refundMethod;
+      }
+
       const response = await batchStockAdjustment(adjustmentPayload);
 
       // Dismiss loading toast
@@ -415,6 +422,7 @@ const StockAdjustment = () => {
       setReferenceNumber("");
       setCustomerReturnData(null);
       setLinkToDueCustomer(false);
+      setRefundMethod("cash"); // Reset to default
       loadProducts();
     } catch (error) {
       // Professional Error Messages
@@ -484,76 +492,106 @@ const StockAdjustment = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 animate-fadeIn">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex-shrink-0 bg-gradient-to-br from-purple-500 to-purple-600 p-2.5 sm:p-3 rounded-xl shadow-lg">
-              <RefreshCw className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight">
-                Stock Adjustment
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-0.5 sm:mt-1">
-                Make professional stock adjustments with proper tracking
-              </p>
-            </div>
+    <div className="min-h-screen bg-slate-50/50 font-sans pb-12">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 sm:px-6 lg:px-8 py-4 mb-6 sm:mb-8 transition-all duration-200">
+        <div className="max-w-7xl mx-auto flex items-center gap-3 sm:gap-4">
+          <div className="flex-shrink-0 bg-gradient-to-br from-blue-600 to-indigo-600 p-2.5 rounded-xl shadow-lg shadow-blue-500/20 ring-1 ring-black/5">
+            <RefreshCw className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Stock Adjustment</h1>
+            <p className="text-sm text-slate-500 font-medium">Manage and track inventory changes</p>
           </div>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
         {/* Adjustment Type Selection */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-4 sm:mb-6 animate-fadeIn">
-          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-600" />
-            Select Adjustment Type
-          </h3>
+        {/* Adjustment Type Selection - Professional Tabs & Grid */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6 animate-fadeIn">
+          {/* Tabs header */}
+          <div className="flex border-b border-slate-200 bg-slate-50/50 backdrop-blur-sm">
+            {[
+              { id: 'additions', label: 'Stock Additions', icon: TrendingUp, color: 'emerald' },
+              { id: 'removals', label: 'Stock Removals', icon: TrendingDown, color: 'rose' }
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              const ColorIcon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setAdjustmentType('');
+                    setAdjustmentReason('');
+                    setReferenceNumber('');
+                  }}
+                  className={`
+                    flex-1 py-4 px-4 flex items-center justify-center gap-2.5 text-sm sm:text-base font-semibold transition-all relative outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500
+                    ${isActive
+                      ? 'bg-white text-slate-900 shadow-[0_-1px_2px_rgba(0,0,0,0.02)]'
+                      : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'
+                    }
+                  `}
+                >
+                  <ColorIcon className={`w-4 h-4 sm:w-5 sm:h-5 ${isActive ? `text-${tab.color}-600` : 'text-slate-400'}`} />
+                  {tab.label}
+                  {isActive && (
+                    <div className={`absolute bottom-0 left-0 w-full h-0.5 bg-${tab.color}-500 transition-all`} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-          <div className="space-y-4 sm:space-y-6">
-            {Object.entries(adjustmentTypes).map(([key, category]) => (
-              <div key={key}>
-                <h4 className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">
-                  <category.icon
-                    className={`w-4 h-4 sm:w-5 sm:h-5 text-${category.color}-600`}
-                  />
-                  {category.label}
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-                  {category.types.map((type) => (
-                    <button
-                      key={type.value}
-                      onClick={() => {
-                        setAdjustmentType(type.value);
-                        setAdjustmentReason("");
-                        setReferenceNumber("");
-                      }}
-                      className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all hover:shadow-md ${adjustmentType === type.value
-                        ? `border-${category.color}-500 bg-${category.color}-50 shadow-sm`
-                        : "border-gray-200 hover:border-gray-300"
-                        }`}
-                    >
-                      <div className="flex items-start gap-2 sm:gap-3">
-                        <type.icon
-                          className={`w-4 h-4 sm:w-5 sm:h-5 mt-0.5 flex-shrink-0 ${adjustmentType === type.value
-                            ? `text-${category.color}-600`
-                            : "text-gray-400"
-                            }`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h5 className="text-sm sm:text-base font-medium text-gray-900 line-clamp-1">
-                            {type.label}
-                          </h5>
-                          <p className="text-xs text-gray-500 mt-0.5 sm:mt-1 line-clamp-2">
-                            {type.description}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div className="p-4 sm:p-6 bg-white">
+            {/* Dynamic Content based on Active Tab */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {adjustmentTypes[activeTab].types.map((type) => (
+                <button
+                  key={type.value}
+                  onClick={() => {
+                    setAdjustmentType(type.value);
+                    setAdjustmentReason("");
+                    setReferenceNumber("");
+                  }}
+                  className={`
+                      group relative p-4 rounded-xl border transition-all duration-200 text-left hover:shadow-md
+                      ${adjustmentType === type.value
+                      ? `border-${adjustmentTypes[activeTab].color === 'green' ? 'emerald' : 'rose'}-500 bg-${adjustmentTypes[activeTab].color === 'green' ? 'emerald' : 'rose'}-50 shadow-sm ring-1 ring-${adjustmentTypes[activeTab].color === 'green' ? 'emerald' : 'rose'}-500/20`
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                    }
+                    `}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`
+                        p-2 rounded-lg flex-shrink-0 transition-colors
+                        ${adjustmentType === type.value
+                        ? `bg-white text-${adjustmentTypes[activeTab].color === 'green' ? 'emerald' : 'rose'}-600 shadow-sm`
+                        : "bg-slate-100 text-slate-500 group-hover:bg-white group-hover:text-slate-700 group-hover:shadow-sm"
+                      }
+                      `}>
+                      <type.icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <h5 className={`font-semibold text-sm sm:text-base mb-1 ${adjustmentType === type.value ? 'text-slate-900' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                        {type.label}
+                      </h5>
+                      <p className={`text-xs sm:text-sm line-clamp-2 ${adjustmentType === type.value ? 'text-slate-600' : 'text-slate-500'}`}>
+                        {type.description}
+                      </p>
+                    </div>
+
+                    {adjustmentType === type.value && (
+                      <div className={`absolute top-3 right-3 w-2 h-2 rounded-full bg-${adjustmentTypes[activeTab].color === 'green' ? 'emerald' : 'rose'}-500`} />
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -568,13 +606,13 @@ const StockAdjustment = () => {
 
               {/* Search */}
               <div className="relative mb-3 sm:mb-4">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                 <input
                   type="text"
                   placeholder="Search products..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm outline-none"
                 />
               </div>
 
@@ -588,29 +626,34 @@ const StockAdjustment = () => {
                   return (
                     <div
                       key={product._id}
-                      className={`p-3 border rounded-lg cursor-pointer transition-all ${isSelected
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
+                      className={`group relative p-3 rounded-xl border transition-all cursor-pointer ${isSelected
+                        ? "border-blue-500 bg-blue-50/50 ring-1 ring-blue-500/20"
+                        : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                         }`}
                       onClick={() =>
                         !isSelected && addProductForAdjustment(product)
                       }
                     >
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <p className="font-medium">{product.name}</p>
-                          <div className="flex items-center gap-3 text-sm text-gray-500">
-                            <span>
-                              Current: {product.stock} {product.unit}
+                      <div className="flex justify-between items-center gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className={`font-semibold text-sm sm:text-base mb-1 truncate ${isSelected ? 'text-blue-900' : 'text-slate-900'}`}>
+                            {product.name}
+                          </p>
+                          <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500">
+                            <span className="font-medium bg-slate-100 px-2 py-0.5 rounded text-slate-600">
+                              {product.stock} {product.unit}
                             </span>
-                            <span>•</span>
-                            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                            <span className="truncate text-slate-400">
                               {product.category?.name || "Uncategorized"}
                             </span>
                           </div>
                         </div>
-                        {isSelected && (
-                          <CheckCircle className="w-5 h-5 text-blue-600" />
+                        {isSelected ? (
+                          <div className="bg-blue-500 rounded-full p-1 text-white shadow-sm">
+                            <CheckCircle className="w-4 h-4" />
+                          </div>
+                        ) : (
+                          <div className="w-6 h-6 rounded-full border-2 border-slate-200 group-hover:border-slate-400 transition-colors" />
                         )}
                       </div>
                     </div>
@@ -659,7 +702,7 @@ const StockAdjustment = () => {
                   {adjustmentType === "return_from_customer" && (
                     <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-4">
                       <label className="flex items-start gap-3 cursor-pointer group">
-                        <div className="flex items-center h-6">
+                        <div className="flex items-center h-6 shrink-0">
                           <input
                             type="checkbox"
                             checked={linkToDueCustomer}
@@ -669,7 +712,7 @@ const StockAdjustment = () => {
                                 setCustomerReturnData(null);
                               }
                             }}
-                            className="w-5 h-5 rounded border-2 border-purple-400 text-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 cursor-pointer transition-all"
+                            className="w-5 h-5 min-h-[20px] min-w-[20px] rounded border-2 border-purple-400 text-purple-600 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 cursor-pointer transition-all shrink-0 aspect-square"
                           />
                         </div>
                         <div className="flex-1">
@@ -722,6 +765,39 @@ const StockAdjustment = () => {
                           Products will be validated against this invoice to ensure they exist and quantities don't exceed the invoice.
                         </p>
                       </div>
+
+                      {/* Refund Method Selector */}
+                      <div className="mt-4">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                          Refund Method <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { value: 'cash', label: 'Cash', icon: '💵' },
+                            { value: 'card', label: 'Card', icon: '💳' },
+                            { value: 'online', label: 'Online', icon: '📱' },
+                            { value: 'other', label: 'Other', icon: '🔄' }
+                          ].map((method) => (
+                            <button
+                              key={method.value}
+                              type="button"
+                              onClick={() => setRefundMethod(method.value)}
+                              className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${refundMethod === method.value
+                                ? 'border-amber-500 bg-amber-50 text-amber-900'
+                                : 'border-gray-300 hover:border-gray-400 text-gray-700'
+                                }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{method.icon}</span>
+                                <span>{method.label}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 italic">
+                          How did you refund the money to the customer?
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -761,94 +837,66 @@ const StockAdjustment = () => {
                       return (
                         <div
                           key={product._id}
-                          className="p-3 sm:p-4 border border-gray-200 rounded-xl bg-gray-50 hover:shadow-sm transition-shadow"
+                          className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-all duration-200 group"
                         >
-                          <div className="flex justify-between items-start mb-2 sm:mb-3">
-                            <div className="flex-1 min-w-0 pr-2">
-                              <p className="text-sm sm:text-base font-medium text-gray-900 truncate">
-                                {product.name}
-                              </p>
-                              <p className="text-xs sm:text-sm text-gray-600">
-                                Current: {product.stock} {product.unit}
-                              </p>
+                          {/* Item Header */}
+                          <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-start gap-2">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-800 text-sm truncate">{product.name}</p>
+                              <p className="text-xs text-slate-500">Current Stock: {product.stock} {product.unit}</p>
                             </div>
                             <button
-                              onClick={() =>
-                                removeProductFromAdjustment(product._id)
-                              }
-                              className="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0 p-1"
+                              onClick={() => removeProductFromAdjustment(product._id)}
+                              className="text-slate-400 hover:text-rose-500 p-1 opacity-0 group-hover:opacity-100 transition-all rounded hover:bg-rose-50"
+                              title="Remove item"
                             >
-                              <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                              <X className="w-4 h-4" />
                             </button>
                           </div>
 
-                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              {isRemoval ? (
-                                <Minus className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
-                              ) : (
-                                <Plus className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
-                              )}
-                              <span
-                                className={`text-sm sm:text-base font-medium ${isRemoval ? "text-red-600" : "text-green-600"
-                                  }`}
-                              >
-                                {isRemoval ? "Remove" : "Add"}
+                          {/* Adjustment Input */}
+                          <div className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${isRemoval ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                {isRemoval ? <Minus size={12} strokeWidth={3} /> : <Plus size={12} strokeWidth={3} />}
+                                {isRemoval ? "REMOVE" : "ADD"}
+                              </div>
+                              <div className="flex-1 relative">
+                                <input
+                                  type="number"
+                                  value={product.adjustmentQuantity}
+                                  onChange={(e) => updateAdjustment(product._id, "adjustmentQuantity", parseFloat(e.target.value) || 0)}
+                                  min={product.minQuantity || 0.01}
+                                  step={product.minQuantity || 0.01}
+                                  className="w-full pl-3 pr-12 py-1.5 text-sm font-medium border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-right"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400 pointer-events-none">
+                                  {product.unit}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Result Preview */}
+                            <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-50 pt-2">
+                              <span className="text-slate-500">Resulting Stock:</span>
+                              <span className={`font-mono font-bold ${(isRemoval && (product.stock - product.adjustmentQuantity < 0))
+                                ? 'text-rose-600'
+                                : 'text-slate-700'
+                                }`}>
+                                {isRemoval
+                                  ? Math.max(0, Number((product.stock - product.adjustmentQuantity).toFixed(2)))
+                                  : Number((product.stock + product.adjustmentQuantity).toFixed(2))
+                                } {product.unit}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2 flex-1">
-                              <input
-                                type="number"
-                                value={product.adjustmentQuantity}
-                                onChange={(e) =>
-                                  updateAdjustment(
-                                    product._id,
-                                    "adjustmentQuantity",
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                min={product.minQuantity || 0.01}
-                                step={product.minQuantity || 0.01}
-                                className="flex-1 px-2 sm:px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-blue-500 transition-all"
-                              />
-
-                              <span className="px-2 sm:px-3 py-2 bg-white border border-gray-300 rounded-lg text-xs sm:text-sm font-medium whitespace-nowrap">
-                                {product.unit}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0 text-xs sm:text-sm">
-                            <span className="text-gray-600">
-                              New stock:
-                            </span>
-                            <span
-                              className={`font-bold ${isRemoval
-                                ? product.stock - product.adjustmentQuantity <
-                                  0
-                                  ? "text-red-600"
-                                  : "text-gray-900"
-                                : "text-gray-900"
-                                }`}
-                            >
-                              {isRemoval
-                                ? Math.max(
-                                  0,
-                                  product.stock - product.adjustmentQuantity
-                                )
-                                : product.stock +
-                                product.adjustmentQuantity}{" "}
-                              {product.unit}
-                            </span>
-                          </div>
-
-                          {isRemoval &&
-                            product.stock - product.adjustmentQuantity < 0 && (
-                              <p className="text-xs text-red-600 mt-2 bg-red-50 p-2 rounded-lg border border-red-200">
-                                ⚠️ Insufficient stock! Max: {product.stock} {product.unit}
-                              </p>
+                            {isRemoval && (product.stock - product.adjustmentQuantity < 0) && (
+                              <div className="mt-2 text-xs bg-rose-50 text-rose-600 p-2 rounded flex items-center gap-1.5">
+                                <AlertCircle size={12} />
+                                <span>Exceeds available stock!</span>
+                              </div>
                             )}
+                          </div>
                         </div>
                       );
                     })}
@@ -910,31 +958,31 @@ const StockAdjustment = () => {
                   </div>
 
                   {/* Summary */}
-                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-3 sm:p-4 border border-gray-200">
-                    <h4 className="text-sm sm:text-base font-medium text-gray-900 mb-2">
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                    <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                      <FileText size={16} className="text-slate-500" />
                       Adjustment Summary
                     </h4>
-                    <div className="space-y-1 text-xs sm:text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Type:</span>
-                        <span className="font-medium text-gray-900">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
+                        <span className="text-slate-500">Adjustment Type</span>
+                        <span className="font-medium text-slate-900">
                           {getSelectedAdjustmentType()?.label}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Products:</span>
-                        <span className="font-medium text-gray-900">
-                          {selectedProducts.length} selected
+                      <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
+                        <span className="text-slate-500">Selected Products</span>
+                        <span className="font-medium text-slate-900">
+                          {selectedProducts.length} items
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total items:</span>
-                        <span className="font-medium text-gray-900">
+                      <div className="flex justify-between items-center py-1 pt-2">
+                        <span className="text-slate-500">Total Quantity Change</span>
+                        <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm">
                           {selectedProducts.reduce(
                             (sum, p) => sum + p.adjustmentQuantity,
                             0
-                          )}{" "}
-                          units
+                          ).toFixed(2)} units
                         </span>
                       </div>
                     </div>
