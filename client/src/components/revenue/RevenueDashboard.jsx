@@ -38,6 +38,7 @@ import {
   Menu,
   Infinity,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   LineChart,
   Line,
@@ -144,6 +145,7 @@ const ErrorDisplay = ({ error, onRetry }) => (
 );
 
 const RevenueDashboard = () => {
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [revenueData, setRevenueData] = useState(null);
@@ -630,11 +632,11 @@ const RevenueDashboard = () => {
   // Get payment method label
   const getPaymentMethodLabel = (method) => {
     const labels = {
-      cash: "Cash",
-      online: "Online",
-      card: "Card",
-      due: "Due/Credit",
-      other: "Other",
+      cash: t('payment.cash'),
+      online: t('payment.online'),
+      card: t('payment.card'),
+      due: t('payment.due'),
+      other: t('payment.other'),
     };
     return labels[method] || method.charAt(0).toUpperCase() + method.slice(1);
   };
@@ -705,7 +707,7 @@ const RevenueDashboard = () => {
       return (
         <div className="bg-white p-3 shadow-lg rounded-lg border border-gray-200">
           <p className="font-semibold text-gray-900 text-sm mb-2">
-            {new Date(label).toLocaleDateString("en-IN", {
+            {new Date(label).toLocaleDateString(i18n.language, {
               day: "numeric",
               month: "short",
               year: "numeric",
@@ -724,13 +726,13 @@ const RevenueDashboard = () => {
           {data.refunds > 0 && (
             <div className="mt-2 pt-2 border-t border-gray-100">
               <p className="text-xs flex justify-between gap-4 text-rose-600">
-                <span>Refunds:</span>
+                <span>{t('revenue.cashRefunds')}:</span>
                 <span className="font-medium">
                   -{formatCurrency(data.refunds)}
                 </span>
               </p>
               <p className="text-xs flex justify-between gap-4 text-gray-500 mt-0.5">
-                <span>Gross Collected:</span>
+                <span>{t('revenue.grossRevenue')}:</span>
                 <span className="font-medium">
                   {formatCurrency(data.grossReceived)}
                 </span>
@@ -744,13 +746,13 @@ const RevenueDashboard = () => {
   };
 
   const PREDEFINED_RANGES = [
-    { label: "Today", value: "today", icon: Calendar },
-    { label: "Week", value: "week", icon: Activity },
-    { label: "Month", value: "month", icon: BarChart3 },
-    { label: "Quarter", value: "quarter", icon: TrendIcon },
-    { label: "Year", value: "year", icon: PieChartIcon },
-    { label: "All Time", value: "all", icon: Infinity },
-    { label: "Custom", value: "custom", icon: Filter },
+    { label: t('dashboard.timePeriod.today'), value: "today", icon: Calendar },
+    { label: t('dashboard.timePeriod.week'), value: "week", icon: Activity },
+    { label: t('dashboard.timePeriod.month'), value: "month", icon: BarChart3 },
+    { label: t('dashboard.timePeriod.quarter'), value: "quarter", icon: TrendIcon },
+    { label: t('dashboard.timePeriod.year'), value: "year", icon: PieChartIcon },
+    { label: t('dashboard.timePeriod.allTime'), value: "all", icon: Infinity },
+    { label: t('dashboard.timePeriod.customRange'), value: "custom", icon: Filter },
   ];
 
   const renderChart = () => {
@@ -790,7 +792,7 @@ const RevenueDashboard = () => {
             tickLine={false}
             axisLine={{ stroke: "#e2e8f0" }}
             tickFormatter={(value) =>
-              new Date(value).toLocaleDateString("en-IN", {
+              new Date(value).toLocaleDateString(i18n.language, {
                 month: "short",
                 day: "numeric",
               })
@@ -806,14 +808,14 @@ const RevenueDashboard = () => {
           <Legend wrapperStyle={{ paddingTop: "20px", fontSize: "12px" }} />
           <Bar
             dataKey="revenue"
-            name="Total Sales"
+            name={t('revenue.dashboardInfo.totalSales')}
             fill="#3b82f6"
             radius={[4, 4, 0, 0]}
             maxBarSize={40}
           />
           <Bar
             dataKey="received"
-            name="Collected"
+            name={t('revenue.dashboardInfo.collected')}
             fill="#10b981"
             radius={[4, 4, 0, 0]}
             maxBarSize={40}
@@ -862,7 +864,7 @@ const RevenueDashboard = () => {
         <Area
           type="monotone"
           dataKey="revenue"
-          name="Total Sales"
+          name={t('revenue.dashboardInfo.totalSales')}
           stroke="#3b82f6"
           strokeWidth={2}
           fillOpacity={1}
@@ -870,7 +872,7 @@ const RevenueDashboard = () => {
         />
         <Bar
           dataKey="received"
-          name="Instant Revenue"
+          name={t('revenue.dashboardInfo.instantRevenue')}
           fill="#10b981"
           radius={[4, 4, 0, 0]}
           maxBarSize={30}
@@ -878,7 +880,7 @@ const RevenueDashboard = () => {
         <Line
           type="monotone"
           dataKey="due"
-          name="Outstanding"
+          name={t('revenue.dashboardInfo.outstanding')}
           stroke="#f59e0b"
           strokeWidth={2}
           dot={{ r: 3, fill: "#f59e0b", strokeWidth: 0 }}
@@ -940,10 +942,10 @@ const RevenueDashboard = () => {
               <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/30">
                 <IndianRupee className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
               </div>
-              Revenue Dashboard
+              {t('revenue.revenueDashboard')}
             </h1>
             <p className="text-slate-500 mt-2 text-sm sm:text-base font-medium">
-              Comprehensive analysis of your business performance
+              {t('revenue.comprehensiveAnalysis')}
             </p>
           </div>
 
@@ -957,7 +959,7 @@ const RevenueDashboard = () => {
                 className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : "text-slate-500"
                   }`}
               />
-              <span>Refresh</span>
+              <span>{t('common.refresh')}</span>
             </button>
 
             <button
@@ -970,7 +972,7 @@ const RevenueDashboard = () => {
               ) : (
                 <Download className="w-4 h-4" />
               )}
-              <span>{exportLoading ? 'Exporting...' : 'Export PDF'}</span>
+              <span>{exportLoading ? t('common.exporting') : t('common.exportPDF')}</span>
             </button>
           </div>
         </div>
@@ -1016,7 +1018,7 @@ const RevenueDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  Start Date
+                  {t('revenue.dashboardInfo.startDate')}
                 </label>
                 <input
                   type="date"
@@ -1029,7 +1031,7 @@ const RevenueDashboard = () => {
               </div>
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  End Date
+                  {t('revenue.dashboardInfo.endDate')}
                 </label>
                 <input
                   type="date"
@@ -1045,7 +1047,7 @@ const RevenueDashboard = () => {
                   onClick={fetchAllData}
                   className="w-full px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                 >
-                  Apply
+                  {t('revenue.dashboardInfo.apply')}
                 </button>
               </div>
             </div>
@@ -1058,63 +1060,66 @@ const RevenueDashboard = () => {
           <div className="mb-8">
             <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
               <Activity className="w-5 h-5 text-blue-600" />
-              Key Metrics
+              {t('revenue.keyMetrics')}
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <StatCard
                 icon={IndianRupee}
-                title="Gross Revenue"
+                title={t('revenue.grossRevenue')}
                 value={formatCurrency(enhancedMetrics.totalRevenue)}
-                subtitle="Total Sales Value"
+                subtitle={t('revenue.totalSalesValue')}
                 trend={parseFloat(revenueData?.growth?.percentage || 0)}
                 color="bg-violet-500"
               />
 
               <StatCard
                 icon={Target}
-                title="Net Revenue"
+                title={t('revenue.netRevenue')}
                 value={formatCurrency(enhancedMetrics.netRevenue)}
-                subtitle="Gross - Returns"
+                subtitle={t('revenue.grossMinusReturns')}
                 trend={parseFloat(revenueData?.growth?.percentage || 0)}
                 color="bg-blue-500"
               />
 
               <StatCard
                 icon={RotateCcw}
-                title="Total Returns"
+                title={t('revenue.totalReturns')}
                 value={formatCurrency(enhancedMetrics.returns)}
-                subtitle={`${enhancedMetrics.returnsCount} return transactions`}
-                info="All returns (walk-in + due customer)"
+                subtitle={`${enhancedMetrics.returnsCount} ${t('revenue.returnTransactions')}`}
+                info={t('revenue.dashboardInfo.allReturnsWalkInAndDue')}
                 trend={0}
                 color="bg-rose-500"
               />
 
               <StatCard
                 icon={Banknote}
-                title="Cash Refunds"
+                title={t('revenue.cashRefunds')}
                 value={formatCurrency(enhancedMetrics.totalRefunds)}
-                subtitle="Walk-in Returns"
-                info={`${revenueData.returnsBreakdown?.fromWalkInCustomers?.count || 0} walk-in customer returns (money out)`}
+                subtitle={t('revenue.walkInReturns')}
+                info={t('revenue.dashboardInfo.walkInReturnsMoneyOut', { count: revenueData.returnsBreakdown?.fromWalkInCustomers?.count || 0 })}
                 trend={0}
                 color="bg-orange-500"
               />
 
               <StatCard
                 icon={Receipt}
-                title="Credit Adjustments"
+                title={t('revenue.creditAdjustments')}
                 value={formatCurrency(enhancedMetrics.totalDueReductions)}
-                subtitle="Due Customer Returns"
-                info={`${revenueData.returnsBreakdown?.fromDueCustomers?.count || 0} returns from credit customers (no cash out)`}
+                subtitle={t('revenue.dueCustomerReturns')}
+                info={t('revenue.dashboardInfo.returnsFromCreditCustomers', { count: revenueData.returnsBreakdown?.fromDueCustomers?.count || 0 })}
                 trend={0}
                 color="bg-amber-500"
               />
 
               <StatCard
                 icon={Wallet}
-                title="Total Collected"
+                title={t('revenue.totalCollected')}
                 value={formatCurrency(enhancedMetrics.totalCollected)}
-                subtitle="Net Cash In Hand"
-                info={`Net Walk-in Sales ${formatCurrency(enhancedMetrics.instantCollection - enhancedMetrics.totalRefunds)} + Credit Payments ${formatCurrency(enhancedMetrics.duePaymentsReceived)}`}
+                subtitle={t('revenue.netCashInHand')}
+                info={t('revenue.dashboardInfo.netWalkInPlusCreditPayments', {
+                  walkIn: formatCurrency(enhancedMetrics.instantCollection - enhancedMetrics.totalRefunds),
+                  creditPayments: formatCurrency(enhancedMetrics.duePaymentsReceived)
+                })}
                 trend={parseFloat(
                   paymentsData?.growth?.collection?.percentage || 0
                 )}
@@ -1125,10 +1130,10 @@ const RevenueDashboard = () => {
               {enhancedMetrics?.totalRefunds > 0 && (
                 <StatCard
                   icon={Zap}
-                  title="Gross Walk-in Sales"
+                  title={t('revenue.grossWalkInSales')}
                   value={formatCurrency(enhancedMetrics.instantCollection)}
-                  subtitle="Before Refunds"
-                  info="Total value of instant sales before deducting refunds"
+                  subtitle={t('revenue.beforeRefunds')}
+                  info={t('revenue.dashboardInfo.totalInstantSalesBeforeRefunds')}
                   trend={parseFloat(revenueData?.growth?.percentage || 0)}
                   color="bg-indigo-400"
                 />
@@ -1136,14 +1141,14 @@ const RevenueDashboard = () => {
 
               <StatCard
                 icon={Zap}
-                title={enhancedMetrics?.totalRefunds > 0 ? "Net Walk-in Sales" : "Walk-in Sales"}
+                title={enhancedMetrics?.totalRefunds > 0 ? t('revenue.netWalkInSales') : t('revenue.grossWalkInSales')}
                 value={enhancedMetrics?.totalRefunds > 0
                   ? formatCurrency(enhancedMetrics.instantCollection - enhancedMetrics.totalRefunds)
                   : formatCurrency(enhancedMetrics.instantCollection)}
-                subtitle={enhancedMetrics?.totalRefunds > 0 ? "After Refunds" : "Gross Sales Value"}
+                subtitle={enhancedMetrics?.totalRefunds > 0 ? t('revenue.afterRefunds') : t('revenue.grossSales')}
                 info={enhancedMetrics?.totalRefunds > 0
-                  ? `Gross ${formatCurrency(enhancedMetrics.instantCollection)} - Returns ${formatCurrency(enhancedMetrics.totalRefunds)}`
-                  : "Total value of instant sales (before refunds)"}
+                  ? t('revenue.dashboardInfo.grossMinusReturnsValue', { gross: formatCurrency(enhancedMetrics.instantCollection), returns: formatCurrency(enhancedMetrics.totalRefunds) })
+                  : t('revenue.dashboardInfo.totalInstantSalesInfo')}
                 trend={parseFloat(revenueData?.growth?.percentage || 0)} // Using revenue growth as proxy
                 color="bg-indigo-500"
               />
@@ -1152,10 +1157,10 @@ const RevenueDashboard = () => {
               {enhancedMetrics?.totalDueReductions > 0 && (
                 <StatCard
                   icon={Clock}
-                  title="Gross Credit Sales"
+                  title={t('revenue.grossCreditSales')}
                   value={formatCurrency(enhancedMetrics.dueSalesAmount)}
-                  subtitle="Before Returns"
-                  info="Total credit sales before deducting returns"
+                  subtitle={t('revenue.beforeReturns')}
+                  info={t('revenue.dashboardInfo.totalCreditSalesBeforeReturns')}
                   trend={parseFloat(revenueData?.growth?.percentage || 0)}
                   color="bg-orange-400"
                 />
@@ -1163,25 +1168,24 @@ const RevenueDashboard = () => {
 
               <StatCard
                 icon={Clock}
-                title={enhancedMetrics?.totalDueReductions > 0 ? "Net Credit Sales" : "Credit Sales"}
+                title={enhancedMetrics?.totalDueReductions > 0 ? t('revenue.netCreditSales') : t('revenue.grossCreditSales')}
                 value={enhancedMetrics?.totalDueReductions > 0
                   ? formatCurrency(enhancedMetrics.dueSalesAmount - enhancedMetrics.totalDueReductions)
                   : formatCurrency(enhancedMetrics.dueSalesAmount)}
-                subtitle={enhancedMetrics?.totalDueReductions > 0 ? "After Returns" : "Sold on Credit"}
+                subtitle={enhancedMetrics?.totalDueReductions > 0 ? t('revenue.afterReturns') : t('revenue.soldOnCredit')}
                 info={enhancedMetrics?.totalDueReductions > 0
-                  ? `Gross ${formatCurrency(enhancedMetrics.dueSalesAmount)} - Returns ${formatCurrency(enhancedMetrics.totalDueReductions)}`
-                  : "Sales to registered customers with credit terms"}
+                  ? t('revenue.dashboardInfo.grossMinusReturnsValue', { gross: formatCurrency(enhancedMetrics.dueSalesAmount), returns: formatCurrency(enhancedMetrics.totalDueReductions) })
+                  : t('revenue.dashboardInfo.salesToRegisteredCustomers')}
                 trend={parseFloat(revenueData?.growth?.percentage || 0)}
                 color="bg-orange-500"
               />
 
               <StatCard
                 icon={HandCoins}
-                title="Credit Payments"
+                title={t('revenue.creditPayments')}
                 value={formatCurrency(enhancedMetrics.duePaymentsReceived)}
-                subtitle="Received on Credit"
-                info={`${paymentsData?.summary?.paymentCount || 0} payment${paymentsData?.summary?.paymentCount !== 1 ? "s" : ""
-                  } collected`}
+                subtitle={t('revenue.receivedOnCredit')}
+                info={t('revenue.dashboardInfo.paymentsCollected', { count: paymentsData?.summary?.paymentCount || 0, plural: (paymentsData?.summary?.paymentCount !== 1) ? 's' : '' })}
                 trend={parseFloat(
                   paymentsData?.growth?.duesCleared?.percentage || 0
                 )}
@@ -1192,7 +1196,7 @@ const RevenueDashboard = () => {
 
               <StatCard
                 icon={Target}
-                title="Net Position"
+                title={t('revenue.netPosition')}
                 value={
                   // Calculate net receivables accounting for credit adjustments
                   (() => {
@@ -1206,10 +1210,10 @@ const RevenueDashboard = () => {
                   (() => {
                     const netReceivables = (revenueData.duesSummary.periodBased?.stillOutstanding || 0) - (enhancedMetrics?.totalDueReductions || 0);
                     return netReceivables > 0
-                      ? "To Receive"
+                      ? t('revenue.toReceive')
                       : netReceivables < 0
-                        ? "Advance Received"
-                        : "Settled";
+                        ? t('revenue.advanceReceived')
+                        : t('status.settled');
                   })()
                 }
                 color={
@@ -1229,7 +1233,10 @@ const RevenueDashboard = () => {
                     const netCreditSales = (enhancedMetrics?.dueSalesAmount || 0) - (enhancedMetrics?.totalDueReductions || 0);
                     const paymentsCollected = enhancedMetrics?.duePaymentsReceived || 0;
 
-                    return `Net Credit Sales ${formatCurrency(netCreditSales)} - Payments ${formatCurrency(paymentsCollected)}`;
+                    return t('revenue.netCreditSalesDesc', {
+                      sales: formatCurrency(netCreditSales),
+                      payments: formatCurrency(paymentsCollected)
+                    });
                   })()
                 }
               />
@@ -1242,14 +1249,14 @@ const RevenueDashboard = () => {
               <div>
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <RotateCcw className="w-5 h-5 text-indigo-600" />
-                  Net Revenue Analysis
+                  {t('revenue.netRevenueAnalysis')}
                 </h2>
                 <p className="text-sm text-slate-500 mt-1">
-                  Breakdown of Gross Revenue, Returns, and final Net Revenue
+                  {t('revenue.breakdownOfRevenue')}
                 </p>
               </div>
               <div className="flex items-center gap-2 text-sm font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                <span className="text-slate-600">Return Rate:</span>
+                <span className="text-slate-600">{t('revenue.returnRate')}:</span>
                 <span
                   className={`${enhancedMetrics.returns > 0
                     ? "text-rose-600"
@@ -1269,38 +1276,38 @@ const RevenueDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {/* Gross Revenue */}
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="text-sm text-slate-500 mb-1">Gross Revenue</div>
+                <div className="text-sm text-slate-500 mb-1">{t('revenue.grossRevenue')}</div>
                 <div className="text-2xl font-bold text-slate-900">
                   {formatCurrency(enhancedMetrics.totalRevenue)}
                 </div>
                 <div className="text-xs text-slate-400 mt-1">
-                  Total Invoiced Amount
+                  {t('revenue.totalInvoicedAmount')}
                 </div>
               </div>
 
               {/* Returns */}
               <div className="p-4 rounded-xl bg-rose-50 border border-rose-100">
                 <div className="text-sm text-rose-600 mb-1 flex items-center gap-1">
-                  <ArrowDownRight className="w-4 h-4" /> Returns & Refunds
+                  <ArrowDownRight className="w-4 h-4" /> {t('revenue.returnsAndRefunds')}
                 </div>
                 <div className="text-2xl font-bold text-rose-700">
                   -{formatCurrency(enhancedMetrics.returns)}
                 </div>
                 <div className="text-xs text-rose-500 mt-1">
-                  {enhancedMetrics.returnsCount} items returned
+                  {enhancedMetrics.returnsCount} {t('revenue.itemsReturned')}
                 </div>
               </div>
 
               {/* Net Revenue */}
               <div className="p-4 rounded-xl bg-indigo-50 border border-indigo-100">
                 <div className="text-sm text-indigo-600 mb-1 flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" /> Net Revenue
+                  <CheckCircle className="w-4 h-4" /> {t('revenue.netRevenue')}
                 </div>
                 <div className="text-2xl font-bold text-indigo-700">
                   {formatCurrency(enhancedMetrics.netRevenue)}
                 </div>
                 <div className="text-xs text-indigo-500 mt-1">
-                  Actual Realized Revenue
+                  {t('revenue.actualRealizedRevenue')}
                 </div>
               </div>
             </div>
@@ -1330,7 +1337,7 @@ const RevenueDashboard = () => {
             <div className="flex justify-between text-xs text-slate-500 mt-2">
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
-                Net Revenue (
+                {t('revenue.netRevenue')} (
                 {(
                   100 -
                   (enhancedMetrics.returns /
@@ -1341,7 +1348,7 @@ const RevenueDashboard = () => {
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                Returns (
+                {t('revenue.totalReturns')} (
                 {(
                   (enhancedMetrics.returns /
                     (enhancedMetrics.totalRevenue || 1)) *
@@ -1364,10 +1371,10 @@ const RevenueDashboard = () => {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold mb-1">
-                    Collection Performance
+                    {t('revenue.collectionPerformance')}
                   </h3>
                   <p className="text-indigo-100 text-sm font-medium opacity-90">
-                    Tracking your payment efficiency for this period
+                    {t('revenue.trackingPaymentEfficiency')}
                   </p>
                 </div>
               </div>
@@ -1378,7 +1385,7 @@ const RevenueDashboard = () => {
                     {formatCurrency(enhancedMetrics.totalCollected)}
                   </p>
                   <p className="text-xs font-medium text-indigo-200 uppercase tracking-wider mt-1">
-                    Total Collected
+                    {t('revenue.totalCollected')}
                   </p>
                 </div>
                 <div className="text-center">
@@ -1388,7 +1395,7 @@ const RevenueDashboard = () => {
                     )}
                   </p>
                   <p className="text-xs font-medium text-indigo-200 uppercase tracking-wider mt-1">
-                    Sold on Credit
+                    {t('revenue.soldOnCredit')}
                   </p>
                 </div>
                 <div className="text-center">
@@ -1396,7 +1403,7 @@ const RevenueDashboard = () => {
                     {formatCurrency(enhancedMetrics.duePaymentsReceived)}
                   </p>
                   <p className="text-xs font-medium text-indigo-200 uppercase tracking-wider mt-1">
-                    Dues Collected
+                    {t('revenue.duesCollected')}
                   </p>
                 </div>
                 <div className="text-center">
@@ -1413,9 +1420,9 @@ const RevenueDashboard = () => {
                       const value =
                         (revenueData.duesSummary.periodBased?.stillOutstanding || 0) -
                         (enhancedMetrics?.totalDueReductions || 0);
-                      if (value > 0) return "Still Pending";
-                      if (value < 0) return "Overpaid";
-                      return "Settled";
+                      if (value > 0) return t('revenue.stillPending');
+                      if (value < 0) return t('status.overpaid');
+                      return t('status.settled');
                     })()}
                   </p>
                 </div>
@@ -1434,18 +1441,18 @@ const RevenueDashboard = () => {
                       <Receipt className="w-5 h-5 text-blue-600" />
                     </div>
                     <h2 className="text-lg font-bold text-slate-900">
-                      Sales Breakdown
+                      {t('revenue.salesBreakdown')}
                     </h2>
                   </div>
                   <span className="px-3 py-1 bg-slate-100 rounded-full text-xs font-medium text-slate-600">
-                    {revenueData.comprehensiveBreakdown.sales.count} invoices
+                    {revenueData.comprehensiveBreakdown.sales.count} {t('revenue.invoices')}
                   </span>
                 </div>
 
                 <div className="mb-6 p-5 bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl border border-slate-200">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm text-slate-600 font-medium">
-                      Gross Sales (Period)
+                      {t('revenue.dashboardInfo.grossSalesPeriod')}
                     </p>
                     <p className="text-xl font-bold text-slate-900">
                       {formatCurrency(
@@ -1459,7 +1466,7 @@ const RevenueDashboard = () => {
                     <>
                       <div className="flex items-center justify-between py-2 border-t border-slate-200">
                         <p className="text-sm text-rose-600 font-medium">
-                          Less: Returns & Refunds
+                          {t('revenue.dashboardInfo.lessReturnsRefunds')}
                         </p>
                         <p className="text-lg font-semibold text-rose-600">
                           -{formatCurrency(enhancedMetrics.returns)}
@@ -1467,7 +1474,7 @@ const RevenueDashboard = () => {
                       </div>
                       <div className="flex items-center justify-between pt-3 border-t-2 border-blue-200 mt-2">
                         <p className="text-sm text-blue-700 font-bold">
-                          Net Sales (Period)
+                          {t('revenue.dashboardInfo.netSalesPeriod')}
                         </p>
                         <p className="text-2xl font-bold text-blue-700">
                           {formatCurrency(
@@ -1481,7 +1488,7 @@ const RevenueDashboard = () => {
                   {/* If no returns, show a simple message */}
                   {!enhancedMetrics?.returns && (
                     <p className="text-xs text-slate-500 mt-2">
-                      No returns in this period
+                      {t('revenue.dashboardInfo.noReturnsThisPeriod')}
                     </p>
                   )}
                 </div>
@@ -1493,7 +1500,7 @@ const RevenueDashboard = () => {
                       <div className="flex items-center gap-2">
                         <Zap className="w-4 h-4 text-emerald-600" />
                         <h3 className="text-sm font-semibold text-emerald-900">
-                          Instant Sales
+                          {t('revenue.dashboardInfo.instantSales')}
                         </h3>
                       </div>
                       <span className="text-xs font-medium text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
@@ -1514,13 +1521,13 @@ const RevenueDashboard = () => {
                     {enhancedMetrics?.totalRefunds > 0 && (
                       <>
                         <div className="flex items-center justify-between text-xs mt-2 pb-2 border-b border-emerald-100">
-                          <span className="text-rose-600">Returned Items</span>
+                          <span className="text-rose-600">{t('revenue.itemsReturned')}</span>
                           <span className="font-medium text-rose-600">
                             -{formatCurrency(enhancedMetrics.totalRefunds)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm mt-2 pt-1">
-                          <span className="text-emerald-800 font-bold">Net Instant Sales</span>
+                          <span className="text-emerald-800 font-bold">{t('revenue.netInstantSales')}</span>
                           <span className="text-2xl font-bold text-emerald-800">
                             {formatCurrency(
                               revenueData.comprehensiveBreakdown.sales.components.instantSales.amount -
@@ -1547,7 +1554,7 @@ const RevenueDashboard = () => {
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-orange-600" />
                         <h3 className="text-sm font-semibold text-orange-900">
-                          Due Sales
+                          {t('revenue.dueSales')}
                         </h3>
                       </div>
                       <span className="text-xs font-medium text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full">
@@ -1568,13 +1575,13 @@ const RevenueDashboard = () => {
                     {enhancedMetrics?.totalDueReductions > 0 && (
                       <>
                         <div className="flex items-center justify-between text-xs mt-2 pb-2 border-b border-orange-100">
-                          <span className="text-amber-600">Returned Items (Credit)</span>
+                          <span className="text-amber-600">{t('revenue.returnedItemsCredit')}</span>
                           <span className="font-medium text-amber-600">
                             -{formatCurrency(enhancedMetrics.totalDueReductions)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-sm mt-2 pt-1">
-                          <span className="text-orange-800 font-bold">Net Due Sales</span>
+                          <span className="text-orange-800 font-bold">{t('revenue.netDueSales')}</span>
                           <span className="text-2xl font-bold text-orange-800">
                             {formatCurrency(
                               revenueData.comprehensiveBreakdown.sales.components.dueSales.amount -
@@ -1596,7 +1603,7 @@ const RevenueDashboard = () => {
 
                     <div className="flex items-center justify-between text-xs pt-3 border-t border-orange-100">
                       <span className="text-slate-500">
-                        Collected:{" "}
+                        {t('revenue.collected')}:{" "}
                         <span className="font-medium text-emerald-600">
                           {formatCurrency(
                             revenueData.comprehensiveBreakdown.sales.components
@@ -1605,7 +1612,7 @@ const RevenueDashboard = () => {
                         </span>
                       </span>
                       <span className="text-slate-500">
-                        Outstanding:{" "}
+                        {t('revenue.outstanding')}:{" "}
                         <span className="font-medium text-orange-600">
                           {formatCurrency(
                             // Net Outstanding = Gross Outstanding - Credit Adjustments
@@ -1626,13 +1633,13 @@ const RevenueDashboard = () => {
                     <Banknote className="w-5 h-5 text-emerald-600" />
                   </div>
                   <h2 className="text-lg font-bold text-slate-900">
-                    Money Collection
+                    {t('revenue.moneyCollection')}
                   </h2>
                 </div>
 
                 <div className="mb-6 p-5 bg-emerald-50/50 rounded-xl border border-emerald-100">
                   <p className="text-sm text-emerald-700 font-medium mb-1">
-                    Total Money In (Period)
+                    {t('revenue.dashboardInfo.totalMoneyInPeriod')}
                   </p>
                   <p className="text-3xl font-bold text-emerald-900 tracking-tight">
                     {formatCurrency(
@@ -1641,7 +1648,7 @@ const RevenueDashboard = () => {
                     )}
                   </p>
                   <p className="text-xs text-slate-500 mt-2">
-                    (Net Walk-in Sales: {formatCurrency(revenueData.comprehensiveBreakdown.collection.components.instantCollection.amount - (enhancedMetrics?.totalRefunds || 0))} + Credit Payments: {formatCurrency(revenueData.comprehensiveBreakdown.collection.components.duePayments?.amount || 0)})
+                    ({t('revenue.netWalkInSales')}: {formatCurrency(revenueData.comprehensiveBreakdown.collection.components.instantCollection.amount - (enhancedMetrics?.totalRefunds || 0))} + {t('revenue.creditPayments')}: {formatCurrency(revenueData.comprehensiveBreakdown.collection.components.duePayments?.amount || 0)})
                   </p>
                 </div>
 
@@ -1650,7 +1657,7 @@ const RevenueDashboard = () => {
                   <div className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-all">
                     <div>
                       <p className="text-sm font-medium text-slate-700 mb-1">
-                        Instant Collection
+                        {t('revenue.instantCollection')}
                       </p>
                       <p className="text-xl font-bold text-slate-900">
                         {formatCurrency(
@@ -1686,7 +1693,7 @@ const RevenueDashboard = () => {
                       <div className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50/30 transition-all">
                         <div>
                           <p className="text-sm font-medium text-slate-700 mb-1">
-                            Due Payments
+                            {t('revenue.duePayments')}
                           </p>
                           <p className="text-xl font-bold text-slate-900">
                             {formatCurrency(
@@ -1756,7 +1763,7 @@ const RevenueDashboard = () => {
             <div className="flex items-center gap-2 mb-6">
               <Target className="w-5 h-5 text-blue-600" />
               <h2 className="text-lg font-bold text-slate-900">
-                Due Management
+                {t('revenue.dueManagement')}
               </h2>
             </div>
 
@@ -1769,10 +1776,10 @@ const RevenueDashboard = () => {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-orange-900">
-                      Dues Management
+                      {t('revenue.duesManagementTitle')}
                     </h3>
                     <p className="text-sm text-orange-700/80 font-medium">
-                      Money you need to receive from customers
+                      {t('revenue.moneyToReceive')}
                     </p>
                   </div>
                 </div>
@@ -1783,12 +1790,10 @@ const RevenueDashboard = () => {
                     <Info className="w-5 h-5 text-orange-600 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 mb-1">
-                        What are Dues?
+                        {t('revenue.whatAreDues')}
                       </h4>
                       <p className="text-sm text-slate-600 leading-relaxed">
-                        Dues represent sales made on credit where customers
-                        haven't paid yet. This is money you will receive in the
-                        future when customers make payments.
+                        {t('revenue.duesExplanation')}
                       </p>
                     </div>
                   </div>
@@ -1799,12 +1804,12 @@ const RevenueDashboard = () => {
                   {/* Left: Due Sales Breakdown */}
                   <div className="bg-white rounded-xl p-5 border border-orange-100 shadow-sm">
                     <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-3">
-                      Due Sales (Period)
+                      {t('revenue.dueSalesPeriod')}
                     </p>
 
                     {/* Gross Due Sales */}
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-slate-600">Gross Due Sales</span>
+                      <span className="text-sm text-slate-600">{t('revenue.grossDueSales')}</span>
                       <span className="text-lg font-bold text-slate-900">
                         {formatCurrency(
                           revenueData.duesSummary.periodBased.creditSales || 0
@@ -1816,13 +1821,13 @@ const RevenueDashboard = () => {
                     {enhancedMetrics?.totalDueReductions > 0 && (
                       <>
                         <div className="flex items-center justify-between py-2 border-t border-slate-100">
-                          <span className="text-sm text-amber-600">Less: Returned Items</span>
+                          <span className="text-sm text-amber-600">{t('revenue.lessReturnedItems')}</span>
                           <span className="text-base font-semibold text-amber-600">
                             -{formatCurrency(enhancedMetrics.totalDueReductions)}
                           </span>
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t-2 border-orange-200">
-                          <span className="text-sm text-orange-700 font-bold">Net Due Sales</span>
+                          <span className="text-sm text-orange-700 font-bold">{t('revenue.netDueSales')}</span>
                           <span className="text-xl font-bold text-orange-700">
                             {formatCurrency(
                               (revenueData.duesSummary.periodBased.creditSales || 0) -
@@ -1834,7 +1839,7 @@ const RevenueDashboard = () => {
                     )}
 
                     <p className="text-xs text-slate-400 font-medium mt-3">
-                      {revenueData.duesSummary.periodBased.invoicesWithDue || 0} invoices
+                      {revenueData.duesSummary.periodBased.invoicesWithDue || 0} {t('revenue.invoices')}
                     </p>
                   </div>
 
@@ -1843,7 +1848,7 @@ const RevenueDashboard = () => {
                     {/* Dues Collected */}
                     <div className="bg-white rounded-xl p-5 border border-green-100 shadow-sm">
                       <p className="text-xs text-green-600 font-bold uppercase tracking-wider mb-2">
-                        Dues Collected (Period)
+                        {t('revenue.duesCollectedPeriod')}
                       </p>
                       <p className="text-2xl font-bold text-slate-900 mb-1">
                         {formatCurrency(
@@ -1851,14 +1856,14 @@ const RevenueDashboard = () => {
                         )}
                       </p>
                       <p className="text-xs text-slate-400 font-medium">
-                        {paymentsData?.summary?.paymentCount || 0} payments
+                        {paymentsData?.summary?.paymentCount || 0} {t('revenue.payments')}
                       </p>
                     </div>
 
                     {/* Still Outstanding */}
                     <div className="bg-white rounded-xl p-5 border border-red-100 shadow-sm">
                       <p className="text-xs text-red-600 font-bold uppercase tracking-wider mb-2">
-                        Still Outstanding
+                        {t('revenue.stillOutstanding')}
                       </p>
                       <p className="text-2xl font-bold text-slate-900 mb-1">
                         {formatCurrency(
@@ -1867,7 +1872,7 @@ const RevenueDashboard = () => {
                         )}
                       </p>
                       <p className="text-xs text-slate-400 font-medium">
-                        Yet to receive
+                        {t('revenue.yetToReceive')}
                       </p>
                     </div>
                   </div>
@@ -1877,7 +1882,7 @@ const RevenueDashboard = () => {
                 <div className="bg-white rounded-xl p-5 border border-orange-100 shadow-sm">
                   <div className="flex justify-between items-center mb-3">
                     <p className="text-sm font-bold text-slate-700">
-                      Collection Efficiency
+                      {t('revenue.collectionEfficiency')}
                     </p>
                     <p className="text-lg font-bold text-slate-900">
                       {revenueData.duesSummary.periodBased.creditSales > 0
@@ -1909,7 +1914,7 @@ const RevenueDashboard = () => {
                     />
                   </div>
                   <p className="text-xs text-slate-500">
-                    Percentage of due sales collected in this period
+                    {t('revenue.efficiencyExplanation')}
                   </p>
                 </div>
               </div>
@@ -1925,8 +1930,8 @@ const RevenueDashboard = () => {
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-blue-600" />
                   {breakdownView === "sales"
-                    ? "Sales by Type"
-                    : "Money Collected"}
+                    ? t('revenue.salesByType')
+                    : t('revenue.moneyCollected')}
                 </h3>
 
                 {/* View Toggle */}
@@ -1938,7 +1943,7 @@ const RevenueDashboard = () => {
                       : "text-slate-500 hover:text-slate-700"
                       }`}
                   >
-                    Sales
+                    {t('revenue.sales')}
                   </button>
                   <button
                     onClick={() => setBreakdownView("money")}
@@ -1947,7 +1952,7 @@ const RevenueDashboard = () => {
                       : "text-slate-500 hover:text-slate-700"
                       }`}
                   >
-                    Money In
+                    {t('revenue.moneyIn')}
                   </button>
                 </div>
               </div>
@@ -1997,16 +2002,16 @@ const RevenueDashboard = () => {
                                 {getPaymentMethodLabel(method._id)}
                                 {method.isOutstandingOnly && (
                                   <span className="ml-2 text-xs text-orange-600 font-normal">
-                                    (Old Dues)
+                                    ({t('revenue.oldDues')})
                                   </span>
                                 )}
                               </h4>
                               <p className="text-xs text-slate-500">
                                 {method.count > 0
-                                  ? `${method.count} transactions`
+                                  ? `${method.count} ${t('revenue.transactions')}`
                                   : method.paymentsReceived > 0
-                                    ? "Payments on old dues"
-                                    : "No activity"}
+                                    ? t('revenue.paymentsOnOldDues')
+                                    : t('revenue.noActivity')}
                               </p>
                             </div>
                           </div>
@@ -2030,7 +2035,7 @@ const RevenueDashboard = () => {
                           {method.total > 0 && (
                             <div className="flex justify-between items-center">
                               <span className="text-slate-500 text-xs">
-                                Gross Sales
+                                {t('revenue.grossSales')}
                               </span>
                               <span className="font-semibold text-slate-600">
                                 {formatCurrency(method.total)}
@@ -2041,7 +2046,7 @@ const RevenueDashboard = () => {
                           {/* Cash Refunds */}
                           {revenueData.refundsByMode?.[method._id] > 0 && (
                             <div className="flex justify-between items-center text-rose-600 text-xs">
-                              <span>Less Cash Refunds</span>
+                              <span>{t('revenue.lessCashRefunds')}</span>
                               <span>
                                 -{formatCurrency(revenueData.refundsByMode[method._id])}
                               </span>
@@ -2051,7 +2056,7 @@ const RevenueDashboard = () => {
                           {/* Credit Adjustments */}
                           {revenueData.dueReductionsByMode?.[method._id] > 0 && (
                             <div className="flex justify-between items-center text-amber-600 text-xs">
-                              <span>Less Credit Adjustments</span>
+                              <span>{t('revenue.lessCreditAdjustments')}</span>
                               <span>
                                 -{formatCurrency(revenueData.dueReductionsByMode[method._id])}
                               </span>
@@ -2062,7 +2067,7 @@ const RevenueDashboard = () => {
                           {(revenueData.refundsByMode?.[method._id] > 0 || revenueData.dueReductionsByMode?.[method._id] > 0) && (
                             <div className="flex justify-between items-center py-1 border-b border-slate-100 mb-1">
                               <span className="text-slate-700 text-xs font-bold">
-                                Net Sales
+                                {t('revenue.netSales')}
                               </span>
                               <span className="font-bold text-slate-800 text-sm">
                                 {formatCurrency(
@@ -2077,7 +2082,7 @@ const RevenueDashboard = () => {
                           {method.paymentsReceived > 0 && (
                             <div className="flex justify-between items-center mt-2">
                               <span className="text-slate-500 text-xs">
-                                Payments Received
+                                {t('revenue.paymentsReceived')}
                               </span>
                               <span className="font-medium text-emerald-600">
                                 {formatCurrency(method.paymentsReceived)}
@@ -2087,7 +2092,7 @@ const RevenueDashboard = () => {
 
                           <div className="flex justify-between items-center">
                             <span className="text-slate-600 text-xs">
-                              Total Collected
+                              {t('revenue.totalCollected')}
                             </span>
                             <span className="font-bold text-emerald-600">
                               {(() => {
@@ -2103,7 +2108,7 @@ const RevenueDashboard = () => {
                           {stillPending > 0 && (
                             <div className="flex justify-between items-center pt-2 border-t border-slate-100 mt-2">
                               <span className="text-slate-600 text-xs font-bold">
-                                Total Outstanding
+                                {t('revenue.totalOutstanding')}
                               </span>
                               <span className="font-bold text-orange-600">
                                 {formatCurrency(stillPending)}
@@ -2163,7 +2168,7 @@ const RevenueDashboard = () => {
                                   {getPaymentMethodLabel(item.mode)}
                                 </h4>
                                 <p className="text-xs text-slate-500">
-                                  Total Collected
+                                  {t('revenue.totalCollected')}
                                 </p>
                               </div>
                             </div>
@@ -2182,7 +2187,7 @@ const RevenueDashboard = () => {
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between items-center">
                               <span className="text-slate-600 text-xs">
-                                From Instant Sales
+                                {t('revenue.fromInstantSales')}
                               </span>
                               <span className="font-bold text-slate-900">
                                 {formatCurrency(item.instantAmount)}
@@ -2190,7 +2195,7 @@ const RevenueDashboard = () => {
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-slate-600 text-xs">
-                                From Credit Payments
+                                {t('revenue.fromCreditPayments')}
                               </span>
                               <span className="font-bold text-emerald-600">
                                 {formatCurrency(item.duePaymentAmount)}
@@ -2198,7 +2203,7 @@ const RevenueDashboard = () => {
                             </div>
                             {item.refundAmount > 0 && (
                               <div className="flex justify-between items-center text-rose-600">
-                                <span className="text-xs">Less Refunds</span>
+                                <span className="text-xs">{t('revenue.lessRefunds')}</span>
                                 <span className="font-bold">
                                   -{formatCurrency(item.refundAmount)}
                                 </span>
@@ -2206,7 +2211,7 @@ const RevenueDashboard = () => {
                             )}
                             <div className="flex justify-between items-center pt-2 border-t border-slate-100 mt-2">
                               <span className="text-slate-600 text-xs font-bold">
-                                Net In Hand
+                                {t('revenue.netInHand')}
                               </span>
                               <span className="font-bold text-slate-900">
                                 {formatCurrency(item.total)}
@@ -2232,7 +2237,7 @@ const RevenueDashboard = () => {
                     })
                   ) : (
                     <div className="text-center py-8 text-slate-500">
-                      No money collected in this period
+                      {t('revenue.noMoneyCollected')}
                     </div>
                   )}
                 </div>
@@ -2246,10 +2251,10 @@ const RevenueDashboard = () => {
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <RotateCcw className="w-5 h-5 text-rose-600" />
-                      Returns Breakdown
+                      {t('revenue.returnsBreakdown')}
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      Understanding how returns impact your cash flow
+                      {t('revenue.understandingReturns')}
                     </p>
                   </div>
                 </div>
@@ -2259,20 +2264,20 @@ const RevenueDashboard = () => {
                   {/* Total Returns */}
                   <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-xl p-5 border border-rose-100">
                     <p className="text-xs text-rose-600 font-bold uppercase tracking-wider mb-2">
-                      Total Returns
+                      {t('revenue.totalReturns')}
                     </p>
                     <p className="text-2xl font-bold text-slate-900 mb-1">
                       {formatCurrency(revenueData.returnsBreakdown.total)}
                     </p>
                     <p className="text-xs text-slate-500 font-medium">
-                      {revenueData.returnsBreakdown.count} return transactions
+                      {revenueData.returnsBreakdown.count} {t('revenue.returnTransactions')}
                     </p>
                   </div>
 
                   {/* Cash Refunds (Walk-in) */}
                   <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-5 border border-orange-100">
                     <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-2">
-                      Cash Refunds
+                      {t('revenue.cashRefunds')}
                     </p>
                     <p className="text-2xl font-bold text-slate-900 mb-1">
                       {formatCurrency(
@@ -2281,14 +2286,14 @@ const RevenueDashboard = () => {
                     </p>
                     <p className="text-xs text-slate-500 font-medium">
                       {revenueData.returnsBreakdown.fromWalkInCustomers.count}{" "}
-                      walk-in returns (money out)
+                      {t('revenue.walkInReturnsMoneyOut')}
                     </p>
                   </div>
 
                   {/* Credit Adjustments (Due Customers) */}
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
                     <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-2">
-                      Credit Adjustments
+                      {t('revenue.creditAdjustments')}
                     </p>
                     <p className="text-2xl font-bold text-slate-900 mb-1">
                       {formatCurrency(
@@ -2296,8 +2301,7 @@ const RevenueDashboard = () => {
                       )}
                     </p>
                     <p className="text-xs text-slate-500 font-medium">
-                      {revenueData.returnsBreakdown.fromDueCustomers.count} due
-                      customer returns (no cash out)
+                      {revenueData.returnsBreakdown.fromDueCustomers.count} {t('revenue.creditReturnsNoCashOut')}
                     </p>
                   </div>
                 </div>
@@ -2308,23 +2312,20 @@ const RevenueDashboard = () => {
                     <Info className="w-5 h-5 text-blue-600 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 mb-1.5">
-                        Understanding Return Types
+                        {t('revenue.understandingReturnTypes')}
                       </h4>
                       <div className="space-y-1.5 text-sm text-slate-600">
                         <p>
                           <span className="font-semibold text-orange-700">
-                            Cash Refunds:
+                            {t('revenue.cashRefunds')}:
                           </span>{" "}
-                          Money refunded to walk-in customers who returned
-                          products. This reduces your "Total Collected" amount.
+                          {t('revenue.cashRefundsExplanation')}
                         </p>
                         <p>
                           <span className="font-semibold text-blue-700">
-                            Credit Adjustments:
+                            {t('revenue.creditAdjustments')}:
                           </span>{" "}
-                          Returns from customers with credit accounts. No money
-                          was refunded - instead, their outstanding balance was
-                          reduced. This does NOT affect "Total Collected".
+                          {t('revenue.creditAdjustmentsExplanation')}
                         </p>
                       </div>
                     </div>
@@ -2339,7 +2340,7 @@ const RevenueDashboard = () => {
                       <div>
                         <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                           <Banknote className="w-4 h-4 text-orange-600" />
-                          Cash Refunds by Method
+                          {t('revenue.cashRefundsByMethod')}
                         </h4>
                         <div className="space-y-2">
                           {Object.entries(revenueData.refundsByMode).map(
@@ -2367,7 +2368,7 @@ const RevenueDashboard = () => {
                                         {getPaymentMethodLabel(mode)}
                                       </p>
                                       <p className="text-xs text-slate-500">
-                                        {percentage.toFixed(1)}% of refunds
+                                        {percentage.toFixed(1)}{t('revenue.percentOfRefunds')}
                                       </p>
                                     </div>
                                   </div>
@@ -2389,7 +2390,7 @@ const RevenueDashboard = () => {
                       <div>
                         <h4 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                           <Receipt className="w-4 h-4 text-blue-600" />
-                          Credit Adjustments by Method
+                          {t('revenue.creditAdjustmentsByMethod')}
                         </h4>
                         <div className="space-y-2">
                           {Object.entries(revenueData.dueReductionsByMode).map(
@@ -2417,7 +2418,7 @@ const RevenueDashboard = () => {
                                         {getPaymentMethodLabel(mode)}
                                       </p>
                                       <p className="text-xs text-slate-500">
-                                        {percentage.toFixed(1)}% of adjustments
+                                        {percentage.toFixed(1)}{t('revenue.percentOfAdjustments')}
                                       </p>
                                     </div>
                                   </div>
@@ -2442,10 +2443,10 @@ const RevenueDashboard = () => {
                   <div>
                     <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                       <Receipt className="w-5 h-5 text-emerald-600" />
-                      Tax Breakdown
+                      {t('revenue.taxBreakdown')}
                     </h3>
                     <p className="text-xs text-slate-500 mt-1">
-                      Tax collected and refunded in this period
+                      {t('revenue.taxCollectedAndRefunded')}
                     </p>
                   </div>
                 </div>
@@ -2455,33 +2456,33 @@ const RevenueDashboard = () => {
                   {/* Tax Collected */}
                   <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-xl p-5 border border-emerald-100">
                     <p className="text-xs text-emerald-600 font-bold uppercase tracking-wider mb-2">
-                      Tax Collected
+                      {t('revenue.taxCollected')}
                     </p>
                     <p className="text-2xl font-bold text-slate-900 mb-1">
                       {formatCurrency(revenueData.taxDetails.totalTaxCollected || 0)}
                     </p>
                     <p className="text-xs text-slate-500 font-medium">
-                      From all sales in period
+                      {t('revenue.fromAllSales')}
                     </p>
                   </div>
 
                   {/* Tax Refunded */}
                   <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl p-5 border border-orange-100">
                     <p className="text-xs text-orange-600 font-bold uppercase tracking-wider mb-2">
-                      Tax Refunded
+                      {t('revenue.taxRefunded')}
                     </p>
                     <p className="text-2xl font-bold text-slate-900 mb-1">
                       {formatCurrency(revenueData.taxDetails.totalTaxRefunded || 0)}
                     </p>
                     <p className="text-xs text-slate-500 font-medium">
-                      On product returns
+                      {t('revenue.onProductReturns')}
                     </p>
                   </div>
 
                   {/* Net Tax */}
                   <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-100">
                     <p className="text-xs text-blue-600 font-bold uppercase tracking-wider mb-2">
-                      Net Tax Liability
+                      {t('revenue.netTaxLiability')}
                     </p>
                     <p className="text-2xl font-bold text-slate-900 mb-1">
                       {formatCurrency(
@@ -2490,7 +2491,7 @@ const RevenueDashboard = () => {
                       )}
                     </p>
                     <p className="text-xs text-slate-500 font-medium">
-                      After refunds
+                      {t('revenue.afterRefunds')}
                     </p>
                   </div>
                 </div>
@@ -2501,26 +2502,26 @@ const RevenueDashboard = () => {
                     <Info className="w-5 h-5 text-emerald-600 mt-0.5" />
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 mb-1.5">
-                        Understanding Tax
+                        {t('revenue.understandingTax')}
                       </h4>
                       <div className="space-y-1.5 text-sm text-slate-600">
                         <p>
                           <span className="font-semibold text-emerald-700">
-                            Tax Collected:
+                            {t('revenue.taxCollected')}:
                           </span>{" "}
-                          Total tax amount collected from customers on sales made in this period.
+                          {t('revenue.taxCollectedExplanation')}
                         </p>
                         <p>
                           <span className="font-semibold text-orange-700">
-                            Tax Refunded:
+                            {t('revenue.taxRefunded')}:
                           </span>{" "}
-                          Tax amount refunded to customers when products were returned.
+                          {t('revenue.taxRefundedExplanation')}
                         </p>
                         <p>
                           <span className="font-semibold text-blue-700">
-                            Net Tax Liability:
+                            {t('revenue.netTaxLiability')}:
                           </span>{" "}
-                          The actual tax amount you need to remit to authorities (Tax Collected - Tax Refunded).
+                          {t('revenue.netTaxLiabilityExplanation')}
                         </p>
                       </div>
                     </div>
@@ -2534,15 +2535,15 @@ const RevenueDashboard = () => {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-blue-600" />
-                  Revenue Trends
+                  {t('revenue.revenueTrends')}
                 </h3>
                 <select
                   value={selectedChart}
                   onChange={(e) => setSelectedChart(e.target.value)}
                   className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-600 focus:ring-2 focus:ring-blue-500 outline-none"
                 >
-                  <option value="trend">Trend</option>
-                  <option value="comparison">Comparison</option>
+                  <option value="trend">{t('revenue.trend')}</option>
+                  <option value="comparison">{t('revenue.comparison')}</option>
                 </select>
               </div>
 
@@ -2560,7 +2561,7 @@ const RevenueDashboard = () => {
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-8">
                 <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                   <Users className="w-5 h-5 text-blue-600" />
-                  Top Paying Customers
+                  {t('revenue.topPayingCustomers')}
                 </h3>
 
                 <div className="overflow-x-auto -mx-6 sm:mx-0">
@@ -2573,25 +2574,25 @@ const RevenueDashboard = () => {
                               scope="col"
                               className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider"
                             >
-                              Customer
+                              {t('revenue.customer')}
                             </th>
                             <th
                               scope="col"
                               className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider"
                             >
-                              Total Paid
+                              {t('revenue.totalPaid')}
                             </th>
                             <th
                               scope="col"
                               className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider"
                             >
-                              Transactions
+                              {t('revenue.transactionHeader')}
                             </th>
                             <th
                               scope="col"
                               className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider"
                             >
-                              Last Payment
+                              {t('revenue.lastPayment')}
                             </th>
                           </tr>
                         </thead>
@@ -2612,7 +2613,7 @@ const RevenueDashboard = () => {
                                         {customer.customerName}
                                       </div>
                                       <div className="text-xs text-slate-500">
-                                        {customer.customerPhone || "No phone"}
+                                        {customer.customerPhone || t('revenue.noPhone')}
                                       </div>
                                     </div>
                                   </div>
@@ -2630,7 +2631,7 @@ const RevenueDashboard = () => {
                                 <td className="px-6 py-4 whitespace-nowrap text-right">
                                   <div className="text-sm text-slate-500">
                                     {/* We don't have lastPayment date in the aggregation, so we'll omit or use a placeholder if needed, but for now I'll just show 'Recent' or remove the column content if data missing */}
-                                    Recent
+                                    {t('revenue.recent')}
                                   </div>
                                 </td>
                               </tr>
@@ -2650,7 +2651,7 @@ const RevenueDashboard = () => {
             <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl shadow-sm border border-indigo-100 p-6 sm:p-8">
               <h3 className="text-lg font-bold text-indigo-900 mb-6 flex items-center gap-2">
                 <Zap className="w-5 h-5 text-indigo-600" />
-                Key Insights
+                {t('revenue.keyInsights')}
               </h3>
               <div className="space-y-4">
                 {/* Revenue Growth Insight */}
@@ -2669,23 +2670,23 @@ const RevenueDashboard = () => {
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 text-sm mb-1">
-                      Revenue Trajectory
+                      {t('revenue.revenueTrajectory')}
                     </h4>
                     <p className="text-sm text-slate-600 leading-relaxed">
-                      Revenue is{" "}
+                      {t('revenue.revenueIs')}{" "}
                       <span
                         className={`font-bold ${revenueData.summary.growth >= 0
                           ? "text-emerald-600"
                           : "text-rose-600"
                           }`}
                       >
-                        {revenueData.summary.growth >= 0 ? "up" : "down"} by{" "}
+                        {revenueData.summary.growth >= 0 ? t('revenue.up') : t('revenue.down')}{" "}{t('revenue.by')}{" "}
                         {Math.abs(revenueData.summary.growth).toFixed(1)}%
                       </span>{" "}
-                      compared to the previous period.
+                      {t('revenue.comparedToPrevious')}
                       {revenueData.summary.growth >= 0
-                        ? " Great job! Keep up the momentum."
-                        : " Consider running a promotion to boost sales."}
+                        ? ` ${t('revenue.greatJob')}`
+                        : ` ${t('revenue.considerPromotion')}`}
                     </p>
                   </div>
                 </div>
@@ -2698,10 +2699,10 @@ const RevenueDashboard = () => {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm mb-1">
-                        Collection Efficiency
+                        {t('revenue.collectionEfficiency')}
                       </h4>
                       <p className="text-sm text-slate-600 leading-relaxed">
-                        You've collected{" "}
+                        {t('revenue.youCollected')}{" "}
                         <span className="font-bold text-blue-600">
                           {(() => {
                             const totalRevenue =
@@ -2717,13 +2718,11 @@ const RevenueDashboard = () => {
                           })()}
                           %
                         </span>{" "}
-                        of the total revenue generated in this period
+                        {t('revenue.ofTotalRevenue')}
                         {enhancedMetrics?.totalRefunds > 0 && (
                           <span className="text-rose-600">
                             {" "}
-                            (after deducting ₹
-                            {enhancedMetrics.totalRefunds.toFixed(2)} in
-                            refunds)
+                            {t('revenue.afterDeductingRefunds', { amount: formatCurrency(enhancedMetrics.totalRefunds) })}
                           </span>
                         )}
                         .
@@ -2738,8 +2737,8 @@ const RevenueDashboard = () => {
                           const efficiency =
                             (netCollected / totalRevenue) * 100;
                           return efficiency < 80
-                            ? " Focus on following up with customers who have outstanding dues."
-                            : " Your collection process is working well.";
+                            ? ` ${t('revenue.focusOnDues')}`
+                            : ` ${t('revenue.collectionGood')}`;
                         })()}
                       </p>
                     </div>
@@ -2752,7 +2751,7 @@ const RevenueDashboard = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8">
               <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
                 <Target className="w-5 h-5 text-blue-600" />
-                Recommended Actions
+                {t('revenue.recommendedActions')}
               </h3>
               <div className="space-y-4">
                 {revenueData.duesSummary.periodBased.stillOutstanding > 0 && (
@@ -2763,14 +2762,14 @@ const RevenueDashboard = () => {
                       </div>
                       <div>
                         <h4 className="font-bold text-slate-900 text-sm">
-                          Follow up on Dues
+                          {t('revenue.followUpOnDues')}
                         </h4>
                         <p className="text-xs text-slate-500">
-                          Recover{" "}
+                          {t('revenue.recover')}{" "}
                           {formatCurrency(
                             revenueData.duesSummary.periodBased.stillOutstanding
                           )}{" "}
-                          pending
+                          {t('status.pending')}
                         </p>
                       </div>
                     </div>
@@ -2785,10 +2784,10 @@ const RevenueDashboard = () => {
                     </div>
                     <div>
                       <h4 className="font-bold text-slate-900 text-sm">
-                        Analyze Top Sellers
+                        {t('revenue.analyzeTopSellers')}
                       </h4>
                       <p className="text-xs text-slate-500">
-                        Review your best performing items
+                        {t('revenue.reviewBestPerformers')}
                       </p>
                     </div>
                   </div>
@@ -2808,17 +2807,17 @@ const RevenueDashboard = () => {
               <IndianRupee className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No Revenue Data
+              {t('dashboard.noRevenueData')}
             </h3>
             <p className="text-gray-500 mb-4 max-w-sm mx-auto">
-              There's no revenue data available for the selected period.
+              {t('dashboard.noRevenueData')}
             </p>
             <button
               onClick={fetchAllData}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <RefreshCw className="w-4 h-4" />
-              Retry
+              {t('common.tryAgain')}
             </button>
           </div>
         </div>
@@ -2829,7 +2828,7 @@ const RevenueDashboard = () => {
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 shadow-xl">
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"></div>
-            <p className="mt-4 text-gray-600">Updating revenue data...</p>
+            <p className="mt-4 text-gray-600">{t('common.loading')}</p>
           </div>
         </div>
       )}

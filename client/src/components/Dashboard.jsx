@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import {
   BarChart,
   Bar,
@@ -40,6 +41,7 @@ import {
 } from "lucide-react";
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const [dashboardData, setDashboardData] = useState({
     revenueData: [],
     topProducts: [],
@@ -67,12 +69,12 @@ const Dashboard = () => {
   const [isExporting, setIsExporting] = useState(false);
 
   const timePeriods = [
-    { value: "today", label: "Today" },
-    { value: "week", label: "This Week" },
-    { value: "month", label: "This Month" },
-    { value: "quarter", label: "This Quarter" },
-    { value: "year", label: "This Year" },
-    { value: "custom", label: "Custom Range" },
+    { value: "today", label: t("dashboard.timePeriod.today") },
+    { value: "week", label: t("dashboard.timePeriod.thisWeek") },
+    { value: "month", label: t("dashboard.timePeriod.thisMonth") },
+    { value: "quarter", label: t("dashboard.timePeriod.thisQuarter") },
+    { value: "year", label: t("dashboard.timePeriod.thisYear") },
+    { value: "custom", label: t("dashboard.timePeriod.customRange") },
   ];
 
   useEffect(() => {
@@ -176,7 +178,7 @@ const Dashboard = () => {
             ? currencyFormatter.format(value)
             : value.toLocaleString()}
         </h3>
-        <p className="text-xs text-slate-400 mt-2 font-medium">vs last period</p>
+        <p className="text-xs text-slate-400 mt-2 font-medium">{t('dashboard.vsLastPeriod')}</p>
       </div>
     </div>
   );
@@ -191,7 +193,7 @@ const Dashboard = () => {
               <div className="w-8 h-8 bg-white/50 backdrop-blur rounded-full"></div>
             </div>
           </div>
-          <p className="text-slate-500 font-medium animate-pulse">Loading Analytics...</p>
+          <p className="text-slate-500 font-medium animate-pulse">{t('dashboard.loadingAnalytics')}</p>
         </div>
       </div>
     );
@@ -204,13 +206,13 @@ const Dashboard = () => {
           <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
             <AlertTriangle className="w-8 h-8 text-red-500" />
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">Failed to Load Dashboard</h3>
+          <h3 className="text-xl font-bold text-slate-800 mb-2">{t('dashboard.failedToLoad')}</h3>
           <p className="text-slate-500 mb-6">{error}</p>
           <button
             onClick={loadDashboardData}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-xl transition-all"
           >
-            Try Again
+            {t('common.tryAgain')}
           </button>
         </div>
       </div>
@@ -223,9 +225,9 @@ const Dashboard = () => {
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 sm:px-8 py-4 mb-8">
         <div className="max-w-[1600px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-4">
           <div className="text-center xl:text-left">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Business Overview</h1>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{t('dashboard.title')}</h1>
             <p className="text-sm text-slate-500 flex items-center gap-2 mt-1 justify-center xl:justify-start">
-              <Clock size={14} /> Updated {lastUpdated.toLocaleTimeString()}
+              <Clock size={14} /> {t('dashboard.updatedAt')} {lastUpdated.toLocaleTimeString()}
             </p>
           </div>
 
@@ -289,16 +291,16 @@ const Dashboard = () => {
                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isExporting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={18} />}
-                <span>Export</span>
+                <span>{t('common.export')}</span>
               </button>
 
               <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 transform origin-top-right">
                 <button onClick={() => handleExport("pdf")} className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-500" /> PDF Report
+                  <div className="w-2 h-2 rounded-full bg-red-500" /> {t('dashboard.pdfReport')}
                 </button>
                 <div className="h-px bg-slate-50" />
                 <button onClick={() => handleExport("csv")} className="w-full text-left px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500" /> CSV Data
+                  <div className="w-2 h-2 rounded-full bg-green-500" /> {t('dashboard.csvData')}
                 </button>
               </div>
             </div>
@@ -312,7 +314,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             icon={IndianRupee}
-            title="Total Revenue"
+            title={t('dashboard.totalRevenue')}
             value={dashboardData.statistics.revenue.value}
             change={dashboardData.statistics.revenue.change}
             isPositive={dashboardData.statistics.revenue.isPositive}
@@ -321,7 +323,7 @@ const Dashboard = () => {
           />
           <StatCard
             icon={Users}
-            title="Total Customers"
+            title={t('dashboard.totalCustomers')}
             value={dashboardData.statistics.customers.value}
             change={dashboardData.statistics.customers.change}
             isPositive={dashboardData.statistics.customers.isPositive}
@@ -330,7 +332,7 @@ const Dashboard = () => {
           />
           <StatCard
             icon={ShoppingBag}
-            title="Total Orders"
+            title={t('dashboard.totalOrders')}
             value={dashboardData.statistics.orders.value}
             change={dashboardData.statistics.orders.change}
             isPositive={dashboardData.statistics.orders.isPositive}
@@ -339,7 +341,7 @@ const Dashboard = () => {
           />
           <StatCard
             icon={AlertTriangle}
-            title="Stock Alerts"
+            title={t('dashboard.stockAlerts')}
             value={dashboardData.statistics.alerts.value}
             change={dashboardData.statistics.alerts.change}
             isPositive={dashboardData.statistics.alerts.isPositive}
@@ -354,16 +356,16 @@ const Dashboard = () => {
           <div className="xl:col-span-2 bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800">Revenue Analysis</h3>
+                <h3 className="text-lg font-bold text-slate-800">{t('dashboard.revenueAnalysis')}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`flex items-center text-sm font-bold ${dashboardData.statistics.revenue.isPositive ? "text-emerald-600" : "text-rose-600"}`}>
                     {dashboardData.statistics.revenue.isPositive ? "+" : "-"}{dashboardData.statistics.revenue.change}%
                   </span>
-                  <span className="text-sm text-slate-400 font-medium">vs last period</span>
+                  <span className="text-sm text-slate-400 font-medium">{t('dashboard.vsLastPeriod')}</span>
                 </div>
               </div>
               <div className="bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wide shadow-sm">
-                {timePeriod === 'custom' ? 'Custom Range' : timePeriods.find(p => p.value === timePeriod)?.label}
+                {timePeriod === 'custom' ? t('dashboard.timePeriod.customRange') : timePeriods.find(p => p.value === timePeriod)?.label}
               </div>
             </div>
 
@@ -426,7 +428,7 @@ const Dashboard = () => {
 
           {/* Sales by Category */}
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 sm:p-8 flex flex-col">
-            <h3 className="text-lg font-bold text-slate-800 mb-6">Category Distribution</h3>
+            <h3 className="text-lg font-bold text-slate-800 mb-6">{t('dashboard.categoryDistribution')}</h3>
 
             <div className="h-[320px] w-full relative">
               {dashboardData.salesByCategory.length > 0 ? (
@@ -475,7 +477,7 @@ const Dashboard = () => {
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-slate-400">
                   <PieChart size={48} className="mb-4 opacity-20" />
-                  <p>No sales data available</p>
+                  <p>{t('dashboard.noSalesData')}</p>
                 </div>
               )}
             </div>
@@ -488,9 +490,9 @@ const Dashboard = () => {
           {/* Top Products */}
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 sm:p-8">
             <div className="flex justify-between items-center mb-8">
-              <h3 className="text-lg font-bold text-slate-800">Top Performers</h3>
+              <h3 className="text-lg font-bold text-slate-800">{t('dashboard.topPerformers')}</h3>
               <button className="text-sm font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1">
-                View All <ChevronRight size={14} strokeWidth={2.5} />
+                {t('common.viewAll')} <ChevronRight size={14} strokeWidth={2.5} />
               </button>
             </div>
 
@@ -533,17 +535,17 @@ const Dashboard = () => {
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 p-6 sm:p-8 flex flex-col h-[480px]">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                Inventory Status
+                {t('dashboard.inventoryStatus')}
                 {dashboardData.stockAlerts.length > 0 && (
                   <span className="bg-rose-100 text-rose-600 text-xs px-2.5 py-1 rounded-full font-bold border border-rose-200">
-                    {dashboardData.stockAlerts.length} Alerts
+                    {dashboardData.stockAlerts.length} {t('dashboard.alerts')}
                   </span>
                 )}
               </h3>
 
               {/* Enhanced Threshold Input */}
               <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:inline-block">Alert Limit:</span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:inline-block">{t('dashboard.alertLimit')}:</span>
                 <div className="relative group">
                   <input
                     type="number"
@@ -581,7 +583,7 @@ const Dashboard = () => {
                         {item.stock}
                       </span>
                       <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mt-1">
-                        {item.stock === 0 ? 'Out of Stock' : 'Low Stock'}
+                        {item.stock === 0 ? t('dashboard.outOfStock') : t('dashboard.lowStock')}
                       </p>
                     </div>
                   </div>
@@ -591,8 +593,8 @@ const Dashboard = () => {
                   <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4 shadow-sm">
                     <CheckCircle2 size={32} />
                   </div>
-                  <h4 className="text-slate-800 font-bold mb-1">Inventory Healthy</h4>
-                  <p className="text-slate-500 text-sm">All items are above the alert threshold</p>
+                  <h4 className="text-slate-800 font-bold mb-1">{t('dashboard.inventoryHealthy')}</h4>
+                  <p className="text-slate-500 text-sm">{t('dashboard.allItemsAboveThreshold')}</p>
                 </div>
               )}
             </div>
@@ -603,21 +605,21 @@ const Dashboard = () => {
         {/* Recent Transactions Table */}
         <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden">
           <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/30">
-            <h3 className="text-lg font-bold text-slate-800">Recent Transactions</h3>
+            <h3 className="text-lg font-bold text-slate-800">{t('dashboard.recentTransactions')}</h3>
             <button className="text-indigo-600 font-bold text-sm hover:text-indigo-800 transition-colors bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg w-full sm:w-auto text-center">
-              View All
+              {t('common.viewAll')}
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50/50 text-xs uppercase tracking-wider text-slate-500 font-bold border-b border-slate-100">
-                  <th className="px-6 py-4 whitespace-nowrap">Invoice ID</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Customer</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Date</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Items</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Total</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 whitespace-nowrap">{t('table.invoiceId')}</th>
+                  <th className="px-6 py-4 whitespace-nowrap">{t('table.customer')}</th>
+                  <th className="px-6 py-4 whitespace-nowrap">{t('table.date')}</th>
+                  <th className="px-6 py-4 whitespace-nowrap">{t('invoice.items')}</th>
+                  <th className="px-6 py-4 whitespace-nowrap">{t('table.total')}</th>
+                  <th className="px-6 py-4 whitespace-nowrap">{t('table.status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -632,24 +634,24 @@ const Dashboard = () => {
                           <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold border border-indigo-200">
                             {tx.customer ? tx.customer.charAt(0) : '?'}
                           </div>
-                          {tx.customer}
+                          {tx.customer === 'Walk-in Customer' ? t('status.walkInCustomer') : tx.customer}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-500 font-medium whitespace-nowrap">
                         {new Date(tx.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600 font-medium whitespace-nowrap">
-                        {tx.items} <span className="text-slate-400 text-xs">items</span>
+                        {tx.items} <span className="text-slate-400 text-xs">{t('table.items')}</span>
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-slate-800 whitespace-nowrap">
                         {currencyFormatter.format(tx.total)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold capitalize shadow-sm ${tx.status === 'paid' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-                            tx.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
-                              'bg-slate-100 text-slate-700 border border-slate-200'
+                          tx.status === 'pending' ? 'bg-amber-100 text-amber-700 border border-amber-200' :
+                            'bg-slate-100 text-slate-700 border border-slate-200'
                           }`}>
-                          {tx.status}
+                          {tx.status === 'paid' ? t('status.paid') : tx.status === 'pending' ? t('status.pending') : tx.status === 'final' ? t('status.final') : tx.status}
                         </span>
                       </td>
                     </tr>
@@ -657,7 +659,7 @@ const Dashboard = () => {
                 ) : (
                   <tr>
                     <td colSpan="6" className="px-6 py-12 text-center text-slate-400 font-medium">
-                      No recent transactions found
+                      {t('dashboard.noTransactions')}
                     </td>
                   </tr>
                 )}

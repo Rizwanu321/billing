@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { fetchCategories } from "../../api/categories";
 import { X, Package, Tag, IndianRupee, Box } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const ProductModal = ({
   currentProduct,
@@ -9,6 +10,7 @@ const ProductModal = ({
   onSubmit,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -92,12 +94,12 @@ const ProductModal = ({
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-lg sm:text-xl lg:text-2xl font-bold truncate">
-                {currentProduct ? "Edit Product" : "Add New Product"}
+                {currentProduct ? t('products.editProduct') : t('products.addNewProduct')}
               </h2>
               <p className="text-blue-100 text-xs sm:text-sm mt-0.5 hidden sm:block">
                 {currentProduct
-                  ? "Update product information"
-                  : "Create a new product in your inventory"}
+                  ? t('products.updateProductInformation')
+                  : t('products.createNewProductInInventory')}
               </p>
             </div>
           </div>
@@ -117,14 +119,14 @@ const ProductModal = ({
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                 <Tag className="h-4 w-4 text-blue-600" />
-                Product Name *
+                {t('products.productName')} *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
                 className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
-                placeholder="Enter product name"
+                placeholder={t('products.enterProductName')}
                 required
               />
             </div>
@@ -133,11 +135,11 @@ const ProductModal = ({
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                 <Box className="h-4 w-4 text-blue-600" />
-                Category *
+                {t('products.category')} *
               </label>
               {loading ? (
                 <div className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl text-gray-500 text-sm sm:text-base">
-                  Loading categories...
+                  {t('products.loadingCategories')}...
                 </div>
               ) : error ? (
                 <div className="text-red-500 text-sm">{error}</div>
@@ -148,7 +150,7 @@ const ProductModal = ({
                   className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base bg-white"
                   required
                 >
-                  <option value="">Select Category</option>
+                  <option value="">{t('products.selectCategory')}</option>
                   {categories.map((category) => (
                     <option key={category._id} value={category._id}>
                       {category.name}
@@ -163,7 +165,7 @@ const ProductModal = ({
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                   <Package className="h-4 w-4 text-blue-600" />
-                  Unit *
+                  {t('products.unit')} *
                 </label>
                 <select
                   value={formData.unit || "piece"}
@@ -183,8 +185,8 @@ const ProductModal = ({
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                   <Package className="h-4 w-4 text-blue-600" />
-                  Min Qty Step *
-                  <span className="ml-auto text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded">Suggested</span>
+                  {t('products.minQtyStep')} *
+                  <span className="ml-auto text-xs font-normal text-green-600 bg-green-50 px-2 py-0.5 rounded">{t('products.suggested')}</span>
                 </label>
                 <input
                   type="number"
@@ -201,7 +203,7 @@ const ProductModal = ({
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Auto-filled based on unit, but you can customize it
+                  {t('products.autoFilledBasedOnUnit')}
                 </p>
               </div>
             </div>
@@ -211,7 +213,7 @@ const ProductModal = ({
               <div>
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                   <IndianRupee className="h-4 w-4 text-blue-600" />
-                  Price per {formData.unit || "unit"} *
+                  {t('products.pricePer')} {formData.unit || t('products.unit')} *
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium text-sm sm:text-base">
@@ -235,7 +237,7 @@ const ProductModal = ({
                 <div>
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2">
                     <Box className="h-4 w-4 text-blue-600" />
-                    Initial Stock *
+                    {t('products.initialStock')} *
                   </label>
                   <input
                     type="number"
@@ -248,7 +250,7 @@ const ProductModal = ({
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1.5">
-                    In {formData.unit || "units"}
+                    {t('products.in')} {formData.unit || t('products.units')}
                   </p>
                 </div>
               )}
@@ -268,10 +270,10 @@ const ProductModal = ({
                 />
                 <div className="flex-1">
                   <span className="text-sm font-medium text-gray-900 block">
-                    Enable Stock Management
+                    {t('products.enableStockManagement')}
                   </span>
                   <p className="text-xs text-gray-600 mt-1">
-                    Track inventory levels and receive low stock alerts
+                    {t('products.trackInventoryLevels')}
                   </p>
                 </div>
               </label>
@@ -286,13 +288,13 @@ const ProductModal = ({
                 onClick={onClose}
                 className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 border-2 border-gray-300 rounded-lg sm:rounded-xl text-gray-700 font-medium hover:bg-gray-100 active:bg-gray-200 transition-all duration-200 text-sm sm:text-base"
               >
-                Cancel
+                {t('products.cancel')}
               </button>
               <button
                 type="submit"
                 className="flex-1 px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg sm:rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transform active:scale-[0.98] transition-all duration-200 text-sm sm:text-base"
               >
-                {currentProduct ? "Update Product" : "Create Product"}
+                {currentProduct ? t('products.updateProduct') : t('products.createProduct')}
               </button>
             </div>
           </div>

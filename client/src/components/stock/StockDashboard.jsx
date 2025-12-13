@@ -20,9 +20,11 @@ import StockMovementChart from "./charts/StockMovementChart";
 import LowStockWidget from "./widgets/LowStockWidget";
 import RecentMovementsWidget from "./widgets/RecentMovementsWidget";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import StockHealthCheck from "./widgets/StockHealthCheck";
 
 const StockDashboard = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState({
     totalProducts: 0,
@@ -137,7 +139,7 @@ const StockDashboard = () => {
               <div className="w-8 h-8 bg-white/50 backdrop-blur rounded-full"></div>
             </div>
           </div>
-          <p className="text-slate-500 font-medium animate-pulse">Loading Inventory...</p>
+          <p className="text-slate-500 font-medium animate-pulse">{t('stock.loadingInventory')}</p>
         </div>
       </div>
     );
@@ -149,9 +151,9 @@ const StockDashboard = () => {
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 sm:px-8 py-4 mb-8">
         <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-center sm:text-left">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Stock Overview</h1>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{t('stock.stockOverview')}</h1>
             <p className="text-sm text-slate-500 flex items-center gap-2 mt-1 justify-center sm:justify-start">
-              <Clock size={14} /> Updated {lastUpdated.toLocaleTimeString()}
+              <Clock size={14} /> {t('stock.updated')} {lastUpdated.toLocaleTimeString()}
             </p>
           </div>
 
@@ -170,28 +172,28 @@ const StockDashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             icon={Package}
-            title="Total Products"
+            title={t('stock.totalProducts')}
             value={analytics.totalProducts}
             colorBg="bg-blue-50"
             colorName="text-blue-600"
           />
           <StatCard
             icon={ShoppingCart}
-            title="Total Stock Value"
+            title={t('stock.totalStockValue')}
             value={analytics.totalValue}
             colorBg="bg-emerald-50"
             colorName="text-emerald-600"
           />
           <StatCard
             icon={AlertTriangle}
-            title="Low Stock Items"
+            title={t('stock.lowStockItems')}
             value={analytics.lowStockCount}
             colorBg="bg-amber-50"
             colorName="text-amber-600"
           />
           <StatCard
             icon={Box}
-            title="Out of Stock"
+            title={t('stock.outOfStock')}
             value={analytics.outOfStockCount}
             colorBg="bg-rose-50"
             colorName="text-rose-600"
@@ -219,7 +221,7 @@ const StockDashboard = () => {
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-200">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <Activity size={18} className="text-indigo-500" /> Stock Health
+                <Activity size={18} className="text-indigo-500" /> {t('stock.stockHealth')}
               </h3>
             </div>
             <div className="p-0">
@@ -230,7 +232,7 @@ const StockDashboard = () => {
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-300">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <AlertTriangle size={18} className="text-amber-500" /> Low Stock Alerts
+                <AlertTriangle size={18} className="text-amber-500" /> {t('stock.lowStockAlerts')}
               </h3>
             </div>
             <div className="p-4">
@@ -241,7 +243,7 @@ const StockDashboard = () => {
           <div className="bg-white rounded-2xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-slate-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500 delay-400">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <RefreshCw size={18} className="text-emerald-500" /> Recent Movements
+                <RefreshCw size={18} className="text-emerald-500" /> {t('stock.recentMovements')}
               </h3>
             </div>
             <div className="p-4">

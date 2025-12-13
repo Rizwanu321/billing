@@ -1,9 +1,11 @@
 // components/stock/widgets/StockHealthCheck.jsx
 
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { CheckCircle, AlertCircle, XCircle, Package } from "lucide-react";
 
 const StockHealthCheck = ({ products }) => {
+  const { t } = useTranslation();
   const healthMetrics = {
     healthy: products.filter((p) => p.isStockRequired && p.stock > 10).length,
     warning: products.filter(
@@ -46,7 +48,7 @@ const StockHealthCheck = ({ products }) => {
         <p className={`text-4xl font-bold ${getHealthColor(healthScore)} mb-1 tracking-tight`}>
           {healthScore}%
         </p>
-        <p className="text-sm text-slate-600 font-semibold">Overall Stock Health</p>
+        <p className="text-sm text-slate-600 font-semibold">{t('stock.overallStockHealth')}</p>
       </div>
 
       <div className="space-y-3">
@@ -55,7 +57,7 @@ const StockHealthCheck = ({ products }) => {
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <CheckCircle size={18} />
             </div>
-            <span className="text-sm font-semibold text-slate-700">Healthy Stock</span>
+            <span className="text-sm font-semibold text-slate-700">{t('stock.healthyStock')}</span>
           </div>
           <span className="font-bold text-slate-800">
             {healthMetrics.healthy}
@@ -67,7 +69,7 @@ const StockHealthCheck = ({ products }) => {
             <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
               <AlertCircle size={18} />
             </div>
-            <span className="text-sm font-semibold text-slate-700">Low Stock</span>
+            <span className="text-sm font-semibold text-slate-700">{t('stock.lowStock')}</span>
           </div>
           <span className="font-bold text-slate-800">
             {healthMetrics.warning}
@@ -79,7 +81,7 @@ const StockHealthCheck = ({ products }) => {
             <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
               <XCircle size={18} />
             </div>
-            <span className="text-sm font-semibold text-slate-700">Out of Stock</span>
+            <span className="text-sm font-semibold text-slate-700">{t('stock.outOfStock')}</span>
           </div>
           <span className="font-bold text-slate-800">
             {healthMetrics.critical}
@@ -91,7 +93,7 @@ const StockHealthCheck = ({ products }) => {
             <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-500 flex items-center justify-center">
               <Package size={18} />
             </div>
-            <span className="text-sm font-semibold text-slate-600">No Stock Required</span>
+            <span className="text-sm font-semibold text-slate-600">{t('stock.noStockRequired')}</span>
           </div>
           <span className="font-bold text-slate-800">
             {healthMetrics.noStockRequired}

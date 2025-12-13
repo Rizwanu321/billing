@@ -1,6 +1,7 @@
 // components/revenue/ProductReturns.jsx
 
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
     RotateCcw,
     TrendingDown,
@@ -40,6 +41,7 @@ import { fetchProductReturns } from "../../api/revenue";
 import api from "../../utils/api";
 
 const ProductReturns = () => {
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [initialLoading, setInitialLoading] = useState(true);
     const [returnsData, setReturnsData] = useState([]);
@@ -70,13 +72,14 @@ const ProductReturns = () => {
     const COLORS = ["#f97316", "#fb923c", "#fdba74", "#fed7aa", "#ffedd5"];
 
     // Time period filter configuration
+    // Time period filter configuration
     const PREDEFINED_RANGES = [
-        { label: "Today", value: "today", icon: Calendar },
-        { label: "Week", value: "week", icon: Activity },
-        { label: "Month", value: "month", icon: BarChart3 },
-        { label: "Quarter", value: "quarter", icon: TrendIcon },
-        { label: "Year", value: "year", icon: PieChartIcon },
-        { label: "All Time", value: "all", icon: Infinity },
+        { label: t('dashboard.timePeriod.today'), value: "today", icon: Calendar },
+        { label: t('dashboard.timePeriod.week'), value: "week", icon: Activity },
+        { label: t('dashboard.timePeriod.month'), value: "month", icon: BarChart3 },
+        { label: t('dashboard.timePeriod.quarter'), value: "quarter", icon: TrendIcon },
+        { label: t('dashboard.timePeriod.year'), value: "year", icon: PieChartIcon },
+        { label: t('dashboard.timePeriod.allTime'), value: "all", icon: Infinity },
     ];
 
     // Initial data load
@@ -291,13 +294,13 @@ const ProductReturns = () => {
 
     const exportToCSV = () => {
         const headers = [
-            "Product",
-            "Category",
-            "Return Quantity",
-            "Return Value",
-            "Return Count",
-            "Last Return Date",
-            "Avg Return Qty",
+            t('revenue.product'),
+            t('revenue.category'),
+            t('revenue.returnQuantity'),
+            t('revenue.returnValue'),
+            t('revenue.returnCount'),
+            t('revenue.lastReturnDate'),
+            t('revenue.avgReturnQty'),
         ];
 
         const csvData = returnsData.map((item) => [
@@ -347,7 +350,7 @@ const ProductReturns = () => {
             <div className="flex items-center justify-center h-screen">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading returns data...</p>
+                    <p className="text-gray-600">{t('common.loading')}</p>
                 </div>
             </div>
         );
@@ -363,11 +366,11 @@ const ProductReturns = () => {
                             <div className="flex items-center gap-2">
                                 <RotateCcw className="w-8 h-8 text-orange-600" />
                                 <h1 className="text-3xl font-bold text-gray-900">
-                                    Product Returns
+                                    {t('revenue.productReturns')}
                                 </h1>
                             </div>
                             <p className="text-gray-600 mt-1">
-                                Track and analyze product returns and refunds
+                                {t('revenue.trackAndAnalyzeReturns')}
                             </p>
                         </div>
                         <div className="flex gap-2">
@@ -376,7 +379,7 @@ const ProductReturns = () => {
                                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                             >
                                 <Filter className="w-4 h-4" />
-                                {showFilters ? "Hide" : "Show"} Filters
+                                {showFilters ? t('revenue.hideFilters') : t('revenue.showFilters')}
                             </button>
                             <button
                                 onClick={() => fetchData()}
@@ -386,7 +389,7 @@ const ProductReturns = () => {
                                 <RefreshCw
                                     className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                                 />
-                                <span className="hidden sm:inline">Refresh</span>
+                                <span className="hidden sm:inline">{t('common.refresh')}</span>
                             </button>
                             <button
                                 onClick={exportToCSV}
@@ -394,7 +397,7 @@ const ProductReturns = () => {
                                 className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Download className="w-4 h-4" />
-                                <span className="hidden sm:inline">Export CSV</span>
+                                <span className="hidden sm:inline">{t('revenue.csvExport')}</span>
                             </button>
                         </div>
                     </div>
@@ -403,14 +406,14 @@ const ProductReturns = () => {
                     {hasActiveFilters() && (
                         <div className="flex items-center gap-2 p-3 bg-orange-50 rounded-lg border border-orange-200 mt-4">
                             <span className="text-sm text-orange-800 font-medium">
-                                Active filters applied
+                                {t('revenue.activeFiltersApplied')}
                             </span>
                             <button
                                 onClick={clearFilters}
                                 className="ml-auto text-orange-600 hover:text-orange-800 text-sm font-medium flex items-center gap-1"
                             >
                                 <X className="w-4 h-4" />
-                                Clear all
+                                {t('revenue.clearAll')}
                             </button>
                         </div>
                     )}
@@ -452,40 +455,40 @@ const ProductReturns = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
                         <StatCard
                             icon={IndianRupee}
-                            title="Total Return Value"
+                            title={t('revenue.totalReturnValue')}
                             value={formatCurrency(summary.totalReturnValue || 0)}
-                            subtitle={`${summary.totalReturnCount || 0} transactions`}
+                            subtitle={`${summary.totalReturnCount || 0} ${t('revenue.transactions')}`}
                             color="bg-gradient-to-br from-orange-500 to-orange-600"
                         />
 
                         <StatCard
                             icon={Package}
-                            title="Return Quantity"
+                            title={t('revenue.returnQuantity')}
                             value={(summary.totalReturnQuantity || 0).toFixed(2)}
-                            subtitle={`${summary.uniqueProductCount || 0} unique products`}
+                            subtitle={`${summary.uniqueProductCount || 0} ${t('revenue.uniqueProducts')}`}
                             color="bg-gradient-to-br from-red-500 to-red-600"
                         />
 
                         <StatCard
                             icon={TrendingDown}
-                            title="Return Rate"
+                            title={t('revenue.returnRate')}
                             value={`${(summary.returnRate || 0).toFixed(2)}%`}
-                            subtitle="Of total sales"
+                            subtitle={t('revenue.ofTotalSales')}
                             color="bg-gradient-to-br from-amber-500 to-amber-600"
                             badge={(summary.returnRate || 0) > 5 ? "High" : "Normal"}
                         />
 
                         <StatCard
                             icon={Tag}
-                            title="Avg Return Value"
+                            title={t('revenue.avgReturnValue')}
                             value={formatCurrency(summary.avgReturnValue || 0)}
-                            subtitle="Per transaction"
+                            subtitle={t('revenue.perTransaction')}
                             color="bg-gradient-to-br from-yellow-500 to-yellow-600"
                         />
 
                         <StatCard
                             icon={AlertCircle}
-                            title="Most Returned"
+                            title={t('revenue.mostReturned')}
                             value={
                                 summary.mostReturnedProduct
                                     ? summary.mostReturnedProduct.name.substring(0, 15) +
@@ -494,8 +497,8 @@ const ProductReturns = () => {
                             }
                             subtitle={
                                 summary.mostReturnedProduct
-                                    ? `${summary.mostReturnedProduct.returnCount} returns`
-                                    : "No returns yet"
+                                    ? `${summary.mostReturnedProduct.returnCount} ${t('revenue.returns')}`
+                                    : t('revenue.noActivity')
                             }
                             color="bg-gradient-to-br from-rose-500 to-rose-600"
                         />
@@ -507,10 +510,10 @@ const ProductReturns = () => {
                     <div className="bg-white rounded-xl shadow-md p-6 mb-8">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                             <RotateCcw className="w-5 h-5 text-orange-600" />
-                            Returns Breakdown
+                            {t('revenue.returnsBreakdownTitle')}
                         </h3>
                         <p className="text-gray-600 text-sm mb-6">
-                            Understanding how returns impact your cash flow
+                            {t('revenue.understandingReturnsImpact')}
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -521,15 +524,15 @@ const ProductReturns = () => {
                                         <TrendingDown className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-gray-900">Total Returns</h4>
-                                        <p className="text-xs text-gray-600">{summary.totalReturnCount || 0} return transactions</p>
+                                        <h4 className="font-semibold text-gray-900">{t('revenue.totalReturns')}</h4>
+                                        <p className="text-xs text-gray-600">{summary.totalReturnCount || 0} {t('revenue.transactions')}</p>
                                     </div>
                                 </div>
                                 <p className="text-2xl font-bold text-orange-600">
                                     {formatCurrency(summary.totalReturnValue || 0)}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-2">
-                                    All returns (walk-in + due customer)
+                                    {t('revenue.overview')}
                                 </p>
                             </div>
 
@@ -540,15 +543,15 @@ const ProductReturns = () => {
                                         <IndianRupee className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-gray-900">Cash Refunds</h4>
-                                        <p className="text-xs text-gray-600">Walk-in Returns</p>
+                                        <h4 className="font-semibold text-gray-900">{t('revenue.cashRefunds')}</h4>
+                                        <p className="text-xs text-gray-600">{t('revenue.walkInReturns')}</p>
                                     </div>
                                 </div>
                                 <p className="text-2xl font-bold text-red-600">
                                     {formatCurrency(summary.cashRefunds?.value || 0)}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-2">
-                                    {summary.cashRefunds?.count || 0} walk-in customer returns (money out)
+                                    {summary.cashRefunds?.count || 0} {t('revenue.walkInReturns')}
                                 </p>
                             </div>
 
@@ -559,28 +562,28 @@ const ProductReturns = () => {
                                         <Tag className="w-5 h-5 text-white" />
                                     </div>
                                     <div>
-                                        <h4 className="font-semibold text-gray-900">Credit Adjustments</h4>
-                                        <p className="text-xs text-gray-600">Due Customer Returns</p>
+                                        <h4 className="font-semibold text-gray-900">{t('revenue.creditAdjustments')}</h4>
+                                        <p className="text-xs text-gray-600">{t('revenue.dueCustomerReturns')}</p>
                                     </div>
                                 </div>
                                 <p className="text-2xl font-bold text-amber-600">
                                     {formatCurrency(summary.creditAdjustments?.value || 0)}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-2">
-                                    {summary.creditAdjustments?.count || 0} returns from credit customers (no cash out)
+                                    {summary.creditAdjustments?.count || 0} {t('revenue.dueCustomerReturns')}
                                 </p>
                             </div>
                         </div>
 
                         {/* Explanation Box */}
                         <div className="mt-6 bg-blue-50 rounded-lg p-4 border border-blue-100">
-                            <h4 className="font-semibold text-blue-900 mb-2">Understanding Return Types</h4>
+                            <h4 className="font-semibold text-blue-900 mb-2">{t('revenue.understandingReturnTypes')}</h4>
                             <div className="space-y-2 text-sm text-blue-800">
                                 <p>
-                                    <span className="font-medium">Cash Refunds:</span> Money refunded to walk-in customers who returned products. This reduces your "Total Collected" amount.
+                                    <span className="font-medium">{t('revenue.cashRefunds')}:</span> {t('revenue.cashRefundsDesc')}
                                 </p>
                                 <p>
-                                    <span className="font-medium">Credit Adjustments:</span> Returns from customers with credit accounts. No money was refunded - instead, their outstanding balance was reduced. This does NOT affect "Total Collected".
+                                    <span className="font-medium">{t('revenue.creditAdjustments')}:</span> {t('revenue.creditAdjustmentsDesc')}
                                 </p>
                             </div>
                         </div>
@@ -594,7 +597,7 @@ const ProductReturns = () => {
                         {trendData.length > 0 && (
                             <div className="bg-white rounded-xl shadow-md p-6">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                    Returns Trend
+                                    {t('revenue.returnsTrend')}
                                 </h3>
                                 <ResponsiveContainer width="100%" height={250}>
                                     <LineChart data={trendData}>
@@ -613,10 +616,10 @@ const ProductReturns = () => {
                                                     ? formatCurrency(value)
                                                     : value,
                                                 name === "returnValue"
-                                                    ? "Return Value"
+                                                    ? t('revenue.returnValue')
                                                     : name === "returnQuantity"
-                                                        ? "Return Quantity"
-                                                        : "Return Count",
+                                                        ? t('revenue.returnQuantity')
+                                                        : t('revenue.returnCount'),
                                             ]}
                                         />
                                         <Legend />
@@ -625,7 +628,7 @@ const ProductReturns = () => {
                                             dataKey="returnValue"
                                             stroke="#f97316"
                                             strokeWidth={2}
-                                            name="Return Value"
+                                            name={t('revenue.returnValue')}
                                             dot={{ fill: "#f97316" }}
                                         />
                                     </LineChart>
@@ -637,7 +640,7 @@ const ProductReturns = () => {
                         {categoryBreakdown.length > 0 && (
                             <div className="bg-white rounded-xl shadow-md p-6">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                    Returns by Category
+                                    {t('revenue.returnsByCategory')}
                                 </h3>
                                 <ResponsiveContainer width="100%" height={250}>
                                     <PieChart>
@@ -671,7 +674,7 @@ const ProductReturns = () => {
                 {returnsData.length > 0 && (
                     <div className="bg-white rounded-xl shadow-md p-6 mb-8">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                            Top 10 Returned Products
+                            {t('revenue.topReturnedProducts')}
                         </h3>
                         <ResponsiveContainer width="100%" height={300}>
                             <BarChart data={returnsData.slice(0, 10)} layout="vertical">
@@ -688,7 +691,7 @@ const ProductReturns = () => {
                                 <Bar
                                     dataKey="returnValue"
                                     fill="#f97316"
-                                    name="Return Value"
+                                    name={t('revenue.returnValue')}
                                     radius={[0, 4, 4, 0]}
                                 />
                             </BarChart>
@@ -700,13 +703,13 @@ const ProductReturns = () => {
                 {showFilters && (
                     <div className="bg-white rounded-xl shadow-md p-6 mb-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                            Filters
+                            {t('revenue.filters')}
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {/* Category Filter */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Category
+                                    {t('revenue.category')}
                                 </label>
                                 <select
                                     value={filters.categoryId}
@@ -715,7 +718,7 @@ const ProductReturns = () => {
                                     }
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                 >
-                                    <option value="all">All Categories</option>
+                                    <option value="all">{t('revenue.allCategories')}</option>
                                     {categories.map((cat) => (
                                         <option key={cat._id} value={cat._id}>
                                             {cat.name}
@@ -727,7 +730,7 @@ const ProductReturns = () => {
                             {/* Product Search */}
                             <div className="relative" ref={productDropdownRef}>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Product
+                                    {t('revenue.product')}
                                 </label>
                                 <div className="relative">
                                     <input
@@ -735,7 +738,7 @@ const ProductReturns = () => {
                                         value={searchTerm}
                                         onChange={handleProductSearchChange}
                                         onFocus={() => setShowProductDropdown(true)}
-                                        placeholder="Search products..."
+                                        placeholder={t('revenue.searchProducts')}
                                         className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                     />
                                     <div className="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -774,7 +777,7 @@ const ProductReturns = () => {
                             {/* Sort By */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Sort By
+                                    {t('revenue.sortBy')}
                                 </label>
                                 <select
                                     value={filters.sortBy}
@@ -783,11 +786,11 @@ const ProductReturns = () => {
                                     }
                                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                                 >
-                                    <option value="returnValue">Return Value</option>
-                                    <option value="returnQuantity">Return Quantity</option>
-                                    <option value="returnCount">Return Count</option>
-                                    <option value="lastReturnDate">Last Return Date</option>
-                                    <option value="productName">Product Name</option>
+                                    <option value="returnValue">{t('revenue.returnValue')}</option>
+                                    <option value="returnQuantity">{t('revenue.returnQuantity')}</option>
+                                    <option value="returnCount">{t('revenue.returnCount')}</option>
+                                    <option value="lastReturnDate">{t('revenue.lastReturnDate')}</option>
+                                    <option value="productName">{t('revenue.productName')}</option>
                                 </select>
                             </div>
                         </div>
@@ -798,7 +801,7 @@ const ProductReturns = () => {
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-200">
                         <h3 className="text-lg font-semibold text-gray-900">
-                            Returns Details
+                            {t('revenue.returnsDetails')}
                         </h3>
                     </div>
                     <div className="overflow-x-auto">
@@ -806,22 +809,22 @@ const ProductReturns = () => {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Product
+                                        {t('revenue.product')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Category
+                                        {t('revenue.category')}
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Return Qty
+                                        {t('revenue.returnQty')}
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Return Value
+                                        {t('revenue.returnValue')}
                                     </th>
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Return Count
+                                        {t('revenue.returnCount')}
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Last Return
+                                        {t('revenue.lastReturn')}
                                     </th>
                                 </tr>
                             </thead>
@@ -840,7 +843,7 @@ const ProductReturns = () => {
                                             <div className="flex flex-col items-center gap-2">
                                                 <RotateCcw className="w-12 h-12 text-gray-400" />
                                                 <p className="text-gray-500">
-                                                    No returns found for the selected period
+                                                    {t('revenue.noReturnsFound')}
                                                 </p>
                                             </div>
                                         </td>

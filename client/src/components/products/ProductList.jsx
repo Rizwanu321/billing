@@ -8,6 +8,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const ProductList = ({
   products,
@@ -17,6 +18,7 @@ const ProductList = ({
   onStockHistory,
   viewMode = "grid",
 }) => {
+  const { t } = useTranslation();
   if (viewMode === "list") {
     return (
       <div className="space-y-3">
@@ -57,6 +59,7 @@ const ProductCard = ({
   onDelete,
   onStockHistory,
 }) => {
+  const { t } = useTranslation();
   const getCategoryName = () => {
     if (!product.category) return "Uncategorized";
     return product.category.name || "Uncategorized";
@@ -80,7 +83,7 @@ const ProductCard = ({
     if (!product.isStockRequired) {
       return {
         className: "bg-gray-100 text-gray-700 border-gray-200",
-        text: "No Stock Tracking",
+        text: t('products.noStockTracking'),
         icon: null,
       };
     }
@@ -93,7 +96,7 @@ const ProductCard = ({
     if (product.stock === 0) {
       return {
         className: "bg-red-100 text-red-700 border-red-200",
-        text: "Out of Stock",
+        text: t('products.outOfStock'),
         icon: <TrendingDown className="w-3 h-3" />,
       };
     }
@@ -101,14 +104,14 @@ const ProductCard = ({
     if (product.stock <= 10) {
       return {
         className: "bg-amber-100 text-amber-700 border-amber-200",
-        text: `Low: ${stockDisplay}`,
+        text: `${t('products.low')}: ${stockDisplay}`,
         icon: <TrendingDown className="w-3 h-3" />,
       };
     }
 
     return {
       className: "bg-green-100 text-green-700 border-green-200",
-      text: `Stock: ${stockDisplay}`,
+      text: `${t('products.stock')}: ${stockDisplay}`,
       icon: <TrendingUp className="w-3 h-3" />,
     };
   };
@@ -141,7 +144,7 @@ const ProductCard = ({
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500 mb-1">
-              Price per {product.unit}
+              {t('products.pricePer')} {product.unit}
             </p>
             <p className="text-xl sm:text-2xl font-bold text-gray-900">
               ₹{Number(product.price).toFixed(2)}
@@ -161,7 +164,7 @@ const ProductCard = ({
         {product.isStockRequired && (
           <div className="mb-4">
             <div className="flex justify-between text-xs text-gray-600 mb-2">
-              <span>Stock Level</span>
+              <span>{t('products.stockLevel')}</span>
               <span className="font-medium">
                 {Number(product.stock).toFixed(2)} / {Math.max(product.stock, 100)} {product.unit}
               </span>
@@ -169,10 +172,10 @@ const ProductCard = ({
             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${product.stock === 0
-                    ? "bg-red-500"
-                    : product.stock <= 10
-                      ? "bg-amber-500"
-                      : "bg-green-500"
+                  ? "bg-red-500"
+                  : product.stock <= 10
+                    ? "bg-amber-500"
+                    : "bg-green-500"
                   }`}
                 style={{
                   width: `${Math.min(
@@ -193,7 +196,7 @@ const ProductCard = ({
               onClick={onEdit}
             >
               <Edit2 className="h-4 w-4 mr-1.5" />
-              Edit
+              {t('products.edit')}
             </button>
             <button
               className="flex items-center justify-center px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 text-sm font-medium shadow-sm hover:shadow"
@@ -209,7 +212,7 @@ const ProductCard = ({
               }}
             >
               <Trash2 className="h-4 w-4 mr-1.5" />
-              Delete
+              {t('products.delete')}
             </button>
           </div>
 
@@ -221,7 +224,7 @@ const ProductCard = ({
                 title="Adjust Stock"
               >
                 <Package className="h-4 w-4 mr-1.5" />
-                Stock
+                {t('products.stock')}
               </button>
               <button
                 className="flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 text-sm font-medium border border-gray-200"
@@ -229,7 +232,7 @@ const ProductCard = ({
                 title="Stock History"
               >
                 <Clock className="h-4 w-4 mr-1.5" />
-                History
+                {t('products.history')}
               </button>
             </div>
           )}
@@ -246,6 +249,7 @@ const ProductListItem = ({
   onDelete,
   onStockHistory,
 }) => {
+  const { t } = useTranslation();
   const getCategoryName = () => {
     if (!product.category) return "Uncategorized";
     return product.category.name || "Uncategorized";
@@ -269,7 +273,7 @@ const ProductListItem = ({
     if (!product.isStockRequired) {
       return {
         className: "bg-gray-100 text-gray-700",
-        text: "No Stock Tracking",
+        text: t('products.noStockTracking'),
       };
     }
 
@@ -281,20 +285,20 @@ const ProductListItem = ({
     if (product.stock === 0) {
       return {
         className: "bg-red-100 text-red-700",
-        text: "Out of Stock",
+        text: t('products.outOfStock'),
       };
     }
 
     if (product.stock <= 10) {
       return {
         className: "bg-amber-100 text-amber-700",
-        text: `Low: ${stockDisplay}`,
+        text: `${t('products.low')}: ${stockDisplay}`,
       };
     }
 
     return {
       className: "bg-green-100 text-green-700",
-      text: `Stock: ${stockDisplay}`,
+      text: `${t('products.stock')}: ${stockDisplay}`,
     };
   };
 
@@ -340,7 +344,7 @@ const ProductListItem = ({
             onClick={onEdit}
           >
             <Edit2 className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Edit</span>
+            <span className="hidden sm:inline">{t('products.edit')}</span>
           </button>
           {product.isStockRequired && (
             <>
@@ -349,14 +353,14 @@ const ProductListItem = ({
                 onClick={onStockAdjust}
               >
                 <Package className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">Stock</span>
+                <span className="hidden sm:inline">{t('products.stock')}</span>
               </button>
               <button
                 className="flex-1 sm:flex-none flex items-center justify-center px-3 sm:px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium border border-gray-200"
                 onClick={onStockHistory}
               >
                 <Clock className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">History</span>
+                <span className="hidden sm:inline">{t('products.history')}</span>
               </button>
             </>
           )}
@@ -372,7 +376,7 @@ const ProductListItem = ({
             }}
           >
             <Trash2 className="h-4 w-4 sm:mr-1.5" />
-            <span className="hidden sm:inline">Delete</span>
+            <span className="hidden sm:inline">{t('products.delete')}</span>
           </button>
         </div>
       </div>

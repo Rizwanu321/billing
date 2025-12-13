@@ -25,8 +25,10 @@ import DatePicker from "react-datepicker";
 import { generateStockReport, fetchStockReportData } from "../../api/stock";
 import { toast } from "react-hot-toast";
 import "react-datepicker/dist/react-datepicker.css";
+import { useTranslation } from "react-i18next";
 
 const StockReports = () => {
+  const { t } = useTranslation();
   const [reportType, setReportType] = useState("summary");
   const [dateRange, setDateRange] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -41,29 +43,29 @@ const StockReports = () => {
   const reportTypes = [
     {
       id: "summary",
-      name: "Stock Summary",
-      description: "Overview of current stock levels and values",
+      name: t('stock.stockSummary'),
+      description: t('stock.overviewOfCurrentStockLevels'),
       icon: BarChart3,
       color: "indigo",
     },
     {
       id: "movement",
-      name: "Movement Analysis",
-      description: "Detailed analysis of stock movements",
+      name: t('stock.movementAnalysis'),
+      description: t('stock.detailedAnalysisOfStockMovements'),
       icon: Activity,
       color: "emerald",
     },
     {
       id: "valuation",
-      name: "Stock Valuation",
-      description: "Complete stock valuation by category",
+      name: t('stock.stockValuation'),
+      description: t('stock.completeStockValuationByCategory'),
       icon: TrendingUp,
       color: "violet",
     },
     {
       id: "lowstock",
-      name: "Low Stock",
-      description: "Products below reorder level",
+      name: t('stock.lowStock'),
+      description: t('stock.productsBelowReorderLevel'),
       icon: AlertTriangle,
       color: "rose",
     },
@@ -391,15 +393,15 @@ const StockReports = () => {
     return (
       <div className="bg-white rounded-2xl shadow-lg border border-slate-200 mt-8 overflow-hidden animate-fadeIn">
         <div className="bg-slate-50/50 px-6 sm:px-8 py-4 border-b border-slate-200 flex justify-between items-center">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2"><Eye className="text-indigo-600" size={20} /> Report Preview</h3>
+          <h3 className="font-bold text-slate-800 flex items-center gap-2"><Eye className="text-indigo-600" size={20} /> {t('stock.reportPreview')}</h3>
           <button onClick={() => setShowPreview(false)} className="text-slate-400 hover:text-slate-600"><EyeOff size={20} /></button>
         </div>
         <div className="p-6 sm:p-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatCard icon={Package} label="Total Products" value={reportData.totalProducts} colorType="blue" />
-            <StatCard icon={DollarSign} label="Total Value" value={`₹${reportData.totalValue?.toFixed(2)}`} colorType="green" />
-            <StatCard icon={AlertTriangle} label="Low Stock" value={reportData.lowStockCount} colorType="orange" />
-            <StatCard icon={ShieldCheck} label="Out of Stock" value={reportData.outOfStockCount} colorType="red" />
+            <StatCard icon={Package} label={t('stock.totalProducts')} value={reportData.totalProducts} colorType="blue" />
+            <StatCard icon={DollarSign} label={t('stock.totalValue')} value={`₹${reportData.totalValue?.toFixed(2)}`} colorType="green" />
+            <StatCard icon={AlertTriangle} label={t('stock.lowStock')} value={reportData.lowStockCount} colorType="orange" />
+            <StatCard icon={ShieldCheck} label={t('stock.outOfStock')} value={reportData.outOfStockCount} colorType="red" />
           </div>
 
           {reportType === "summary" && <SummaryReportTable data={reportData} />}
@@ -419,9 +421,9 @@ const StockReports = () => {
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
               <FileSpreadsheet className="text-indigo-600" size={28} />
-              Stock Reports
+              {t('stock.stockReports')}
             </h1>
-            <p className="text-sm text-slate-500 mt-1 ml-10">Generate comprehensive inventory analytics</p>
+            <p className="text-sm text-slate-500 mt-1 ml-10">{t('stock.generateComprehensiveInventoryAnalytics')}</p>
           </div>
         </div>
       </div>
@@ -452,11 +454,11 @@ const StockReports = () => {
 
         {/* Parameters */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 animate-fadeIn">
-          <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2"><Filter size={20} className="text-slate-400" /> Report Parameters</h3>
+          <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2"><Filter size={20} className="text-slate-400" /> {t('stock.reportParameters')}</h3>
           <div className="flex flex-col lg:flex-row gap-6 items-end">
             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Start Date</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t('stock.startDate')}</label>
                 <div className="relative">
                   <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <DatePicker
@@ -468,7 +470,7 @@ const StockReports = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">End Date</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t('stock.endDate')}</label>
                 <div className="relative">
                   <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                   <DatePicker
@@ -487,7 +489,7 @@ const StockReports = () => {
               className="w-full lg:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : <BarChart3 size={20} />}
-              Generate Report
+              {t('stock.generateReport')}
             </button>
           </div>
 
@@ -495,8 +497,8 @@ const StockReports = () => {
           {reportData && showPreview && (
             <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
               <div>
-                <p className="font-bold text-slate-700">Export Results</p>
-                <p className="text-sm text-slate-400">Download report in your preferred format</p>
+                <p className="font-bold text-slate-700">{t('stock.exportResults')}</p>
+                <p className="text-sm text-slate-400">{t('stock.downloadReportInPreferredFormat')}</p>
               </div>
               <div className="flex gap-3 w-full sm:w-auto">
                 <button
@@ -504,14 +506,14 @@ const StockReports = () => {
                   disabled={downloadingFormat === "pdf"}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-lg shadow-rose-200 transition-all disabled:opacity-70"
                 >
-                  {downloadingFormat === "pdf" ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />} PDF Report
+                  {downloadingFormat === "pdf" ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />} {t('stock.pdfReport')}
                 </button>
                 <button
                   onClick={() => handleDownloadReport("csv")}
                   disabled={downloadingFormat === "csv"}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all disabled:opacity-70"
                 >
-                  {downloadingFormat === "csv" ? <Loader2 className="animate-spin" size={18} /> : <FileSpreadsheet size={18} />} CSV Export
+                  {downloadingFormat === "csv" ? <Loader2 className="animate-spin" size={18} /> : <FileSpreadsheet size={18} />} {t('stock.csvExport')}
                 </button>
               </div>
             </div>

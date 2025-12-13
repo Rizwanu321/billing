@@ -1,9 +1,11 @@
 // components/revenue/RevenueExport.jsx
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Download, FileText, Table } from "lucide-react";
 import { generateRevenuePDF, exportRevenueCSV } from "../../api/revenue";
 
 const RevenueExport = () => {
+  const { t } = useTranslation();
   const [exporting, setExporting] = useState(false);
   const [exportOptions, setExportOptions] = useState({
     format: "pdf",
@@ -50,7 +52,7 @@ const RevenueExport = () => {
       }
     } catch (error) {
       console.error("Export error:", error);
-      alert("Failed to export data. Please try again.");
+      alert(t('revenue.exportError'));
     } finally {
       setExporting(false);
     }
@@ -59,7 +61,7 @@ const RevenueExport = () => {
   return (
     <div className="bg-white rounded-xl shadow-md p-6">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Export Revenue Data
+        {t('revenue.exportRevenueData')}
       </h3>
 
       <div className="space-y-4">
@@ -67,7 +69,7 @@ const RevenueExport = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date
+              {t('common.startDate')}
             </label>
             <input
               type="date"
@@ -83,7 +85,7 @@ const RevenueExport = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date
+              {t('common.endDate')}
             </label>
             <input
               type="date"
@@ -111,7 +113,7 @@ const RevenueExport = () => {
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">
-              Include transaction details
+              {t('revenue.includeDetails')}
             </span>
           </label>
 
@@ -128,7 +130,7 @@ const RevenueExport = () => {
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">
-              Include summary statistics
+              {t('revenue.includeSummary')}
             </span>
           </label>
 
@@ -145,7 +147,7 @@ const RevenueExport = () => {
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
             <span className="ml-2 text-sm text-gray-700">
-              Include charts and graphs (PDF only)
+              {t('revenue.includeCharts')}
             </span>
           </label>
         </div>
@@ -158,7 +160,7 @@ const RevenueExport = () => {
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <FileText className="w-4 h-4" />
-            {exporting ? "Exporting..." : "Export as PDF"}
+            {exporting ? t('revenue.exporting') : t('revenue.exportAsPDF')}
           </button>
 
           <button
@@ -167,7 +169,7 @@ const RevenueExport = () => {
             className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
           >
             <Table className="w-4 h-4" />
-            {exporting ? "Exporting..." : "Export as CSV"}
+            {exporting ? t('revenue.exporting') : t('revenue.exportAsCSV')}
           </button>
         </div>
       </div>

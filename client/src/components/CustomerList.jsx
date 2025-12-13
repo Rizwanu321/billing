@@ -12,8 +12,10 @@ import {
   Wallet,
 } from "lucide-react";
 import { fetchCustomers } from "../api/customers";
+import { useTranslation } from "react-i18next";
 
 const CustomerList = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [customers, setCustomers] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,10 +75,10 @@ const CustomerList = () => {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-                  Customers
+                  {t('customerList.customers')}
                 </h1>
                 <p className="text-sm text-gray-500 font-medium">
-                  {customers.length} total customers
+                  {customers.length} {t('customerList.totalCustomers')}
                 </p>
               </div>
             </div>
@@ -85,7 +87,7 @@ const CustomerList = () => {
               className="group flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-5 py-2.5 rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 transform hover:-translate-y-0.5"
             >
               <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
-              <span className="font-semibold">Add Customer</span>
+              <span className="font-semibold">{t('customerList.addCustomer')}</span>
             </button>
           </div>
         </div>
@@ -99,7 +101,7 @@ const CustomerList = () => {
           </div>
           <input
             type="text"
-            placeholder="Search customers by name, phone, or place..."
+            placeholder={t('customerList.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm hover:shadow-md focus:shadow-lg"
@@ -146,19 +148,19 @@ const CustomerList = () => {
                 <thead className="bg-gray-50/50 border-b border-gray-100">
                   <tr>
                     <th className="text-left px-8 py-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Customer Details
+                      {t('customerList.customerDetails')}
                     </th>
                     <th className="text-left px-6 py-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Contact Info
+                      {t('customerList.contactInfo')}
                     </th>
                     <th className="text-left px-6 py-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Location
+                      {t('customerList.location')}
                     </th>
                     <th className="text-right px-8 py-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Balance Status
+                      {t('customerList.balanceStatus')}
                     </th>
                     <th className="text-right px-6 py-5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                      Action
+                      {t('customerList.action')}
                     </th>
                   </tr>
                 </thead>
@@ -208,7 +210,7 @@ const CustomerList = () => {
                               <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100 shadow-sm transition-all group-hover/badge:shadow-md group-hover/badge:border-rose-200">
                                 <span>₹{customer.amountDue.toFixed(2)}</span>
                               </span>
-                              <p className="absolute right-0 -bottom-5 text-[10px] font-bold text-rose-400 opacity-0 group-hover/badge:opacity-100 transition-opacity whitespace-nowrap">Payment Due</p>
+                              <p className="absolute right-0 -bottom-5 text-[10px] font-bold text-rose-400 opacity-0 group-hover/badge:opacity-100 transition-opacity whitespace-nowrap">{t('customerList.paymentDue')}</p>
                             </div>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-teal-50 text-teal-600 border border-teal-100 shadow-sm">
@@ -240,8 +242,8 @@ const CustomerList = () => {
                   <div className="flex justify-between items-start mb-5">
                     <div className="flex items-center space-x-4">
                       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg ring-2 ring-white ${customer.amountDue > 0
-                          ? "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-indigo-500/20"
-                          : "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 shadow-emerald-500/20"
+                        ? "bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-indigo-500/20"
+                        : "bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-500 shadow-emerald-500/20"
                         }`}>
                         {customer.name.charAt(0).toUpperCase()}
                       </div>
@@ -293,7 +295,7 @@ const CustomerList = () => {
 
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-400 font-medium">
-                Showing {filteredCustomers.length} of {customers.length} customers
+                {t('customerList.showingCustomers', { start: filteredCustomers.length, total: customers.length })}
               </p>
             </div>
           </>

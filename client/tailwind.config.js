@@ -6,6 +6,10 @@ module.exports = {
       screens: {
         xs: "475px",
       },
+      fontFamily: {
+        sans: ['Inter', 'Manjari', 'sans-serif'],
+        heading: ['Manjari', 'Inter', 'sans-serif'],
+      },
       colors: {
         primary: {
           50: "#eff6ff",

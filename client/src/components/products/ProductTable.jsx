@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useTranslation } from "react-i18next";
 
 const ProductTable = ({
   products,
@@ -25,6 +26,7 @@ const ProductTable = ({
   searchTerm,
   selectedCategory,
 }) => {
+  const { t } = useTranslation();
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
   const [expandedActions, setExpandedActions] = useState({}); // Add this state
@@ -99,7 +101,7 @@ const ProductTable = ({
     if (product.stock === 0) {
       return {
         className: "bg-red-100 text-red-700",
-        text: "Out of Stock",
+        text: t('products.outOfStock'),
         icon: <AlertCircle className="w-4 h-4" />,
       };
     }
@@ -107,14 +109,14 @@ const ProductTable = ({
     if (product.stock <= 10) {
       return {
         className: "bg-amber-100 text-amber-700",
-        text: "Low Stock",
+        text: t('products.lowStock'),
         icon: <TrendingDown className="w-4 h-4" />,
       };
     }
 
     return {
       className: "bg-green-100 text-green-700",
-      text: "In Stock",
+      text: t('products.inStock'),
       icon: <TrendingUp className="w-4 h-4" />,
     };
   };
@@ -295,7 +297,7 @@ const ProductTable = ({
           className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-sm hover:shadow transition-all duration-200"
         >
           <Download className="w-4 h-4 mr-2" />
-          Export to PDF
+          {t('products.exportToPDF')}
         </button>
       </div>
 
@@ -310,7 +312,7 @@ const ProductTable = ({
               >
                 <div className="flex items-center gap-2">
                   <Package className="w-4 h-4" />
-                  <span>Product Name</span>
+                  <span>{t('products.productName')}</span>
                   <SortIcon field="name" />
                 </div>
               </th>
@@ -319,7 +321,7 @@ const ProductTable = ({
                 className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span>Category</span>
+                  <span>{t('products.category')}</span>
                   <SortIcon field="category" />
                 </div>
               </th>
@@ -328,27 +330,27 @@ const ProductTable = ({
                 className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span>Price</span>
+                  <span>{t('products.price')}</span>
                   <SortIcon field="price" />
                 </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Unit
+                {t('products.unit')}
               </th>
               <th
                 onClick={() => handleSort("stock")}
                 className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-gray-200 transition-colors"
               >
                 <div className="flex items-center gap-2">
-                  <span>Stock</span>
+                  <span>{t('products.stock')}</span>
                   <SortIcon field="stock" />
                 </div>
               </th>
               <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Status
+                {t('products.status')}
               </th>
               <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Actions
+                {t('products.actions')}
               </th>
             </tr>
           </thead>
@@ -383,7 +385,7 @@ const ProductTable = ({
                       ₹{Number(product.price).toFixed(2)}
                     </div>
                     <div className="text-xs text-gray-500">
-                      per {product.unit}
+                      {t('products.per')} {product.unit}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -463,10 +465,10 @@ const ProductTable = ({
             <thead className="bg-gradient-to-r from-blue-50 to-blue-100">
               <tr>
                 <th className="px-2 py-2 text-left text-xs font-semibold text-gray-700 uppercase">
-                  Product
+                  {t('products.product')}
                 </th>
                 <th className="px-2 py-2 text-right text-xs font-semibold text-gray-700 uppercase">
-                  Price
+                  {t('products.price')}
                 </th>
                 <th className="px-2 py-2 text-center text-xs font-semibold text-gray-700 uppercase w-16">
                   •••
@@ -561,7 +563,7 @@ const ProductTable = ({
                               className="inline-flex items-center gap-1 px-2 py-1.5 bg-blue-600 text-white rounded text-xs font-medium"
                             >
                               <Edit2 className="h-3 w-3" />
-                              Edit
+                              {t('products.edit')}
                             </button>
                             {product.isStockRequired && (
                               <button
@@ -573,7 +575,7 @@ const ProductTable = ({
                                 className="inline-flex items-center gap-1 px-2 py-1.5 bg-purple-600 text-white rounded text-xs font-medium"
                               >
                                 <Clock className="h-3 w-3" />
-                                History
+                                {t('products.history')}
                               </button>
                             )}
                             <button
@@ -591,7 +593,7 @@ const ProductTable = ({
                               className="inline-flex items-center gap-1 px-2 py-1.5 bg-red-600 text-white rounded text-xs font-medium"
                             >
                               <Trash2 className="h-3 w-3" />
-                              Delete
+                              {t('products.delete')}
                             </button>
                           </div>
                         </td>

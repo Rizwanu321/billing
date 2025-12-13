@@ -17,6 +17,7 @@ import Dialog from "./Dialog";
 import InvoiceItemsSection from "./InvoiceItemsSection";
 import { fetchCustomerById } from "../../api/customers";
 import CustomerAutocomplete from "./CustomerAutocomplet";
+import { useTranslation } from "react-i18next";
 
 const InvoiceForm = ({
   invoice,
@@ -33,6 +34,7 @@ const InvoiceForm = ({
   onSave,
   onPrint,
 }) => {
+  const { t } = useTranslation();
   const [localInvoice, setLocalInvoice] = useState(invoice);
   const [hasChanges, setHasChanges] = useState(false);
   const internalUpdateRef = useRef(false);
@@ -63,10 +65,10 @@ const InvoiceForm = ({
 
   const isExistingInvoice = Boolean(invoice._id);
   const primaryButtonLabel = !isExistingInvoice
-    ? "Save Invoice"
+    ? t('invoice.saveInvoice')
     : hasChanges
-      ? "Save Changes"
-      : "Edit Invoice";
+      ? t('invoice.saveChanges')
+      : t('invoice.editInvoice');
   const isActionDisabled =
     loading ||
     (!isExistingInvoice && invoice.items.length === 0) ||
@@ -184,11 +186,11 @@ const InvoiceForm = ({
       {/* Customer Name Input */}
       <div className="mb-8">
         <label className="block text-sm font-semibold text-slate-700 mb-2">
-          Customer Information
+          {t('invoice.customerInformation')}
         </label>
         <input
           type="text"
-          placeholder="Customer Name (Optional)"
+          placeholder={t('invoice.customerNameOptional')}
           value={invoice.customer.name}
           onChange={(e) => {
             markAsDirty();
@@ -204,7 +206,7 @@ const InvoiceForm = ({
       {/* Payment Method Selection */}
       <div className="mb-8">
         <h3 className="text-base font-bold text-slate-900 mb-3">
-          Payment Method
+          {t('invoice.paymentMethod')}
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {["cash", "online", "due"].map((method) => (
@@ -219,7 +221,7 @@ const InvoiceForm = ({
               <span className={`mr-2 ${invoice.paymentMethod === method ? "text-indigo-100" : "text-slate-400"}`}>
                 {paymentIcons[method]}
               </span>
-              <span>{method} Payment</span>
+              <span>{t(`invoice.${method}Payment`)}</span>
             </button>
           ))}
         </div>
@@ -230,7 +232,7 @@ const InvoiceForm = ({
         <div className="mb-8 p-5 bg-indigo-50 rounded-2xl border border-indigo-100">
           <h3 className="text-base font-bold text-indigo-900 mb-3 flex items-center gap-2">
             <User className="w-4 h-4" />
-            Select Customer for Due Payment
+            {t('invoice.selectCustomerForDuePayment')}
           </h3>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
@@ -249,7 +251,7 @@ const InvoiceForm = ({
                     markAsDirty();
                   }
                 }}
-                placeholder="Search Customer"
+                placeholder={t('invoice.searchCustomer')}
                 className="w-full bg-white rounded-xl border-0 ring-1 ring-indigo-200 focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -282,13 +284,13 @@ const InvoiceForm = ({
       <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-8">
         <div className="space-y-3">
           <div className="flex justify-between items-center text-slate-600 text-sm">
-            <span className="font-medium">Total Items</span>
+            <span className="font-medium">{t('invoice.totalItems')}</span>
             {localInvoice.items.length > 0 && (
               <span className="font-bold bg-white px-2 py-1 rounded border border-slate-200">{totalItems}</span>
             )}
           </div>
           <div className="flex justify-between items-center text-slate-600">
-            <span className="font-medium">Subtotal</span>
+            <span className="font-medium">{t('invoice.subtotal')}</span>
             <span className="font-semibold text-slate-900">
               ₹{localInvoice.subtotal.toFixed(2)}
             </span>
@@ -296,7 +298,7 @@ const InvoiceForm = ({
           {taxSettings.taxEnabled && (
             <div className="flex justify-between items-center text-slate-600 text-sm">
               <span className="font-medium">
-                Tax ({taxSettings.taxRate}%)
+                {t('invoice.tax')} ({taxSettings.taxRate}%)
               </span>
               <span className="font-semibold text-slate-900">
                 ₹{localInvoice.tax.toFixed(2)}
@@ -304,7 +306,7 @@ const InvoiceForm = ({
             </div>
           )}
           <div className="flex justify-between items-center pt-4 mt-2 border-t border-slate-200">
-            <span className="text-lg font-bold text-slate-900">Total Amount</span>
+            <span className="text-lg font-bold text-slate-900">{t('invoice.totalAmount')}</span>
             <span className="text-2xl font-bold text-indigo-600">
               ₹{localInvoice.total.toFixed(2)}
             </span>
@@ -345,7 +347,7 @@ const InvoiceForm = ({
               className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 font-bold transition-all shadow-lg shadow-emerald-200 active:scale-[0.98]"
             >
               <IndianRupee className="w-5 h-5 mr-2" />
-              Receive Payment
+              {t('invoice.receivePayment')}
             </button>
           ) : null;
         })()}
@@ -358,7 +360,7 @@ const InvoiceForm = ({
             }`}
         >
           <Printer className="w-5 h-5 mr-2" />
-          Print Invoice
+          {t('invoice.printInvoice')}
         </button>
       </div>
     </div>

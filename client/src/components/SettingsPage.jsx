@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { Settings, Save, Building2, Calculator, DollarSign, MapPin, Phone, CheckCircle2 } from "lucide-react";
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
 import api from "../utils/api";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const SettingsPage = () => {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState({
     taxEnabled: false,
     taxRate: 10,
@@ -62,10 +65,10 @@ const SettingsPage = () => {
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight">
-                  Settings
+                  {t('settings.settings')}
                 </h1>
                 <p className="text-sm sm:text-base text-gray-600 mt-0.5 sm:mt-1">
-                  Manage your business configuration
+                  {t('settings.manageBusinessConfig')}
                 </p>
               </div>
             </div>
@@ -85,10 +88,10 @@ const SettingsPage = () => {
                   </div>
                   <div>
                     <h2 className="text-lg sm:text-xl font-semibold text-white">
-                      Business Information
+                      {t('settings.businessInformation')}
                     </h2>
                     <p className="text-xs sm:text-sm text-purple-100 mt-0.5">
-                      Your company details
+                      {t('settings.companyDetails')}
                     </p>
                   </div>
                 </div>
@@ -99,7 +102,7 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                     <Building2 className="w-4 h-4 text-purple-500" />
-                    Business Name
+                    {t('settings.businessName')}
                   </label>
                   <input
                     type="text"
@@ -115,7 +118,7 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                     <MapPin className="w-4 h-4 text-purple-500" />
-                    Business Address
+                    {t('settings.businessAddress')}
                   </label>
                   <textarea
                     name="businessAddress"
@@ -131,7 +134,7 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                     <Phone className="w-4 h-4 text-purple-500" />
-                    Business Phone
+                    {t('settings.businessPhone')}
                   </label>
                   <input
                     type="tel"
@@ -147,7 +150,7 @@ const SettingsPage = () => {
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                     <DollarSign className="w-4 h-4 text-purple-500" />
-                    Currency
+                    {t('settings.currency')}
                   </label>
                   <div className="relative">
                     <select
@@ -180,10 +183,10 @@ const SettingsPage = () => {
                   </div>
                   <div>
                     <h2 className="text-lg sm:text-xl font-semibold text-white">
-                      Tax Configuration
+                      {t('settings.taxConfiguration')}
                     </h2>
                     <p className="text-xs sm:text-sm text-green-100 mt-0.5">
-                      Manage tax settings
+                      {t('settings.manageTaxSettings')}
                     </p>
                   </div>
                 </div>
@@ -208,13 +211,13 @@ const SettingsPage = () => {
                         htmlFor="taxEnabled"
                         className="text-sm sm:text-base font-semibold text-gray-900 cursor-pointer flex items-center gap-2"
                       >
-                        Enable Tax Calculation
+                        {t('settings.enableTaxCalculation')}
                         {settings.taxEnabled && (
                           <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                         )}
                       </label>
                       <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                        Automatically calculate tax on invoices
+                        {t('settings.autoCalculateTax')}
                       </p>
                     </div>
                   </div>
@@ -222,12 +225,12 @@ const SettingsPage = () => {
 
                 {/* Tax Rate Input - Animated */}
                 <div className={`space-y-2 transition-all duration-300 ${settings.taxEnabled
-                    ? 'opacity-100 max-h-32'
-                    : 'opacity-50 max-h-32 pointer-events-none'
+                  ? 'opacity-100 max-h-32'
+                  : 'opacity-50 max-h-32 pointer-events-none'
                   }`}>
                   <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                     <Calculator className="w-4 h-4 text-green-500" />
-                    Tax Rate (%)
+                    {t('settings.taxRate')}
                   </label>
                   <div className="relative">
                     <input
@@ -249,7 +252,7 @@ const SettingsPage = () => {
                   {settings.taxEnabled && (
                     <p className="text-xs sm:text-sm text-gray-500 flex items-center gap-1.5">
                       <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full"></span>
-                      Tax will be applied to all new invoices
+                      {t('settings.taxAppliedToInvoices')}
                     </p>
                   )}
                 </div>
@@ -264,15 +267,20 @@ const SettingsPage = () => {
                     </div>
                     <div>
                       <h4 className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">
-                        Tax Information
+                        {t('settings.taxInformation')}
                       </h4>
                       <p className="text-xs text-blue-700 leading-relaxed">
-                        The tax rate will be automatically applied to all invoice calculations. You can override this on individual invoices if needed.
+                        {t('settings.taxRateDescription')}
                       </p>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Language Switcher Card */}
+            <div className="lg:col-span-2">
+              <LanguageSwitcher />
             </div>
           </div>
 
@@ -286,10 +294,10 @@ const SettingsPage = () => {
                   </div>
                   <div>
                     <p className="text-sm sm:text-base font-semibold text-gray-900">
-                      Ready to save changes?
+                      {t('settings.readyToSave')}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-600">
-                      Your settings will be updated immediately
+                      {t('settings.settingsUpdated')}
                     </p>
                   </div>
                 </div>
@@ -305,7 +313,7 @@ const SettingsPage = () => {
                       Saving...
                     </>
                   ) : (
-                    'Save Settings'
+                    t('settings.saveSettings')
                   )}
                 </button>
               </div>

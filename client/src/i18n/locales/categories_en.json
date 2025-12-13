@@ -1,0 +1,19 @@
+{
+    "categories": {
+        "totalCategories": "Total Categories",
+        "active": "Active",
+        "newestAdded": "Newest Added",
+        "loadingCategories": "Loading your categories",
+        "categories": "Categories",
+        "manageAndOrganize": "Manage and organize your product catalog structure",
+        "addCategory": "Add Category",
+        "searchCategories": "Search categories...",
+        "grid": "Grid",
+        "list": "List",
+        "noMatchingCategories": "No matching categories",
+        "noCategoriesYet": "No categories yet",
+        "noCategoriesFoundMatching": "No categories found matching \"{{searchTerm}}\". Try a different search term.",
+        "createFirstCategory": "Create your first category to start organizing your products.",
+        "createCategory": "Create Category"
+    }
+}

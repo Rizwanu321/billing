@@ -8,8 +8,10 @@ import {
   AlertCircle,
   Package,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
+  const { t } = useTranslation();
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
 
@@ -29,7 +31,7 @@ const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
         className="w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors font-medium"
       >
         <Edit2 className="h-4 w-4 text-blue-500" />
-        Edit Details
+        {t('categories.editDetails')}
       </button>
       <div className="h-px bg-gray-100 my-1" />
       <button
@@ -41,7 +43,7 @@ const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
         className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-medium"
       >
         <Trash2 className="h-4 w-4 text-red-500" />
-        Delete Category
+        {t('categories.deleteCategory')}
       </button>
     </div>
   );
@@ -80,7 +82,7 @@ const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
                   {category.name}
                 </h3>
                 <p className="text-sm text-gray-500 line-clamp-2 min-h-[40px] leading-relaxed">
-                  {category.description || "No description provided"}
+                  {category.description || t('categories.noDescriptionProvided')}
                 </p>
               </div>
 
@@ -92,7 +94,7 @@ const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
                 </div>
                 <div className="flex items-center gap-1.5 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
                   <span className="text-xs font-semibold uppercase tracking-wide">
-                    View Details
+                    {t('categories.viewDetails')}
                   </span>
                 </div>
               </div>
@@ -132,25 +134,25 @@ const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider"
                 >
-                  Category Name
+                  {t('categories.categoryName')}
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider hidden sm:table-cell"
                 >
-                  Description
+                  {t('categories.description')}
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider hidden md:table-cell"
                 >
-                  Created Date
+                  {t('categories.createdDate')}
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider"
                 >
-                  Actions
+                  {t('categories.actions')}
                 </th>
               </tr>
             </thead>
@@ -175,7 +177,7 @@ const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
                     <div className="text-sm text-gray-500 truncate max-w-xs">
                       {category.description || (
                         <span className="text-gray-400 italic">
-                          No description
+                          {t('categories.noDescription')}
                         </span>
                       )}
                     </div>
@@ -235,6 +237,7 @@ const CategoryList = ({ categories, viewMode, onEdit, onDelete }) => {
 
 // Extracted Delete Modal for cleaner code
 const DeleteModal = ({ isOpen, onClose, onConfirm }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
@@ -251,13 +254,13 @@ const DeleteModal = ({ isOpen, onClose, onConfirm }) => {
               <AlertCircle className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900">Delete Category?</h3>
-              <p className="text-sm text-gray-500">This action cannot be undone.</p>
+              <h3 className="text-lg font-bold text-gray-900">{t('categories.deleteCategoryQuestion')}</h3>
+              <p className="text-sm text-gray-500">{t('categories.thisActionCannotBeUndone')}</p>
             </div>
           </div>
 
           <p className="text-gray-600 mb-6 leading-relaxed text-sm">
-            Are you sure you want to delete this category? Products associated with it may become uncategorized.
+            {t('categories.areYouSureDeleteCategory')}
           </p>
 
           <div className="flex gap-3 justify-end">
@@ -265,13 +268,13 @@ const DeleteModal = ({ isOpen, onClose, onConfirm }) => {
               onClick={onClose}
               className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 font-medium transition-colors text-sm"
             >
-              Cancel
+              {t('categories.cancel')}
             </button>
             <button
               onClick={onConfirm}
               className="px-5 py-2.5 text-white bg-red-600 border border-transparent rounded-xl hover:bg-red-700 font-medium shadow-sm hover:shadow-red-500/25 transition-all text-sm"
             >
-              Delete Permanently
+              {t('categories.deletePermanently')}
             </button>
           </div>
         </div>

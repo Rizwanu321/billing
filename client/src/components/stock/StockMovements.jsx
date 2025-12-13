@@ -29,8 +29,10 @@ import { fetchStockMovements } from "../../api/stock";
 import { toast } from "react-hot-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useTranslation } from "react-i18next";
 
 const StockMovements = () => {
+  const { t } = useTranslation();
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -287,8 +289,8 @@ const StockMovements = () => {
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 sm:px-8 py-4 mb-8">
         <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-center sm:text-left">
-            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Stock Movements</h1>
-            <p className="text-sm text-slate-500 mt-1">Audit trail and inventory history</p>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{t('stock.stockMovements')}</h1>
+            <p className="text-sm text-slate-500 mt-1">{t('stock.auditTrailAndInventoryHistory')}</p>
           </div>
 
           <div className="flex items-center gap-3">
@@ -308,7 +310,7 @@ const StockMovements = () => {
                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl hover:bg-slate-900 transition-all font-medium text-sm shadow-md hover:shadow-lg disabled:opacity-70"
               >
                 {isExporting ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Download size={18} />}
-                <span>Export</span>
+                <span>{t('stock.export')}</span>
                 <ChevronDown size={14} className={`transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
               </button>
 
@@ -336,7 +338,7 @@ const StockMovements = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search products..."
+                placeholder={t('stock.searchProducts')}
                 value={filters.search}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 className="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
@@ -350,7 +352,7 @@ const StockMovements = () => {
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                 className="w-full pl-9 pr-8 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer appearance-none"
               >
-                <option value="all">All Types</option>
+                <option value="all">{t('stock.allTypes')}</option>
                 <option value="sale">Sales</option>
                 <option value="return">Returns</option>
                 <option value="additions">Additions</option>
@@ -412,13 +414,13 @@ const StockMovements = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Date & Time</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Product</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Type</th>
-                      <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Change</th>
-                      <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Stock</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Reference</th>
-                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">User</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('stock.dateTime')}</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('revenue.product')}</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('stock.type')}</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{t('stock.change')}</th>
+                      <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">{t('stock.stock')}</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('stock.reference')}</th>
+                      <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{t('stock.user')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -553,9 +555,9 @@ const StockMovements = () => {
           {!loading && movements.length > 0 && (
             <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
               <p className="text-sm text-slate-600 font-medium">
-                Showing <span className="font-bold text-slate-900">{(pagination.page - 1) * pagination.limit + 1}</span> to{" "}
+                {t('stock.showing')} <span className="font-bold text-slate-900">{(pagination.page - 1) * pagination.limit + 1}</span> {t('stock.to')}{" "}
                 <span className="font-bold text-slate-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{" "}
-                <span className="font-bold text-slate-900">{pagination.total}</span> results
+                <span className="font-bold text-slate-900">{pagination.total}</span> {t('stock.results')}
               </p>
               <div className="flex gap-2">
                 <button

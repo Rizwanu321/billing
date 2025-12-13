@@ -49,6 +49,9 @@ import {
 } from "./components/revenue";
 import CustomerStats from "./components/CustomerStats";
 
+// AI Assistant
+import AIAssistant from "./components/ai/AIAssistant";
+
 const App = () => {
   return (
     <AuthProvider>
@@ -157,6 +160,14 @@ const App = () => {
               element={<RevenueByProducts />}
             />
             <Route path="/revenue/returns" element={<ProductReturns />} />
+            {/* AI Assistant Routes */}
+            <Route
+              path="/ai"
+              element={<Navigate to="/ai/predictions" replace />}
+            />
+            <Route path="/ai/predictions" element={<AIAssistant />} />
+            <Route path="/ai/insights" element={<AIAssistant />} />
+            <Route path="/ai/chat" element={<AIAssistant />} />
           </Route>
 
           <Route

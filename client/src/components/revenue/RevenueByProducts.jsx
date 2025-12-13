@@ -42,6 +42,7 @@ import { fetchRevenueByProducts } from "../../api/revenue";
 import api from "../../utils/api";
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useTranslation } from 'react-i18next';
 
 const RevenueByProducts = () => {
   const [loading, setLoading] = useState(false);
@@ -57,7 +58,9 @@ const RevenueByProducts = () => {
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState("month");
+
   const productDropdownRef = useRef(null);
+  const { t } = useTranslation();
   const isInitialMount = useRef(true); // Track initial mount
 
   const [filters, setFilters] = useState({
@@ -298,19 +301,19 @@ const RevenueByProducts = () => {
     if (revenue > avgRevenue * 1.5) {
       return (
         <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-          High Performer
+          {t('revenue.highPerformer')}
         </span>
       );
     } else if (revenue < avgRevenue * 0.5) {
       return (
         <span className="px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full">
-          Low Performer
+          {t('revenue.lowPerformer')}
         </span>
       );
     }
     return (
       <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-        Average
+        {t('revenue.averagePerformer')}
       </span>
     );
   };
@@ -358,12 +361,12 @@ const RevenueByProducts = () => {
 
   // Time period filter configuration (excluding custom)
   const PREDEFINED_RANGES = [
-    { label: "Today", value: "today", icon: Calendar },
-    { label: "Week", value: "week", icon: Activity },
-    { label: "Month", value: "month", icon: BarChart3 },
-    { label: "Quarter", value: "quarter", icon: TrendIcon },
-    { label: "Year", value: "year", icon: PieChartIcon },
-    { label: "All Time", value: "all", icon: Infinity },
+    { label: t('dashboard.timePeriod.today'), value: "today", icon: Calendar },
+    { label: t('dashboard.timePeriod.week'), value: "week", icon: Activity },
+    { label: t('dashboard.timePeriod.month'), value: "month", icon: BarChart3 },
+    { label: t('dashboard.timePeriod.quarter'), value: "quarter", icon: TrendIcon },
+    { label: t('dashboard.timePeriod.year'), value: "year", icon: PieChartIcon },
+    { label: t('dashboard.timePeriod.allTime'), value: "all", icon: Infinity },
   ];
 
   // Handle time period changes
@@ -449,7 +452,7 @@ const RevenueByProducts = () => {
         )}
       </div>
       <h3 className="text-gray-600 text-sm font-medium mb-1">{title}</h3>
-      <p className="text-2xl font-bold text-gray-900 mb-1">{value}</p>
+      <p className="text-2xl font-bold text-gray-900 mb-1 truncate" title={value}>{value}</p>
       {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
     </div>
   );
@@ -459,7 +462,7 @@ const RevenueByProducts = () => {
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading data...</p>
+          <p className="text-gray-600">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -701,10 +704,10 @@ const RevenueByProducts = () => {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Revenue by Products
+                {t('revenue.revenueByProducts')}
               </h1>
               <p className="text-gray-600 mt-1">
-                Analyze product-wise revenue and performance
+                {t('revenue.analyzeProductPerformance')}
               </p>
             </div>
             <div className="flex gap-2">
@@ -713,7 +716,7 @@ const RevenueByProducts = () => {
                 className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <Filter className="w-4 h-4" />
-                {showFilters ? "Hide" : "Show"} Filters
+                {showFilters ? t('revenue.hideFilters') : t('revenue.showFilters')}
               </button>
               <button
                 onClick={() => fetchData()}
@@ -723,7 +726,7 @@ const RevenueByProducts = () => {
                 <RefreshCw
                   className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
                 />
-                <span className="hidden sm:inline">Refresh</span>
+                <span className="hidden sm:inline">{t('common.refresh')}</span>
               </button>
               <button
                 onClick={exportToPDF}
@@ -731,7 +734,7 @@ const RevenueByProducts = () => {
                 className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download className="w-4 h-4" />
-                <span className="hidden sm:inline">Export PDF</span>
+                <span className="hidden sm:inline">{t('revenue.exportReport')}</span>
               </button>
             </div>
           </div>
@@ -740,14 +743,14 @@ const RevenueByProducts = () => {
           {hasActiveFilters() && (
             <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 mt-4">
               <span className="text-sm text-blue-800 font-medium">
-                Active filters applied
+                {t('revenue.activeFilters')}
               </span>
               <button
                 onClick={clearFilters}
                 className="ml-auto text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
               >
                 <X className="w-4 h-4" />
-                Clear all
+                {t('revenue.clearAll')}
               </button>
             </div>
           )}
@@ -790,18 +793,18 @@ const RevenueByProducts = () => {
             } gap-4 sm:gap-6 mb-8`}>
             <StatCard
               icon={IndianRupee}
-              title="Gross Revenue"
+              title={t('revenue.grossRevenue')}
               value={formatCurrency(summary.totalRevenue || 0)}
-              subtitle="Total Sales"
+              subtitle={t('revenue.totalSales')}
               color="bg-gradient-to-br from-blue-500 to-blue-600"
             />
 
             {summary.totalReturns > 0 && (
               <StatCard
                 icon={RotateCcw}
-                title="Returns"
+                title={t('revenue.returns')}
                 value={formatCurrency(summary.totalReturns || 0)}
-                subtitle="Product Returns"
+                subtitle={t('revenue.productReturns')}
                 color="bg-gradient-to-br from-red-500 to-red-600"
               />
             )}
@@ -809,31 +812,31 @@ const RevenueByProducts = () => {
             {summary.totalReturns > 0 && (
               <StatCard
                 icon={Wallet}
-                title="Net Revenue"
+                title={t('revenue.netRevenue')}
                 value={formatCurrency(summary.netRevenue || 0)}
-                subtitle="Gross - Returns"
+                subtitle={t('revenue.grossMinusReturns')}
                 color="bg-gradient-to-br from-emerald-500 to-emerald-600"
               />
             )}
 
             <StatCard
               icon={HandCoins}
-              title="Total Collected"
+              title={t('revenue.totalCollected')}
               value={formatCurrency(summary.totalCollected || 0)}
-              subtitle="Cash + Online + Due Payments"
+              subtitle={t('revenue.netWalkInSales')}
               color="bg-gradient-to-br from-indigo-500 to-indigo-600"
             />
 
             <StatCard
               icon={Clock}
-              title="Net Position"
+              title={t('revenue.netPosition')}
               value={formatCurrency(summary.totalDueRevenue || summary.totalDue || 0)}
               subtitle={
                 (summary.totalDueRevenue || 0) < 0
-                  ? "Advance Received"
+                  ? t('revenue.advanceReceived')
                   : (summary.totalDueRevenue || 0) > 0
-                    ? "Outstanding Amount"
-                    : "Fully Settled"
+                    ? t('revenue.outstandingAmount')
+                    : t('revenue.fullySettled')
               }
               color={
                 (summary.totalDueRevenue || 0) < 0
@@ -850,7 +853,7 @@ const RevenueByProducts = () => {
             {/* Performance Distribution */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Performance Distribution
+                {t('revenue.performanceDistribution')}
               </h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
@@ -858,10 +861,10 @@ const RevenueByProducts = () => {
                     <TrendingUp className="w-6 h-6 text-green-600" />
                     <div>
                       <p className="font-semibold text-gray-900">
-                        High Performers
+                        {t('revenue.highPerformers')}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Above 150% of average
+                        {t('revenue.highPerformersDesc')}
                       </p>
                     </div>
                   </div>
@@ -886,10 +889,10 @@ const RevenueByProducts = () => {
                     <BarChart3 className="w-6 h-6 text-blue-600" />
                     <div>
                       <p className="font-semibold text-gray-900">
-                        Average Performers
+                        {t('revenue.averagePerformers')}
                       </p>
                       <p className="text-sm text-gray-600">
-                        50% - 150% of average
+                        {t('revenue.averagePerformersDesc')}
                       </p>
                     </div>
                   </div>
@@ -914,10 +917,10 @@ const RevenueByProducts = () => {
                     <TrendingDown className="w-6 h-6 text-red-600" />
                     <div>
                       <p className="font-semibold text-gray-900">
-                        Low Performers
+                        {t('revenue.lowPerformers')}
                       </p>
                       <p className="text-sm text-gray-600">
-                        Below 50% of average
+                        {t('revenue.lowPerformersDesc')}
                       </p>
                     </div>
                   </div>
@@ -939,7 +942,7 @@ const RevenueByProducts = () => {
                 {summary.totalReturns > 0 && (
                   <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Total Returns Impact:</span>
+                      <span className="text-gray-600">{t('revenue.totalReturnsImpact')}:</span>
                       <span className="font-semibold text-red-600">
                         -{formatCurrency(summary.totalReturns)}
                       </span>
@@ -952,7 +955,7 @@ const RevenueByProducts = () => {
             {/* Top 5 Products Chart */}
             <div className="bg-white rounded-xl shadow-md p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Top 5 Products by Revenue
+                {t('revenue.top5Products')}
               </h3>
               {productData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
@@ -972,14 +975,14 @@ const RevenueByProducts = () => {
                       dataKey="netRevenue"
                       stackId="a"
                       fill="#10b981"
-                      name="Net Revenue"
+                      name={t('revenue.netRevenue')}
                     />
                     {summary.totalReturns > 0 && (
                       <Bar
                         dataKey="returnValue"
                         stackId="a"
                         fill="#ef4444"
-                        name="Returns"
+                        name={t('revenue.returns')}
                       />
                     )}
                   </BarChart>
@@ -997,7 +1000,7 @@ const RevenueByProducts = () => {
         {productData.length > 0 && (
           <div className="bg-white rounded-xl shadow-md p-6 mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Payment Status Overview
+              {t('revenue.paymentStatus')}
             </h3>
             <div
               className={`grid grid-cols-1 md:grid-cols-2 ${summary.totalReturns > 0 ? "lg:grid-cols-3" : ""
@@ -1008,31 +1011,31 @@ const RevenueByProducts = () => {
                 <div className="flex items-center gap-2 mb-3">
                   <TrendingUp className="w-5 h-5 text-green-600" />
                   <h4 className="font-semibold text-gray-900">
-                    Collection Rate
+                    {t('revenue.collectionRate')}
                   </h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-green-600">Received</span>
+                    <span className="text-sm text-green-600">{t('revenue.collectedAmount')}</span>
                     <span className="font-medium text-green-700">
                       {formatCurrency(summary.actualReceived)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-orange-600">Due</span>
+                    <span className="text-sm text-orange-600">{t('revenue.currentDue')}</span>
                     <span className="font-medium text-orange-700">
                       {formatCurrency(summary.totalDue)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center border-t border-gray-300 pt-2">
-                    <span className="text-sm font-medium text-gray-600">Gross Revenue</span>
+                    <span className="text-sm font-medium text-gray-600">{t('revenue.grossRevenue')}</span>
                     <span className="font-semibold text-gray-900">
                       {formatCurrency(summary.totalRevenue)}
                     </span>
                   </div>
                   {summary.totalReturns > 0 && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-red-600">Returns</span>
+                      <span className="text-sm text-red-600">{t('revenue.returns')}</span>
                       <span className="font-medium text-red-700">
                         -{formatCurrency(summary.totalReturns)}
                       </span>
@@ -1040,7 +1043,7 @@ const RevenueByProducts = () => {
                   )}
                   {summary.totalReturns > 0 && (
                     <div className="flex justify-between items-center border-t border-emerald-300 pt-2">
-                      <span className="text-sm font-semibold text-emerald-700">Net Revenue</span>
+                      <span className="text-sm font-semibold text-emerald-700">{t('revenue.netRevenue')}</span>
                       <span className="font-bold text-emerald-700">
                         {formatCurrency(summary.netRevenue)}
                       </span>
@@ -1049,7 +1052,7 @@ const RevenueByProducts = () => {
                   <div className="pt-2 border-t border-green-200">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold text-gray-900">
-                        Rate
+                        {t('revenue.rate')}
                       </span>
                       <span className="text-lg font-bold text-green-600">
                         {summary.collectionRate.toFixed(1)}%
@@ -1064,26 +1067,26 @@ const RevenueByProducts = () => {
                 <div className="flex items-center gap-2 mb-3">
                   <Clock className={`w-5 h-5 ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`} />
                   <h4 className="font-semibold text-gray-900">
-                    Net Position
+                    {t('revenue.netPosition')}
                   </h4>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Amount</span>
+                    <span className="text-sm text-gray-600">{t('revenue.totalAmount')}</span>
                     <span className={`font-medium ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
                       {formatCurrency(summary.totalDueRevenue || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Status</span>
+                    <span className="text-sm text-gray-600">{t('revenue.status')}</span>
                     <span className="font-medium text-gray-900">
-                      {(summary.totalDueRevenue || 0) < 0 ? 'Advance' : 'Outstanding'}
+                      {(summary.totalDueRevenue || 0) < 0 ? t('revenue.advanceReceived') : t('revenue.outstandingAmount')}
                     </span>
                   </div>
                   <div className={`pt-2 border-t ${(summary.totalDueRevenue || 0) < 0 ? 'border-emerald-200' : 'border-orange-200'}`}>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold text-gray-900">
-                        Products
+                        {t('revenue.products')}
                       </span>
                       <span className={`text-lg font-bold ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`}>
                         {productData.filter((p) => p.dueAmount > 0).length}
@@ -1099,13 +1102,13 @@ const RevenueByProducts = () => {
                   <div className="flex items-center gap-2 mb-3">
                     <RotateCcw className="w-5 h-5 text-red-600" />
                     <h4 className="font-semibold text-gray-900">
-                      Returns Impact
+                      {t('revenue.returnsImpact')}
                     </h4>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">
-                        Total Returns
+                        {t('revenue.totalReturns')}
                       </span>
                       <span className="font-medium text-red-600">
                         {formatCurrency(summary.totalReturns)}
@@ -1113,7 +1116,7 @@ const RevenueByProducts = () => {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">
-                        % of Revenue
+                        {t('revenue.percentOfRevenue')}
                       </span>
                       <span className="font-medium text-gray-900">
                         {summary.totalRevenue > 0
@@ -1127,7 +1130,7 @@ const RevenueByProducts = () => {
                     <div className="pt-2 border-t border-red-200">
                       <div className="flex justify-between items-center">
                         <span className="text-sm font-semibold text-gray-900">
-                          Products
+                          {t('revenue.products')}
                         </span>
                         <span className="text-lg font-bold text-red-600">
                           {productData.filter((p) => p.returnValue > 0).length}
@@ -1147,40 +1150,40 @@ const RevenueByProducts = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Revenue Trend - Top 5 Products
+                  {t('revenue.revenueTrendTop5')}
                 </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {(() => {
                     // Determine period description based on selected period
                     const periodDescriptions = {
-                      today: "Today's hourly performance with payment status",
-                      week: "This week's daily performance with payment status",
-                      month: "This month's daily performance with payment status",
-                      quarter: "This quarter's weekly performance with payment status",
-                      year: "This year's monthly performance with payment status",
-                      all: "All-time monthly performance with payment status",
+                      today: t('revenue.periodDesc.today'),
+                      week: t('revenue.periodDesc.week'),
+                      month: t('revenue.periodDesc.month'),
+                      quarter: t('revenue.periodDesc.quarter'),
+                      year: t('revenue.periodDesc.year'),
+                      all: t('revenue.periodDesc.all'),
                     };
-                    return periodDescriptions[selectedPeriod] || "Performance trend with payment status";
+                    return periodDescriptions[selectedPeriod] || t('revenue.periodDesc.default');
                   })()}
                 </p>
               </div>
               <div className="flex gap-2 mt-3 sm:mt-0 text-xs">
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                  <span className="text-gray-600">Total Revenue</span>
+                  <span className="text-gray-600">{t('revenue.totalRevenue')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-green-500 rounded"></div>
-                  <span className="text-gray-600">Received</span>
+                  <span className="text-gray-600">{t('revenue.received')}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                  <span className="text-gray-600">Due</span>
+                  <span className="text-gray-600">{t('revenue.due')}</span>
                 </div>
                 {summary.totalReturns > 0 && (
                   <div className="flex items-center gap-1">
                     <div className="w-3 h-3 bg-red-500 rounded"></div>
-                    <span className="text-gray-600">Returns</span>
+                    <span className="text-gray-600">{t('revenue.returns')}</span>
                   </div>
                 )}
               </div>
@@ -1262,7 +1265,7 @@ const RevenueByProducts = () => {
             {/* Trend Summary */}
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
               <h4 className="text-sm font-semibold text-gray-900 mb-2">
-                Payment Status Summary
+                {t('revenue.paymentStatusSummary')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
                 {revenueTrend.map((item, index) => (
@@ -1280,26 +1283,26 @@ const RevenueByProducts = () => {
                     </div>
                     <div className="space-y-1">
                       <div className="flex justify-between">
-                        <span className="text-green-600">Received:</span>
+                        <span className="text-green-600">{t('revenue.received')}:</span>
                         <span className="font-medium text-green-700">
                           {formatCurrency(item.actualReceived)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-orange-600">Due:</span>
+                        <span className="text-orange-600">{t('revenue.due')}:</span>
                         <span className="font-medium text-orange-700">
                           {formatCurrency(item.dueAmount)}
                         </span>
                       </div>
                       <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
-                        <span className="text-gray-600 font-medium">Gross Revenue:</span>
+                        <span className="text-gray-600 font-medium">{t('revenue.grossRevenue')}:</span>
                         <span className="font-semibold text-gray-900">
                           {formatCurrency(item.revenue)}
                         </span>
                       </div>
                       {item.returnValue > 0 && (
                         <div className="flex justify-between">
-                          <span className="text-red-600">Returns:</span>
+                          <span className="text-red-600">{t('revenue.returns')}:</span>
                           <span className="font-medium text-red-700">
                             -{formatCurrency(item.returnValue)}
                           </span>
@@ -1307,7 +1310,7 @@ const RevenueByProducts = () => {
                       )}
                       <div className="flex justify-between border-t border-emerald-200 pt-1 mt-1">
                         <span className="text-emerald-600 font-semibold">
-                          Net Revenue:
+                          {t('revenue.netRevenue')}:
                         </span>
                         <span className="font-bold text-emerald-700">
                           {formatCurrency(item.netRevenue)}
@@ -1315,7 +1318,7 @@ const RevenueByProducts = () => {
                       </div>
                       <div className="pt-1 mt-1 border-t border-gray-200">
                         <div className="flex justify-between">
-                          <span className="text-gray-600">Collection:</span>
+                          <span className="text-gray-600">{t('revenue.collection')}:</span>
                           <span className="font-medium text-blue-600">
                             {item.revenue > 0
                               ? `${(
@@ -1347,10 +1350,10 @@ const RevenueByProducts = () => {
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">
-                      Advanced Filters
+                      {t('revenue.advancedFilters')}
                     </h3>
                     <p className="text-xs text-gray-500">
-                      Refine your revenue analysis
+                      {t('revenue.refineRevenueAnalysis')}
                     </p>
                   </div>
                 </div>
@@ -1359,7 +1362,7 @@ const RevenueByProducts = () => {
                   className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors group"
                 >
                   <RotateCcw className="w-4 h-4 group-hover:-rotate-180 transition-transform duration-500" />
-                  Reset Filters
+                  {t('revenue.resetFilters')}
                 </button>
               </div>
 
@@ -1369,12 +1372,12 @@ const RevenueByProducts = () => {
                   <div className="space-y-3">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5" />
-                      Date Range
+                      {t('revenue.dateRange')}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <span className="text-[10px] text-gray-400 font-medium ml-1">
-                          From
+                          {t('revenue.from')}
                         </span>
                         <input
                           type="date"
@@ -1390,7 +1393,7 @@ const RevenueByProducts = () => {
                       </div>
                       <div className="space-y-1">
                         <span className="text-[10px] text-gray-400 font-medium ml-1">
-                          To
+                          {t('revenue.toLower')}
                         </span>
                         <input
                           type="date"
@@ -1411,7 +1414,7 @@ const RevenueByProducts = () => {
                   <div className="space-y-3 relative z-30">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                       <Package className="w-3.5 h-3.5" />
-                      Product & Category
+                      {t('revenue.productCategory')}
                     </label>
                     <div className="space-y-3">
                       <div className="relative">
@@ -1425,7 +1428,8 @@ const RevenueByProducts = () => {
                           }
                           className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none appearance-none cursor-pointer pr-10 transition-all"
                         >
-                          <option value="all">All Categories</option>
+
+                          <option value="all">{t('revenue.allCategories')}</option>
                           {categories.map((category) => (
                             <option key={category._id} value={category._id}>
                               {category.name}
@@ -1447,7 +1451,8 @@ const RevenueByProducts = () => {
                             value={productSearchTerm}
                             onChange={handleProductSearchChange}
                             onFocus={() => setShowProductDropdown(true)}
-                            placeholder="Search product..."
+
+                            placeholder={t('revenue.searchProduct')}
                             className="w-full pl-9 pr-8 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
                           />
                           {selectedProduct && (
@@ -1523,7 +1528,7 @@ const RevenueByProducts = () => {
                   <div className="space-y-3">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                       <IndianRupee className="w-3.5 h-3.5" />
-                      Revenue Range
+                      {t('revenue.revenueRange')}
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="relative">
@@ -1539,7 +1544,8 @@ const RevenueByProducts = () => {
                               minRevenue: e.target.value,
                             }))
                           }
-                          placeholder="Min"
+
+                          placeholder={t('revenue.min')}
                           className="w-full pl-6 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
                         />
                       </div>
@@ -1556,7 +1562,8 @@ const RevenueByProducts = () => {
                               maxRevenue: e.target.value,
                             }))
                           }
-                          placeholder="Max"
+
+                          placeholder={t('revenue.max')}
                           className="w-full pl-6 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 outline-none"
                         />
                       </div>
@@ -1567,7 +1574,7 @@ const RevenueByProducts = () => {
                   <div className="space-y-3">
                     <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                       <BarChart3 className="w-3.5 h-3.5" />
-                      Analysis
+                      {t('revenue.analysis')}
                     </label>
                     <div className="space-y-3">
                       <div className="relative">
@@ -1584,10 +1591,11 @@ const RevenueByProducts = () => {
                             : "bg-gray-50 border-gray-200 text-gray-700 focus:bg-white focus:border-blue-500"
                             }`}
                         >
-                          <option value="all">All Products</option>
-                          <option value="withReturns">With Returns Only</option>
+
+                          <option value="all">{t('revenue.allProducts')}</option>
+                          <option value="withReturns">{t('revenue.withReturns')}</option>
                           <option value="withoutReturns">
-                            Without Returns Only
+                            {t('revenue.withoutReturns')}
                           </option>
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -1624,8 +1632,8 @@ const RevenueByProducts = () => {
                           className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-white hover:border-blue-300 hover:shadow-sm transition-all duration-200 text-gray-600"
                           title={
                             filters.sortOrder === "desc"
-                              ? "Descending"
-                              : "Ascending"
+                              ? t('revenue.descending')
+                              : t('revenue.ascending')
                           }
                         >
                           {filters.sortOrder === "desc" ? (
@@ -1645,12 +1653,12 @@ const RevenueByProducts = () => {
                 <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-bold text-gray-400 uppercase tracking-wider mr-2">
-                      Active Filters:
+                      {t('revenue.activeFiltersLabel')}
                     </span>
 
                     {filters.categoryId !== "all" && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-100">
-                        Category:{" "}
+                        {t('revenue.category')}:{" "}
                         {categories.find((c) => c._id === filters.categoryId)
                           ?.name}
                         <button
@@ -1669,7 +1677,7 @@ const RevenueByProducts = () => {
 
                     {filters.productId !== "all" && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium border border-emerald-100">
-                        Product: {selectedProduct?.name}
+                        {t('revenue.product')}: {selectedProduct?.name}
                         <button
                           onClick={clearProductSelection}
                           className="hover:text-emerald-900 transition-colors"
@@ -1709,10 +1717,10 @@ const RevenueByProducts = () => {
 
                     {filters.returnsFilter !== "all" && (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-700 rounded-md text-xs font-medium border border-red-100">
-                        Returns:{" "}
+                        {t('revenue.returns')}:{" "}
                         {filters.returnsFilter === "withReturns"
-                          ? "With Returns"
-                          : "Without Returns"}
+                          ? t('revenue.withReturns')
+                          : t('revenue.withoutReturns')}
                         <button
                           onClick={() =>
                             setFilters((prev) => ({
@@ -1737,13 +1745,12 @@ const RevenueByProducts = () => {
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <div className="p-6 border-b border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900">
-              Product Revenue Details
+              {t('revenue.productRevenueDetails')}
             </h3>
             <p className="text-sm text-gray-600 mt-1">
               {productData.length > 0
-                ? `Showing ${productData.length} product${productData.length !== 1 ? "s" : ""
-                }`
-                : "No products found"}
+                ? t('revenue.showingXProducts', { count: productData.length, plural: '' })
+                : t('revenue.noProductsFound')}
             </p>
           </div>
 
@@ -1751,7 +1758,7 @@ const RevenueByProducts = () => {
             <div className="flex items-center justify-center h-64">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading revenue data...</p>
+                <p className="text-gray-600">{t('common.loading')}</p>
               </div>
             </div>
           ) : (
@@ -1764,39 +1771,39 @@ const RevenueByProducts = () => {
                         #
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                        Product
+                        {t('revenue.product')}
                       </th>
                       <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                        Category
+                        {t('revenue.category')}
                       </th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                        Gross Revenue
+                        {t('revenue.grossRevenue')}
                       </th>
                       {summary?.totalReturns > 0 && (
                         <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                          Returns
+                          {t('revenue.returns')}
                         </th>
                       )}
                       {summary?.totalReturns > 0 && (
                         <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                          Net Revenue
+                          {t('revenue.netRevenue')}
                         </th>
                       )}
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                        Quantity Sold
+                        {t('revenue.quantitySold')}
                       </th>
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                        Avg Price
+                        {t('revenue.avgPrice')}
                       </th>
 
                       <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                        Transactions
+                        {t('revenue.transactions')}
                       </th>
                       <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
-                        Performance
+                        {t('revenue.performance')}
                       </th>
                       <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">
-                        Payment Status
+                        {t('revenue.paymentStatus')}
                       </th>
                     </tr>
                   </thead>
@@ -1809,11 +1816,11 @@ const RevenueByProducts = () => {
                         >
                           <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
                           <p className="text-lg font-medium">
-                            No products found
+                            {t('revenue.noProductsFound')}
                           </p>
                           <p className="text-sm mt-1">
                             {hasActiveFilters()
-                              ? "Try adjusting your filters or date range"
+                              ? t('revenue.adjustFiltersHint')
                               : "No revenue data available for the selected period"}
                           </p>
                         </td>
@@ -1833,14 +1840,13 @@ const RevenueByProducts = () => {
                                   {product.productName}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  {product.invoiceCount} invoice
-                                  {product.invoiceCount !== 1 ? "s" : ""}
+                                  {t('revenue.invoiceCount', { count: product.invoiceCount, plural: '' })}
                                 </p>
                               </div>
                             </td>
                             <td className="py-3 px-4">
                               <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                                {product.categoryName || "Uncategorized"}
+                                {product.categoryName || t('revenue.uncategorized')}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right">
@@ -1850,22 +1856,22 @@ const RevenueByProducts = () => {
                                 </p>
                                 <div className="text-xs space-y-0.5">
                                   <p className="text-green-600">
-                                    Received:{" "}
+                                    {t('revenue.received')}:{" "}
                                     {formatCurrency(product.actualReceived)}
                                   </p>
                                   {product.creditUsed > 0 && (
                                     <p className="text-indigo-600">
-                                      Credit:{" "}
+                                      {t('revenue.credit')}:{" "}
                                       {formatCurrency(product.creditUsed)}
                                     </p>
                                   )}
                                   {product.dueAmount > 0 && (
                                     <p className="text-orange-600">
-                                      Due: {formatCurrency(product.dueAmount)}
+                                      {t('revenue.due')}: {formatCurrency(product.dueAmount)}
                                     </p>
                                   )}
                                   <p className="text-gray-500">
-                                    Tax: {formatCurrency(product.totalTax)}
+                                    {t('revenue.tax')}: {formatCurrency(product.totalTax)}
                                   </p>
                                 </div>
                               </div>
@@ -1878,7 +1884,7 @@ const RevenueByProducts = () => {
                                       {formatCurrency(product.returnValue)}
                                     </p>
                                     <p className="text-xs text-gray-500">
-                                      {product.returnQuantity.toFixed(2)} qty
+                                      {product.returnQuantity.toFixed(2)} {t('revenue.qty')}
                                     </p>
                                   </div>
                                 ) : (
@@ -1982,7 +1988,7 @@ const RevenueByProducts = () => {
                   {/* Transaction Summary - Below Table */}
                   {productData.length > 0 && summary && (
                     <div className="mt-8">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Summary</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('revenue.transactionSummary')}</h3>
                       <div className={`grid grid-cols-1 sm:grid-cols-2 ${summary.totalReturns > 0 ? 'lg:grid-cols-3 xl:grid-cols-4' : 'lg:grid-cols-4'} gap-4 sm:gap-6`}>
                         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
                           <div className="flex items-center gap-2 mb-3">
@@ -1993,7 +1999,7 @@ const RevenueByProducts = () => {
                             {formatCurrency(summary.totalRevenue || 0)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            From {summary.totalProducts || 0} product{(summary.totalProducts || 0) !== 1 ? 's' : ''}
+                            {t('revenue.fromProducts', { count: summary.totalProducts || 0, plural: (summary.totalProducts || 0) !== 1 ? 's' : '' })}
                           </p>
                         </div>
 
@@ -2001,13 +2007,13 @@ const RevenueByProducts = () => {
                           <div className="bg-white rounded-xl shadow-md p-5 border border-red-100 bg-red-50">
                             <div className="flex items-center gap-2 mb-3">
                               <RotateCcw className="w-5 h-5 text-red-600" />
-                              <h4 className="font-semibold text-gray-700 text-sm">Returns</h4>
+                              <h4 className="font-semibold text-gray-700 text-sm">{t('revenue.returns')}</h4>
                             </div>
                             <p className="text-2xl font-bold text-red-600 mb-1">
                               {formatCurrency(summary.totalReturns || 0)}
                             </p>
                             <p className="text-xs text-gray-500">
-                              {productData.filter((p) => p.returnValue > 0).length} product{productData.filter((p) => p.returnValue > 0).length !== 1 ? 's' : ''}
+                              {t('revenue.productsCount', { count: productData.filter((p) => p.returnValue > 0).length, plural: productData.filter((p) => p.returnValue > 0).length !== 1 ? 's' : '' })}
                             </p>
                           </div>
                         )}
@@ -2016,13 +2022,13 @@ const RevenueByProducts = () => {
                           <div className="bg-white rounded-xl shadow-md p-5 border border-emerald-100 bg-emerald-50">
                             <div className="flex items-center gap-2 mb-3">
                               <TrendingUp className="w-5 h-5 text-emerald-600" />
-                              <h4 className="font-semibold text-gray-700 text-sm">Net Revenue</h4>
+                              <h4 className="font-semibold text-gray-700 text-sm">{t('revenue.netRevenue')}</h4>
                             </div>
                             <p className="text-2xl font-bold text-emerald-700 mb-1">
                               {formatCurrency(summary.netRevenue || 0)}
                             </p>
                             <p className="text-xs text-gray-500">
-                              Gross - Returns
+                              {t('revenue.grossMinusReturns')}
                             </p>
                           </div>
                         )}
@@ -2030,52 +2036,52 @@ const RevenueByProducts = () => {
                         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
                           <div className="flex items-center gap-2 mb-3">
                             <Wallet className="w-5 h-5 text-green-600" />
-                            <h4 className="font-semibold text-gray-700 text-sm">Total Collected</h4>
+                            <h4 className="font-semibold text-gray-700 text-sm">{t('revenue.totalCollected')}</h4>
                           </div>
                           <p className="text-2xl font-bold text-gray-900 mb-1">
                             {formatCurrency(summary.totalCollected || 0)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {summary.collectionRate?.toFixed(1) || '0.0'}% collected
+                            {t('revenue.percentCollected', { percent: summary.collectionRate?.toFixed(1) || '0.0' })}
                           </p>
                         </div>
 
                         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
                           <div className="flex items-center gap-2 mb-3">
                             <HandCoins className="w-5 h-5 text-indigo-600" />
-                            <h4 className="font-semibold text-gray-700 text-sm">Due Payments</h4>
+                            <h4 className="font-semibold text-gray-700 text-sm">{t('revenue.duePayments')}</h4>
                           </div>
                           <p className="text-2xl font-bold text-gray-900 mb-1">
                             {formatCurrency(summary.duePayments || 0)}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {summary.paymentCount || 0} payment{(summary.paymentCount || 0) !== 1 ? 's' : ''}
+                            {t('revenue.paymentsCount', { count: summary.paymentCount || 0, plural: (summary.paymentCount || 0) !== 1 ? 's' : '' })}
                           </p>
                         </div>
 
                         <div className={`rounded-xl shadow-md p-5 border ${(summary.totalDueRevenue || 0) < 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100'}`}>
                           <div className="flex items-center gap-2 mb-3">
                             <Clock className={`w-5 h-5 ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-orange-600'}`} />
-                            <h4 className={`font-semibold text-sm ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-800' : 'text-gray-700'}`}>Net Position</h4>
+                            <h4 className={`font-semibold text-sm ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-800' : 'text-gray-700'}`}>{t('revenue.netPosition')}</h4>
                           </div>
                           <p className={`text-2xl font-bold mb-1 ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-700' : 'text-gray-900'}`}>
                             {formatCurrency(summary.totalDueRevenue || 0)}
                           </p>
                           <p className={`text-xs ${(summary.totalDueRevenue || 0) < 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
-                            {(summary.totalDueRevenue || 0) < 0 ? 'Advance Received' : 'Outstanding Amount'}
+                            {(summary.totalDueRevenue || 0) < 0 ? t('revenue.advanceReceived') : t('revenue.outstandingAmount')}
                           </p>
                         </div>
 
                         <div className="bg-white rounded-xl shadow-md p-5 border border-gray-100">
                           <div className="flex items-center gap-2 mb-3">
                             <Package className="w-5 h-5 text-purple-600" />
-                            <h4 className="font-semibold text-gray-700 text-sm">Total Quantity</h4>
+                            <h4 className="font-semibold text-gray-700 text-sm">{t('revenue.totalQuantity')}</h4>
                           </div>
                           <p className="text-2xl font-bold text-gray-900 mb-1">
                             {summary.totalQuantitySold?.toFixed(2) || '0.00'}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {summary.totalTransactions || 0} transaction{(summary.totalTransactions || 0) !== 1 ? 's' : ''}
+                            {t('revenue.transactionsCount', { count: summary.totalTransactions || 0, plural: (summary.totalTransactions || 0) !== 1 ? 's' : '' })}
                           </p>
                         </div>
                       </div>
@@ -2087,7 +2093,7 @@ const RevenueByProducts = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
                       <div className="flex justify-between">
                         <span className="text-gray-600">
-                          Avg Revenue/Product:
+                          {t('revenue.avgRevenuePerProduct')}:
                         </span>
                         <span className="font-semibold text-gray-900">
                           {formatCurrency(
@@ -2100,7 +2106,7 @@ const RevenueByProducts = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">
-                          Avg Quantity/Product:
+                          {t('revenue.avgQuantityPerProduct')}:
                         </span>
                         <span className="font-semibold text-gray-900">
                           {(
@@ -2112,7 +2118,7 @@ const RevenueByProducts = () => {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Total Invoices:</span>
+                        <span className="text-gray-600">{t('revenue.totalInvoices')}:</span>
                         <span className="font-semibold text-gray-900">
                           {productData.reduce(
                             (sum, p) => sum + p.invoiceCount,
@@ -2121,7 +2127,7 @@ const RevenueByProducts = () => {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Total Tax:</span>
+                        <span className="text-gray-600">{t('revenue.totalTax')}:</span>
                         <span className="font-semibold text-gray-900">
                           {formatCurrency(
                             productData.reduce((sum, p) => sum + p.totalTax, 0)
@@ -2150,7 +2156,7 @@ const RevenueByProducts = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <TrendingUp className="w-5 h-5 text-green-600" />
                       <h4 className="font-semibold text-gray-900 text-sm">
-                        Best Seller (Net)
+                        {t('revenue.bestSellerNet')}
                       </h4>
                     </div>
                     <p className="text-lg font-bold text-gray-900 mb-1 truncate">
@@ -2160,9 +2166,9 @@ const RevenueByProducts = () => {
                       {formatCurrency(bestSeller?.netRevenue)}
                     </p>
                     <div className="space-y-1 text-xs text-gray-600">
-                      <p>Gross: {formatCurrency(bestSeller?.totalRevenue)}</p>
+                      <p>{t('revenue.gross')}: {formatCurrency(bestSeller?.totalRevenue)}</p>
                       {summary?.totalReturns > 0 && (
-                        <p>Returns: {formatCurrency(bestSeller?.returnValue)}</p>
+                        <p>{t('revenue.returns')}: {formatCurrency(bestSeller?.returnValue)}</p>
                       )}
                     </div>
                   </div>
@@ -2179,7 +2185,7 @@ const RevenueByProducts = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <RotateCcw className="w-5 h-5 text-red-600" />
                       <h4 className="font-semibold text-gray-900 text-sm">
-                        Most Returned
+                        {t('revenue.mostReturned')}
                       </h4>
                     </div>
                     <p className="text-lg font-bold text-gray-900 mb-1 truncate">
@@ -2189,8 +2195,8 @@ const RevenueByProducts = () => {
                       {formatCurrency(mostReturned?.returnValue)}
                     </p>
                     <div className="space-y-1 text-xs text-gray-600">
-                      <p>{mostReturned?.returnQuantity} units returned</p>
-                      <p>{mostReturned?.returnCount} return txns</p>
+                      <p>{t('revenue.unitsReturned', { count: mostReturned?.returnQuantity })}</p>
+                      <p>{t('revenue.returnTxns', { count: mostReturned?.returnCount })}</p>
                     </div>
                   </div>
                 ) : null;
@@ -2206,22 +2212,22 @@ const RevenueByProducts = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <CreditCard className="w-5 h-5 text-blue-600" />
                       <h4 className="font-semibold text-gray-900 text-sm">
-                        Best Collection
+                        {t('revenue.bestCollection')}
                       </h4>
                     </div>
                     <p className="text-lg font-bold text-gray-900 mb-1 truncate">
                       {bestCollection?.productName}
                     </p>
                     <p className="text-sm text-gray-600 mb-2">
-                      {bestCollection?.receivedPercentage.toFixed(1)}% collected
+                      {t('revenue.percentCollected', { percent: bestCollection?.receivedPercentage.toFixed(1) })}
                     </p>
                     <div className="space-y-1 text-xs text-gray-600">
                       <p>
                         ✓ {formatCurrency(bestCollection?.actualReceived)}{" "}
-                        received
+                        {t('revenue.collected')}
                       </p>
                       <p>
-                        Revenue: {formatCurrency(bestCollection?.totalRevenue)}
+                        {t('revenue.revenue')}: {formatCurrency(bestCollection?.totalRevenue)}
                       </p>
                     </div>
                   </div>
@@ -2238,19 +2244,19 @@ const RevenueByProducts = () => {
                     <div className="flex items-center gap-2 mb-3">
                       <ShoppingCart className="w-5 h-5 text-purple-600" />
                       <h4 className="font-semibold text-gray-900 text-sm">
-                        Most Popular
+                        {t('revenue.mostPopular')}
                       </h4>
                     </div>
                     <p className="text-lg font-bold text-gray-900 mb-1 truncate">
                       {mostPopular?.productName}
                     </p>
                     <p className="text-sm text-gray-600 mb-2">
-                      {mostPopular?.transactionCount} transactions
+                      {t('revenue.transactionsCount', { count: mostPopular?.transactionCount, plural: mostPopular?.transactionCount !== 1 ? 's' : '' })}
                     </p>
                     <div className="space-y-1 text-xs text-gray-600">
-                      <p>Revenue: {formatCurrency(mostPopular?.totalRevenue)}</p>
+                      <p>{t('revenue.revenue')}: {formatCurrency(mostPopular?.totalRevenue)}</p>
                       <p>
-                        {mostPopular?.totalQuantity.toFixed(2)} units sold
+                        {t('revenue.unitsSold', { count: mostPopular?.totalQuantity.toFixed(2) })}
                       </p>
                     </div>
                   </div>

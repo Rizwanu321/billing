@@ -25,9 +25,11 @@ import { fetchProducts } from "../../api/products";
 import { batchStockAdjustment } from "../../api/stock";
 import { fetchInvoices } from "../../api/invoices";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import CustomerReturnDialog from "./CustomerReturnDialog";
 
 const StockAdjustment = () => {
+  const { t } = useTranslation();
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,103 +47,103 @@ const StockAdjustment = () => {
   // Professional adjustment types with proper categorization
   const adjustmentTypes = {
     additions: {
-      label: "Stock Additions",
+      label: t('stock.stockAdditions'),
       icon: TrendingUp,
       color: "green",
       types: [
         {
           value: "purchase",
-          label: "New Purchase",
+          label: t('stock.newPurchase'),
           icon: ShoppingCart,
-          description: "Stock received from supplier",
+          description: t('stock.stockReceivedFromSupplier'),
           requiresReference: true,
-          referenceLabel: "Purchase Order #",
+          referenceLabel: t('stock.purchaseOrderHash'),
         },
         {
           value: "return_from_customer",
-          label: "Customer Return",
+          label: t('stock.customerReturn'),
           icon: RotateCcw,
-          description: "Products returned by customer",
+          description: t('stock.productsReturnedByCustomer'),
           requiresReference: true,
-          referenceLabel: "Return Reference #",
+          referenceLabel: t('stock.returnReferenceHash'),
         },
         {
           value: "production",
-          label: "Production Output",
+          label: t('stock.productionOutput'),
           icon: Package,
-          description: "Manufactured/produced items",
+          description: t('stock.manufacturedProducedItems'),
           requiresReference: false,
         },
         {
           value: "found",
-          label: "Found/Recovered",
+          label: t('stock.foundRecovered'),
           icon: CheckCircle,
-          description: "Previously missing items found",
+          description: t('stock.previouslyMissingItemsFound'),
           requiresReference: false,
         },
         {
           value: "adjustment_positive",
-          label: "Positive Adjustment",
+          label: t('stock.positiveAdjustment'),
           icon: Plus,
-          description: "Inventory count correction (increase)",
+          description: t('stock.inventoryCountCorrectionIncrease'),
           requiresReference: false,
         },
       ],
     },
     removals: {
-      label: "Stock Removals",
+      label: t('stock.stockRemovals'),
       icon: TrendingDown,
       color: "red",
       types: [
         {
           value: "damaged",
-          label: "Damaged Goods",
+          label: t('stock.damagedGoods'),
           icon: XCircle,
-          description: "Products damaged beyond sale",
+          description: t('stock.productsDamagedBeyondSale'),
           requiresReference: false,
         },
         {
           value: "expired",
-          label: "Expired Products",
+          label: t('stock.expiredProducts'),
           icon: AlertTriangle,
-          description: "Products past expiry date",
+          description: t('stock.productsPastExpiryDate'),
           requiresReference: false,
         },
         {
           value: "lost",
-          label: "Lost/Missing",
+          label: t('stock.lostMissing'),
           icon: AlertCircle,
-          description: "Items that cannot be located",
+          description: t('stock.itemsThatCannotBeLocated'),
           requiresReference: false,
         },
         {
           value: "theft",
-          label: "Theft",
+          label: t('stock.theft'),
           icon: AlertTriangle,
-          description: "Stolen merchandise",
+          description: t('stock.stolenMerchandise'),
           requiresReference: true,
-          referenceLabel: "Report #",
+          referenceLabel: t('stock.reportHash'),
         },
         {
           value: "return_to_supplier",
-          label: "Return to Supplier",
+          label: t('stock.returnToSupplier'),
           icon: Truck,
-          description: "Products returned to supplier",
+          description: t('stock.productsReturnedToSupplier'),
           requiresReference: true,
-          referenceLabel: "Return Order #",
+          referenceLabel: t('stock.returnOrderHash'),
         },
         {
           value: "quality_issue",
-          label: "Quality Issues",
+          label: t('stock.qualityIssues'),
           icon: XCircle,
-          description: "Failed quality control",
+          description: t('stock.failedQualityControl'),
           requiresReference: false,
         },
         {
           value: "adjustment_negative",
-          label: "Negative Adjustment",
+          label: t('stock.negativeAdjustment'),
           icon: Minus,
-          description: "Inventory count correction (decrease)",
+          description: t('stock.inventoryCountCorrectionDecrease'),
           requiresReference: false,
         },
       ],
@@ -151,25 +153,25 @@ const StockAdjustment = () => {
   // Predefined reasons for quick selection
   const quickReasons = {
     damaged: [
-      "Water damage",
-      "Physical damage during handling",
-      "Manufacturing defect discovered",
-      "Packaging damaged",
+      t('stock.waterDamage'),
+      t('stock.physicalDamageDuringHandling'),
+      t('stock.manufacturingDefectDiscovered'),
+      t('stock.packagingDamaged'),
     ],
     expired: [
-      "Past expiry date",
-      "Short dated - removed from sale",
-      "Quality deteriorated",
+      t('stock.pastExpiryDate'),
+      t('stock.shortDatedRemovedFromSale'),
+      t('stock.qualityDeteriorated'),
     ],
     lost: [
-      "Cannot locate in warehouse",
-      "Missing from last inventory count",
-      "Misplaced during reorganization",
+      t('stock.cannotLocateInWarehouse'),
+      t('stock.missingFromLastInventoryCount'),
+      t('stock.misplacedDuringReorganization'),
     ],
     purchase: [
-      "Regular stock replenishment",
-      "Seasonal stock purchase",
-      "New product line addition",
+      t('stock.regularStockReplenishment'),
+      t('stock.seasonalStockPurchase'),
+      t('stock.newProductLineAddition'),
     ],
   };
 
@@ -500,8 +502,8 @@ const StockAdjustment = () => {
             <RefreshCw className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">Stock Adjustment</h1>
-            <p className="text-sm text-slate-500 font-medium">Manage and track inventory changes</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 tracking-tight">{t('stock.stockAdjustment')}</h1>
+            <p className="text-sm text-slate-500 font-medium">{t('stock.manageAndTrackInventoryChanges')}</p>
           </div>
         </div>
       </div>
@@ -514,8 +516,8 @@ const StockAdjustment = () => {
           {/* Tabs header */}
           <div className="flex border-b border-slate-200 bg-slate-50/50 backdrop-blur-sm">
             {[
-              { id: 'additions', label: 'Stock Additions', icon: TrendingUp, color: 'emerald' },
-              { id: 'removals', label: 'Stock Removals', icon: TrendingDown, color: 'rose' }
+              { id: 'additions', label: t('stock.stockAdditions'), icon: TrendingUp, color: 'emerald' },
+              { id: 'removals', label: t('stock.stockRemovals'), icon: TrendingDown, color: 'rose' }
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               const ColorIcon = tab.icon;
@@ -601,7 +603,7 @@ const StockAdjustment = () => {
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
                 <Package className="w-5 h-5 text-gray-600" />
-                Select Products
+                {t('stock.selectProducts')}
               </h3>
 
               {/* Search */}
@@ -609,7 +611,7 @@ const StockAdjustment = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                 <input
                   type="text"
-                  placeholder="Search products..."
+                  placeholder={t('stock.searchProducts')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm outline-none"
@@ -666,7 +668,7 @@ const StockAdjustment = () => {
             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6">
               <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-gray-600" />
-                Adjustment Details
+                {t('stock.adjustmentDetails')}
               </h3>
 
               {selectedProducts.length === 0 ? (
@@ -718,14 +720,14 @@ const StockAdjustment = () => {
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm sm:text-base font-semibold text-gray-900">
-                              Link to Due Customer
+                              {t('stock.linkToDueCustomer')}
                             </span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${linkToDueCustomer ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                              {linkToDueCustomer ? 'Enabled' : 'Optional'}
+                              {linkToDueCustomer ? t('stock.enabled') : t('stock.optional')}
                             </span>
                           </div>
                           <p className="text-xs sm:text-sm text-gray-600 mt-1 leading-relaxed">
-                            Enable this to link the return to a customer and reduce their due balance.
+                            {t('stock.enableLinkReturnToCustomer')}
                             {linkToDueCustomer && " You'll be able to select the customer and optionally link to an invoice for tax calculation."}
                           </p>
                         </div>
@@ -740,16 +742,16 @@ const StockAdjustment = () => {
                         <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <h4 className="text-sm font-semibold text-gray-900 mb-1">
-                            Walk-in Customer Return
+                            {t('stock.walkinCustomerReturn')}
                           </h4>
                           <p className="text-xs text-gray-600 leading-relaxed">
-                            For returns without linking to a customer account. Enter the invoice number to validate products and quantities.
+                            {t('stock.returnWithoutLinkingDescription')}
                           </p>
                         </div>
                       </div>
                       <div>
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                          Invoice Number <span className="text-red-500">*</span>
+                          {t('stock.invoiceNumber')} <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <FileText className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -758,25 +760,25 @@ const StockAdjustment = () => {
                             value={referenceNumber}
                             onChange={(e) => setReferenceNumber(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-500 transition-all"
-                            placeholder="Enter invoice number (e.g., INV-001)"
+                            placeholder={t('stock.enterInvoiceNumber')}
                           />
                         </div>
                         <p className="text-xs text-gray-500 mt-2 italic">
-                          Products will be validated against this invoice to ensure they exist and quantities don't exceed the invoice.
+                          {t('stock.productsWillBeValidated')}
                         </p>
                       </div>
 
                       {/* Refund Method Selector */}
                       <div className="mt-4">
                         <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                          Refund Method <span className="text-red-500">*</span>
+                          {t('stock.refundMethod')} <span className="text-red-500">*</span>
                         </label>
                         <div className="grid grid-cols-2 gap-2">
                           {[
-                            { value: 'cash', label: 'Cash', icon: '💵' },
-                            { value: 'card', label: 'Card', icon: '💳' },
-                            { value: 'online', label: 'Online', icon: '📱' },
-                            { value: 'other', label: 'Other', icon: '🔄' }
+                            { value: 'cash', label: t('stock.cash'), icon: '💵' },
+                            { value: 'card', label: t('stock.card'), icon: '💳' },
+                            { value: 'online', label: t('stock.online'), icon: '📱' },
+                            { value: 'other', label: t('stock.other'), icon: '🔄' }
                           ].map((method) => (
                             <button
                               key={method.value}
@@ -795,7 +797,7 @@ const StockAdjustment = () => {
                           ))}
                         </div>
                         <p className="text-xs text-gray-500 mt-2 italic">
-                          How did you refund the money to the customer?
+                          {t('stock.howDidYouRefund')}
                         </p>
                       </div>
                     </div>
@@ -843,7 +845,7 @@ const StockAdjustment = () => {
                           <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-start gap-2">
                             <div className="min-w-0">
                               <p className="font-semibold text-slate-800 text-sm truncate">{product.name}</p>
-                              <p className="text-xs text-slate-500">Current Stock: {product.stock} {product.unit}</p>
+                              <p className="text-xs text-slate-500">{t('stock.currentStock')}: {product.stock} {product.unit}</p>
                             </div>
                             <button
                               onClick={() => removeProductFromAdjustment(product._id)}
@@ -859,7 +861,7 @@ const StockAdjustment = () => {
                             <div className="flex items-center gap-3">
                               <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider ${isRemoval ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
                                 {isRemoval ? <Minus size={12} strokeWidth={3} /> : <Plus size={12} strokeWidth={3} />}
-                                {isRemoval ? "REMOVE" : "ADD"}
+                                {isRemoval ? t('stock.remove') : t('stock.add')}
                               </div>
                               <div className="flex-1 relative">
                                 <input
@@ -878,7 +880,7 @@ const StockAdjustment = () => {
 
                             {/* Result Preview */}
                             <div className="mt-3 flex items-center justify-between text-xs border-t border-slate-50 pt-2">
-                              <span className="text-slate-500">Resulting Stock:</span>
+                              <span className="text-slate-500">{t('stock.resultingStock')}:</span>
                               <span className={`font-mono font-bold ${(isRemoval && (product.stock - product.adjustmentQuantity < 0))
                                 ? 'text-rose-600'
                                 : 'text-slate-700'
@@ -905,7 +907,7 @@ const StockAdjustment = () => {
                   {/* Reason Selection/Input */}
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-                      Reason for Adjustment{" "}
+                      {t('stock.reasonForAdjustment')}{" "}
                       <span className="text-red-500">*</span>
                     </label>
 
@@ -913,7 +915,7 @@ const StockAdjustment = () => {
                     {quickReasons[adjustmentType] && (
                       <div className="mb-2 sm:mb-3">
                         <p className="text-xs text-gray-500 mb-1 sm:mb-2">
-                          Quick select:
+                          {t('stock.quickSelect')}:
                         </p>
                         <div className="flex flex-wrap gap-1.5 sm:gap-2">
                           {quickReasons[adjustmentType].map((reason) => (
@@ -946,8 +948,8 @@ const StockAdjustment = () => {
                       className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 transition-all resize-none"
                       placeholder={
                         adjustmentReason
-                          ? "Or enter a custom reason..."
-                          : "Enter reason for adjustment..."
+                          ? t('stock.enterReasonForAdjustment')
+                          : t('stock.enterReasonForAdjustment')
                       }
                     />
                     {adjustmentReason && !customReason && (
@@ -961,28 +963,28 @@ const StockAdjustment = () => {
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
                     <h4 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
                       <FileText size={16} className="text-slate-500" />
-                      Adjustment Summary
+                      {t('stock.adjustmentSummary')}
                     </h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
-                        <span className="text-slate-500">Adjustment Type</span>
+                        <span className="text-slate-500">{t('stock.adjustmentType')}</span>
                         <span className="font-medium text-slate-900">
                           {getSelectedAdjustmentType()?.label}
                         </span>
                       </div>
                       <div className="flex justify-between items-center py-1 border-b border-slate-200 border-dashed">
-                        <span className="text-slate-500">Selected Products</span>
+                        <span className="text-slate-500">{t('stock.selectedProducts')}</span>
                         <span className="font-medium text-slate-900">
-                          {selectedProducts.length} items
+                          {selectedProducts.length} {t('stock.items')}
                         </span>
                       </div>
                       <div className="flex justify-between items-center py-1 pt-2">
-                        <span className="text-slate-500">Total Quantity Change</span>
+                        <span className="text-slate-500">{t('stock.totalQuantityChange')}</span>
                         <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200 shadow-sm">
                           {selectedProducts.reduce(
                             (sum, p) => sum + p.adjustmentQuantity,
                             0
-                          ).toFixed(2)} units
+                          ).toFixed(2)} {t('stock.units')}
                         </span>
                       </div>
                     </div>
@@ -1045,11 +1047,9 @@ const StockAdjustment = () => {
                     <div className="flex gap-2 sm:gap-3">
                       <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                       <div className="text-xs sm:text-sm text-yellow-800">
-                        <p className="font-medium mb-1">Important Notice</p>
+                        <p className="font-medium mb-1">{t('stock.importantNotice')}</p>
                         <p className="leading-relaxed">
-                          This adjustment will be permanently recorded in the
-                          stock history with full audit trail including user,
-                          timestamp, and reason.
+                          {t('stock.adjustmentWillBeRecorded')}
                           {adjustmentType === "return_from_customer" && linkToDueCustomer && customerReturnData && (
                             <span className="block mt-1 font-medium">
                               Customer transaction will also be created and due balance will be updated.
@@ -1085,7 +1085,7 @@ const StockAdjustment = () => {
                         <span className="hidden sm:inline">
                           {adjustmentType === "return_from_customer" && linkToDueCustomer && !customerReturnData
                             ? "Select Customer to Continue"
-                            : "Apply Stock Adjustment"}
+                            : t('stock.applyStockAdjustment')}
                         </span>
                         <span className="sm:hidden">
                           {adjustmentType === "return_from_customer" && linkToDueCustomer && !customerReturnData

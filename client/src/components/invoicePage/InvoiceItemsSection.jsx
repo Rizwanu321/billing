@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus, Trash, Package, DollarSign, ShoppingCart } from "lucide-react";
 import ProductAutocomplete from "./ProductAutocomplete";
+import { useTranslation } from "react-i18next";
 
 const InvoiceItemsSection = ({
   localInvoice,
@@ -8,6 +9,7 @@ const InvoiceItemsSection = ({
   calculateTotals,
   updateInvoiceItems,
 }) => {
+  const { t } = useTranslation();
   const handleAddItem = () => {
     const newItems = [
       ...localInvoice.items,
@@ -117,9 +119,9 @@ const InvoiceItemsSection = ({
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-900">
-              Invoice Items
+              {t('invoice.invoiceItems')}
             </h3>
-            <p className="text-sm text-slate-500">Add products to your invoice</p>
+            <p className="text-sm text-slate-500">{t('invoice.addProductsToInvoice')}</p>
           </div>
         </div>
         <button
@@ -127,7 +129,7 @@ const InvoiceItemsSection = ({
           className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors group border border-indigo-100"
         >
           <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform" />
-          Add Item
+          {t('invoice.addItem')}
         </button>
       </div>
 
@@ -137,9 +139,9 @@ const InvoiceItemsSection = ({
           <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100">
             <Package className="w-8 h-8 text-slate-300" />
           </div>
-          <h4 className="text-slate-900 font-medium mb-1">No items added yet</h4>
+          <h4 className="text-slate-900 font-medium mb-1">{t('invoice.noItemsAddedYet')}</h4>
           <p className="text-slate-500 text-sm">
-            Click the "Add Item" button to start building your invoice.
+            {t('invoice.clickAddItemButton')}
           </p>
         </div>
       )}
@@ -170,7 +172,7 @@ const InvoiceItemsSection = ({
                         products={products}
                         value={selectedProduct}
                         onChange={(product) => handleItemChange(index, product)}
-                        placeholder="Select Product"
+                        placeholder={t('invoice.selectProduct')}
                       // className="border-slate-200 rounded-xl"
                       />
                     </div>
@@ -179,7 +181,7 @@ const InvoiceItemsSection = ({
                     <div className="grid grid-cols-3 gap-3">
                       <div>
                         <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
-                          Qty
+                          {t('invoice.qty')}
                         </label>
                         <input
                           type="number"
@@ -194,7 +196,7 @@ const InvoiceItemsSection = ({
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
-                          Unit
+                          {t('invoice.unit')}
                         </label>
                         <div className="bg-slate-100 border border-slate-200 px-2 py-2 rounded-lg text-center text-sm text-slate-600 font-medium">
                           {getProductUnit(item.product)}
@@ -202,7 +204,7 @@ const InvoiceItemsSection = ({
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
-                          Price
+                          {t('invoice.price')}
                         </label>
                         <div className="bg-slate-100 border border-slate-200 px-2 py-2 rounded-lg text-center text-sm font-medium text-slate-900">
                           ₹{(item.price || 0).toFixed(2)}
@@ -231,19 +233,19 @@ const InvoiceItemsSection = ({
               <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[240px]">
-                    Product Details
+                    {t('invoice.productDetails')}
                   </th>
                   <th className="px-4 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-32">
-                    Qty
+                    {t('invoice.qty')}
                   </th>
                   <th className="px-4 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-24">
-                    Unit
+                    {t('invoice.unit')}
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-32">
-                    Price
+                    {t('invoice.price')}
                   </th>
                   <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-32">
-                    Total
+                    {t('invoice.total')}
                   </th>
                   <th className="px-4 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-16">
 
@@ -266,7 +268,7 @@ const InvoiceItemsSection = ({
                           onChange={(product) =>
                             handleItemChange(index, product)
                           }
-                          placeholder="Select Product"
+                          placeholder={t('invoice.selectProduct')}
                         />
                       </td>
                       <td className="px-4 py-4 text-center">

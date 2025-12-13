@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { X, Save, AlertCircle, Folder, FileText } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const CategoryModal = ({
   isOpen,
@@ -9,6 +10,7 @@ const CategoryModal = ({
   onSubmit,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const modalRef = useRef(null);
   const nameInputRef = useRef(null);
 
@@ -53,12 +55,12 @@ const CategoryModal = ({
               </div>
               <div className="text-left">
                 <h2 className="text-xl font-bold text-white">
-                  {currentCategory ? "Edit Category" : "New Category"}
+                  {currentCategory ? t('categories.editCategory') : t('categories.newCategory')}
                 </h2>
                 <p className="text-blue-100 text-sm mt-0.5">
                   {currentCategory
-                    ? "Update category details."
-                    : "Create a new product category."}
+                    ? t('categories.updateCategoryDetails')
+                    : t('categories.createNewProductCategory')}
                 </p>
               </div>
             </div>
@@ -80,7 +82,7 @@ const CategoryModal = ({
                   className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"
                 >
                   <Folder className="h-4 w-4 text-blue-600" />
-                  Category Name <span className="text-red-500">*</span>
+                  {t('categories.categoryName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   ref={nameInputRef}
@@ -91,7 +93,7 @@ const CategoryModal = ({
                     setFormData({ ...formData, name: e.target.value })
                   }
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base outline-none"
-                  placeholder="e.g. Electronics, Summer Collection"
+                  placeholder={t('categories.categoryNamePlaceholder')}
                   required
                 />
               </div>
@@ -103,7 +105,7 @@ const CategoryModal = ({
                   className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-2"
                 >
                   <FileText className="h-4 w-4 text-blue-600" />
-                  Description
+                  {t('categories.description')}
                 </label>
                 <textarea
                   id="category-description"
@@ -113,11 +115,11 @@ const CategoryModal = ({
                   }
                   rows="4"
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base outline-none resize-none"
-                  placeholder="Add a brief description to help organize your inventory..."
+                  placeholder={t('categories.descriptionPlaceholder')}
                 />
                 <p className="mt-2 text-xs text-gray-500 flex items-center bg-blue-50 p-2 rounded-lg text-blue-700 border border-blue-100">
                   <AlertCircle className="h-3 w-3 mr-2 flex-shrink-0" />
-                  Descriptions are useful for searching and organizing your inventory.
+                  {t('categories.descriptionsAreUseful')}
                 </p>
               </div>
             </div>
@@ -129,14 +131,14 @@ const CategoryModal = ({
                 onClick={onClose}
                 className="w-full sm:w-auto px-6 py-2.5 border-2 border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-100 focus:outline-none transition-all duration-200"
               >
-                Cancel
+                {t('categories.cancel')}
               </button>
               <button
                 type="submit"
                 className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center"
               >
                 <Save className="h-5 w-5 mr-2" />
-                {currentCategory ? "Save Changes" : "Create Category"}
+                {currentCategory ? t('categories.saveChanges') : t('categories.createCategory')}
               </button>
             </div>
           </form>

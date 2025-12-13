@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { fetchRevenueByCategory } from "../../api/revenue";
 import toast, { Toaster } from "react-hot-toast";
+import { useTranslation } from 'react-i18next';
 
 const CategoryRevenue = () => {
   const [categoryData, setCategoryData] = useState([]);
@@ -57,7 +58,9 @@ const CategoryRevenue = () => {
   const [viewMode, setViewMode] = useState("pie"); // 'pie', 'bar', or 'trend'
   const [selectedCategories, setSelectedCategories] = useState([]); // For category filtering
   const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+
   const [timePeriod, setTimePeriod] = useState("month");
+  const { t } = useTranslation();
   const [dateRange, setDateRange] = useState(() => {
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -79,13 +82,13 @@ const CategoryRevenue = () => {
   ];
 
   const TIME_PERIODS = [
-    { label: "Today", value: "today", icon: Calendar },
-    { label: "Week", value: "week", icon: Activity },
-    { label: "Month", value: "month", icon: BarChart3 },
-    { label: "Quarter", value: "quarter", icon: TrendingUp },
-    { label: "Year", value: "year", icon: PieChartIcon },
-    { label: "All Time", value: "all", icon: Infinity },
-    { label: "Custom", value: "custom", icon: Filter },
+    { label: t('dashboard.timePeriod.today'), value: "today", icon: Calendar },
+    { label: t('dashboard.timePeriod.week'), value: "week", icon: Activity },
+    { label: t('dashboard.timePeriod.month'), value: "month", icon: BarChart3 },
+    { label: t('dashboard.timePeriod.quarter'), value: "quarter", icon: TrendingUp },
+    { label: t('dashboard.timePeriod.year'), value: "year", icon: PieChartIcon },
+    { label: t('dashboard.timePeriod.allTime'), value: "all", icon: Infinity },
+    { label: t('dashboard.timePeriod.customRange'), value: "custom", icon: Filter },
   ];
 
   useEffect(() => {
@@ -160,7 +163,7 @@ const CategoryRevenue = () => {
       setSelectedCategories(response.categories?.map((cat) => cat._id) || []);
     } catch (error) {
       console.error("Error fetching category data:", error);
-      toast.error("Failed to load category data");
+      toast.error(t('common.errorLoading'));
     } finally {
       setLoading(false);
     }
@@ -179,15 +182,15 @@ const CategoryRevenue = () => {
     const hasReturns = (summary?.returns || summary?.totalReturns) > 0;
 
     const headers = [
-      "Category",
-      "Total Revenue",
-      ...(hasReturns ? ["Returns", "Net Revenue"] : []),
-      "Received",
-      "Due",
-      "Invoices",
-      "Quantity",
-      "Received %",
-      "Due %",
+      t('revenue.category'),
+      t('revenue.totalRevenue'),
+      ...(hasReturns ? [t('revenue.returns'), t('revenue.netRevenue')] : []),
+      t('revenue.collected'),
+      t('revenue.due'),
+      t('revenue.invoices'),
+      t('revenue.quantity'),
+      t('revenue.receivedPercentage'),
+      t('revenue.duePercentage'),
     ];
 
     const csvData = filteredCategories.map((cat) => [
@@ -216,7 +219,8 @@ const CategoryRevenue = () => {
     a.href = url;
     a.download = `category-revenue-${new Date().toISOString()}.csv`;
     a.click();
-    toast.success("CSV exported successfully!");
+
+    toast.success(t('common.exportSuccess'));
   };
 
   const toggleAllCategories = () => {
@@ -316,33 +320,33 @@ const CategoryRevenue = () => {
           </p>
           <div className="space-y-1 text-sm">
             <p className="text-gray-700">
-              <span className="font-medium">Total:</span>{" "}
+              <span className="font-medium">{t('revenue.total')}:</span>{" "}
               {formatCurrency(data.totalRevenue)}
             </p>
             {hasReturns && data.returnValue > 0 && (
               <p className="text-red-600">
-                <span className="font-medium">Returns:</span>{" "}
+                <span className="font-medium">{t('revenue.returns')}:</span>{" "}
                 -{formatCurrency(data.returnValue || 0)}
               </p>
             )}
             {hasReturns && (
               <p className="text-emerald-600">
-                <span className="font-medium">Net Revenue:</span>{" "}
+                <span className="font-medium">{t('revenue.netRevenue')}:</span>{" "}
                 {formatCurrency((data.totalRevenue || 0) - (data.returnValue || 0))}
               </p>
             )}
             <p className="text-green-600">
-              <span className="font-medium">Received:</span>{" "}
+              <span className="font-medium">{t('revenue.collected')}:</span>{" "}
               {formatCurrency(data.actualReceived)}
             </p>
             {data.dueAmount > 0 && (
               <p className="text-orange-600">
-                <span className="font-medium">Due:</span>{" "}
+                <span className="font-medium">{t('revenue.due')}:</span>{" "}
                 {formatCurrency(data.dueAmount)}
               </p>
             )}
             <p className="text-gray-600">
-              <span className="font-medium">Invoices:</span> {data.invoiceCount}
+              <span className="font-medium">{t('revenue.invoices')}:</span> {data.invoiceCount}
             </p>
           </div>
         </div>
@@ -357,7 +361,7 @@ const CategoryRevenue = () => {
         <div className="h-[400px] flex items-center justify-center text-slate-500">
           <div className="text-center">
             <PieChartIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <p>No categories selected</p>
+            <p>{t('revenue.noCategoriesSelected')}</p>
           </div>
         </div>
       );
@@ -412,10 +416,10 @@ const CategoryRevenue = () => {
             <Bar
               dataKey="actualReceived"
               fill="#10B981"
-              name="Received"
+              name={t('revenue.collected')}
               radius={[4, 4, 0, 0]}
             />
-            <Bar dataKey="dueAmount" fill="#F59E0B" name="Due" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="dueAmount" fill="#F59E0B" name={t('revenue.due')} radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       );
@@ -448,17 +452,17 @@ const CategoryRevenue = () => {
             <Area
               type="monotone"
               dataKey="totalRevenue"
-              name="Total Revenue"
+              name={t('revenue.totalRevenue')}
               stroke="#3b82f6"
               strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorRevenue)"
             />
-            <Bar dataKey="actualReceived" name="Received" fill="#10b981" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="actualReceived" name={t('revenue.collected')} fill="#10b981" radius={[4, 4, 0, 0]} />
             <Line
               type="monotone"
               dataKey="dueAmount"
-              name="Due"
+              name={t('revenue.due')}
               stroke="#f59e0b"
               strokeWidth={2}
               dot={{ r: 4, fill: "#f59e0b" }}
@@ -474,7 +478,7 @@ const CategoryRevenue = () => {
       <div className="min-h-screen bg-slate-50 p-3 sm:p-4 md:p-6 lg:p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
-          <p className="text-slate-600">Loading category data...</p>
+          <p className="text-slate-600">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -510,10 +514,10 @@ const CategoryRevenue = () => {
                 <div className="p-2 bg-blue-600 rounded-xl shadow-lg shadow-blue-500/30">
                   <Layers className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
                 </div>
-                Revenue by Category
+                {t('revenue.revenueByCategory')}
               </h1>
               <p className="text-slate-500 mt-2 text-sm sm:text-base font-medium">
-                Analyze revenue distribution with advanced filtering
+                {t('revenue.analyzeRevenueDistribution')}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -522,7 +526,7 @@ const CategoryRevenue = () => {
                 className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition-all duration-200 shadow-sm hover:shadow-md text-sm font-medium text-slate-700"
               >
                 <Filter className="w-4 h-4" />
-                <span>{showFilters ? "Hide" : "Show"} Filters</span>
+                <span>{showFilters ? t('revenue.hideFilters') : t('revenue.showFilters')}</span>
               </button>
               <button
                 onClick={fetchCategoryData}
@@ -532,7 +536,7 @@ const CategoryRevenue = () => {
                 <RefreshCw
                   className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : "text-slate-500"}`}
                 />
-                <span>Refresh</span>
+                <span>{t('common.refresh')}</span>
               </button>
               <button
                 onClick={exportToCSV}
@@ -540,7 +544,7 @@ const CategoryRevenue = () => {
                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30 text-sm font-medium"
               >
                 <Download className="w-4 h-4" />
-                <span>Export</span>
+                <span>{t('common.export')}</span>
               </button>
             </div>
           </div>
@@ -579,12 +583,12 @@ const CategoryRevenue = () => {
                   <div className="lg:col-span-2">
                     <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
-                      Custom Date Range
+                      {t('dashboard.timePeriod.customRange')}
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                          Start Date
+                          {t('revenue.startDate')}
                         </label>
                         <input
                           type="date"
@@ -597,7 +601,7 @@ const CategoryRevenue = () => {
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                          End Date
+                          {t('revenue.endDate')}
                         </label>
                         <input
                           type="date"
@@ -614,7 +618,7 @@ const CategoryRevenue = () => {
                           disabled={loading}
                           className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
                         >
-                          {loading ? "Loading..." : "Apply"}
+                          {loading ? t('common.loading') : t('revenue.apply')}
                         </button>
                       </div>
                     </div>
@@ -633,15 +637,15 @@ const CategoryRevenue = () => {
                           </div>
                           <div>
                             <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                              Category Filter
+                              {t('revenue.categoryFilter')}
                             </h3>
                             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                               {selectedCategories.length === 0 ? (
-                                <span className="text-amber-600 font-medium">No categories selected</span>
+                                <span className="text-amber-600 font-medium">{t('revenue.noCategoriesSelected')}</span>
                               ) : selectedCategories.length === categoryData.length ? (
-                                <span className="text-emerald-600 font-medium">All {categoryData.length} categories selected</span>
+                                <span className="text-emerald-600 font-medium">{t('revenue.allCategoriesSelected', { count: categoryData.length })}</span>
                               ) : (
-                                <span>{selectedCategories.length} of {categoryData.length} categories selected</span>
+                                <span>{t('revenue.categoriesSelected', { count: selectedCategories.length, total: categoryData.length })}</span>
                               )}
                             </p>
                           </div>
@@ -653,14 +657,14 @@ const CategoryRevenue = () => {
                           {showCategoryFilter ? (
                             <>
                               <ChevronUp className="w-4 h-4" />
-                              <span className="hidden sm:inline">Hide Filters</span>
-                              <span className="sm:hidden">Hide</span>
+                              <span className="hidden sm:inline">{t('revenue.hideFilters')}</span>
+                              <span className="sm:hidden">{t('revenue.hideFilters')}</span>
                             </>
                           ) : (
                             <>
                               <ChevronDown className="w-4 h-4" />
-                              <span className="hidden sm:inline">Show Filters</span>
-                              <span className="sm:hidden">Show</span>
+                              <span className="hidden sm:inline">{t('revenue.showFilters')}</span>
+                              <span className="sm:hidden">{t('revenue.showFilters')}</span>
                             </>
                           )}
                         </button>
@@ -677,12 +681,12 @@ const CategoryRevenue = () => {
                             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-all duration-200 border border-blue-200"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            {selectedCategories.length === categoryData.length ? "Deselect All" : "Select All"}
+                            {selectedCategories.length === categoryData.length ? t('revenue.deselectAll') : t('revenue.selectAll')}
                           </button>
                           {selectedCategories.length > 0 && selectedCategories.length < categoryData.length && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-full">
                               <Info className="w-3.5 h-3.5" />
-                              Partial selection active
+                              {t('revenue.partialSelection')}
                             </span>
                           )}
                         </div>
@@ -731,7 +735,7 @@ const CategoryRevenue = () => {
                                     </span>
                                     {cat.invoiceCount > 0 && (
                                       <span className="text-xs text-slate-400">
-                                        • {cat.invoiceCount} {cat.invoiceCount === 1 ? 'invoice' : 'invoices'}
+                                        • {t('revenue.invoiceCount', { count: cat.invoiceCount, plural: '' })}
                                       </span>
                                     )}
                                   </div>
@@ -754,8 +758,8 @@ const CategoryRevenue = () => {
                         {categoryData.length === 0 && (
                           <div className="text-center py-12">
                             <Layers className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                            <p className="text-slate-500 text-sm font-medium">No categories found</p>
-                            <p className="text-slate-400 text-xs mt-1">Categories will appear here once data is loaded</p>
+                            <p className="text-slate-500 text-sm font-medium">{t('revenue.noCategoriesFound')}</p>
+                            <p className="text-slate-400 text-xs mt-1">{t('revenue.categoriesWillAppear')}</p>
                           </div>
                         )}
                       </div>
@@ -783,7 +787,7 @@ const CategoryRevenue = () => {
                 className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"
               >
                 <X className="w-4 h-4" />
-                Reset
+                {t('revenue.reset')}
               </button>
             </div>
           )}
@@ -795,18 +799,18 @@ const CategoryRevenue = () => {
             } gap-4 sm:gap-6 mb-8`}>
             <StatCard
               icon={IndianRupee}
-              title="Total Revenue"
+              title={t('revenue.totalRevenue')}
               value={formatCurrency(filteredTotals.totalRevenue || 0)}
-              subtitle="Gross Sales"
-              color="bg-gradient-to-br from-blue-500 to-blue-600"
+              subtitle={t('revenue.grossSales')}
+              color="bg-blue-500"
             />
 
             {filteredTotals.returnValue > 0 && (
               <StatCard
                 icon={RotateCcw}
-                title="Returns"
+                title={t('revenue.returns')}
                 value={formatCurrency(filteredTotals.returnValue || 0)}
-                subtitle="From selected categories"
+                subtitle={t('revenue.fromSelectedCategories')}
                 color="bg-gradient-to-br from-red-500 to-red-600"
               />
             )}
@@ -814,49 +818,49 @@ const CategoryRevenue = () => {
             {filteredTotals.returnValue > 0 && (
               <StatCard
                 icon={Receipt}
-                title="Net Revenue"
+                title={t('revenue.netRevenue')}
                 value={formatCurrency(filteredTotals.netRevenue || 0)}
-                subtitle="Gross - Returns"
+                subtitle={t('revenue.grossMinusReturns')}
                 color="bg-gradient-to-br from-emerald-500 to-emerald-600"
               />
             )}
 
             <StatCard
               icon={Wallet}
-              title="Total Collected"
+              title={t('revenue.totalCollected')}
               value={formatCurrency(summary?.totalCollected || filteredTotals.actualReceived || 0)}
-              subtitle="Net Walk-in Sales + Credit Payments"
+              subtitle={t('revenue.netWalkInSales')}
               color="bg-gradient-to-br from-teal-500 to-teal-600"
             />
             <StatCard
               icon={Clock}
-              title="Net Position"
+              title={t('revenue.netPosition')}
               value={formatCurrency(summary?.totalDueRevenue || filteredTotals.dueAmount || 0)}
               subtitle={
                 (summary?.totalDueRevenue || 0) < 0
-                  ? "Advance Received"
+                  ? t('revenue.advanceReceived')
                   : (summary?.totalDueRevenue || 0) > 0
-                    ? "Outstanding Amount"
-                    : "Fully Settled"
+                    ? t('revenue.outstandingAmount')
+                    : t('revenue.fullySettled')
               }
               color={
                 (summary?.totalDueRevenue || 0) < 0
-                  ? "bg-gradient-to-br from-emerald-500 to-emerald-600"
+                  ? " bg-gradient-to-br from-emerald-500 to-emerald-600"
                   : "bg-gradient-to-br from-orange-500 to-orange-600"
               }
             />
             <StatCard
               icon={FileText}
-              title="Total Invoices"
+              title={t('revenue.totalInvoices')}
               value={filteredTotals.totalInvoices || 0}
-              subtitle={`${filteredTotals.totalCategories || 0} categories`}
+              subtitle={t('revenue.xCategories', { count: filteredTotals.totalCategories || 0 })}
               color="bg-gradient-to-br from-purple-500 to-purple-600"
             />
             <StatCard
               icon={Percent}
-              title="Collection Rate"
+              title={t('revenue.collectionRate')}
               value={`${filteredTotals.receivedPercentage || 0}%`}
-              subtitle={`${filteredTotals.duePercentage || 0}% pending`}
+              subtitle={`${filteredTotals.duePercentage || 0}% ${t('revenue.pending')}`}
               color="bg-gradient-to-br from-indigo-500 to-indigo-600"
             />
           </div>
@@ -866,10 +870,10 @@ const CategoryRevenue = () => {
           <div className="bg-white rounded-2xl shadow-sm p-8 text-center border border-slate-100">
             <Package className="w-16 h-16 text-slate-300 mx-auto mb-4" />
             <p className="text-slate-600 text-lg font-medium mb-2">
-              No category data available
+              {t('revenue.noCategoryDataAvailable')}
             </p>
             <p className="text-slate-500 text-sm">
-              Try adjusting your date range or add some products
+              {t('revenue.tryAdjustingDateRange')}
             </p>
           </div>
         ) : (
@@ -884,7 +888,7 @@ const CategoryRevenue = () => {
                     : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
-                  Pie Chart
+                  {t('revenue.pieChart')}
                 </button>
                 <button
                   onClick={() => setViewMode("bar")}
@@ -893,7 +897,7 @@ const CategoryRevenue = () => {
                     : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
-                  Bar Chart
+                  {t('revenue.barChart')}
                 </button>
                 <button
                   onClick={() => setViewMode("trend")}
@@ -902,7 +906,7 @@ const CategoryRevenue = () => {
                     : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
-                  Trend
+                  {t('revenue.trend')}
                 </button>
               </div>
             </div>
@@ -913,10 +917,10 @@ const CategoryRevenue = () => {
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                   <PieChartIcon className="w-5 h-5 text-blue-600" />
                   {viewMode === "pie"
-                    ? "Revenue Distribution"
+                    ? t('revenue.revenueDistribution')
                     : viewMode === "bar"
-                      ? "Revenue Comparison"
-                      : "Revenue Trend"}
+                      ? t('revenue.revenueComparison')
+                      : t('revenue.revenueTrend')}
                 </h3>
                 {renderChart()}
               </div>
@@ -925,13 +929,13 @@ const CategoryRevenue = () => {
               <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-slate-100">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                   <Layers className="w-5 h-5 text-blue-600" />
-                  Category Details
+                  {t('revenue.categoryDetails')}
                 </h3>
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                   {filteredCategories.length === 0 ? (
                     <div className="text-center py-8">
                       <Info className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                      <p className="text-slate-500 text-sm">No categories selected</p>
+                      <p className="text-slate-500 text-sm">{t('revenue.noCategoriesSelected')}</p>
                     </div>
                   ) : (
                     <>
@@ -953,28 +957,28 @@ const CategoryRevenue = () => {
                           </div>
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
-                              <span className=" text-green-600">Received</span>
+                              <span className=" text-green-600">{t('revenue.collected')}</span>
                               <span className="font-semibold text-green-700">
                                 {formatCurrency(category.actualReceived)}
                               </span>
                             </div>
                             {category.dueAmount > 0 && (
                               <div className="flex items-center justify-between text-sm">
-                                <span className="text-orange-600">Due</span>
+                                <span className="text-orange-600">{t('revenue.due')}</span>
                                 <span className="font-semibold text-orange-700">
                                   {formatCurrency(category.dueAmount)}
                                 </span>
                               </div>
                             )}
                             <div className="flex items-center justify-between text-sm border-t border-slate-200 pt-2">
-                              <span className="text-slate-600 font-medium">Gross Revenue</span>
+                              <span className="text-slate-600 font-medium">{t('revenue.grossSales')}</span>
                               <span className="font-semibold text-slate-900">
                                 {formatCurrency(category.totalRevenue)}
                               </span>
                             </div>
                             {(summary?.returns || summary?.totalReturns) > 0 && category.returnValue > 0 && (
                               <div className="flex items-center justify-between text-sm">
-                                <span className="text-red-600">Returns</span>
+                                <span className="text-red-600">{t('revenue.returns')}</span>
                                 <span className="font-semibold text-red-700">
                                   -{formatCurrency(category.returnValue || 0)}
                                 </span>
@@ -982,15 +986,15 @@ const CategoryRevenue = () => {
                             )}
                             {(summary?.returns || summary?.totalReturns) > 0 && (
                               <div className="flex items-center justify-between text-sm border-t border-slate-200 pt-2">
-                                <span className="text-emerald-600 font-medium">Net Revenue</span>
+                                <span className="text-emerald-600 font-medium">{t('revenue.netRevenue')}</span>
                                 <span className="font-semibold text-emerald-700">
                                   {formatCurrency((category.totalRevenue || 0) - (category.returnValue || 0))}
                                 </span>
                               </div>
                             )}
                             <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t">
-                              <span>{category.invoiceCount} invoices</span>
-                              <span>{category.quantity.toFixed(2)} units</span>
+                              <span>{t('revenue.invoiceCount', { count: category.invoiceCount, plural: '' })}</span>
+                              <span>{t('revenue.unitCount', { count: category.quantity.toFixed(2) })}</span>
                             </div>
                           </div>
                         </div>
@@ -1000,30 +1004,30 @@ const CategoryRevenue = () => {
                         <div className="mt-4 pt-4 border-t border-slate-200">
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-green-700">Total Collected</span>
+                              <span className="text-sm font-medium text-green-700">{t('revenue.totalCollected')}</span>
                               <span className="text-lg font-bold text-green-800">{formatCurrency(summary?.totalCollected || filteredTotals.actualReceived)}</span>
                             </div>
                             {(summary?.totalDueRevenue !== undefined && summary?.totalDueRevenue !== 0) && (
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-orange-700">Net Position</span>
+                                <span className="text-sm font-medium text-orange-700">{t('revenue.netPosition')}</span>
                                 <span className={`text-lg font-bold ${(summary?.totalDueRevenue || 0) < 0 ? 'text-emerald-800' : 'text-orange-800'}`}>
                                   {formatCurrency(summary?.totalDueRevenue || 0)}
                                 </span>
                               </div>
                             )}
                             <div className="flex items-center justify-between border-t border-slate-200 pt-2 mt-2">
-                              <span className="text-sm font-medium text-slate-700">Gross Revenue</span>
+                              <span className="text-sm font-medium text-slate-700">{t('revenue.grossSales')}</span>
                               <span className="text-lg font-bold text-slate-900">{formatCurrency(filteredTotals.totalRevenue)}</span>
                             </div>
                             {filteredTotals.returnValue > 0 && (
                               <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-red-600">Returns</span>
+                                <span className="text-sm font-medium text-red-600">{t('revenue.returns')}</span>
                                 <span className="text-lg font-bold text-red-700">-{formatCurrency(filteredTotals.returnValue)}</span>
                               </div>
                             )}
                             {filteredTotals.returnValue > 0 && (
                               <div className="flex items-center justify-between border-t border-slate-100 pt-2 mt-2">
-                                <span className="text-sm font-medium text-emerald-600">Net Revenue</span>
+                                <span className="text-sm font-medium text-emerald-600">{t('revenue.netRevenue')}</span>
                                 <span className="text-lg font-bold text-emerald-700">{formatCurrency(filteredTotals.netRevenue)}</span>
                               </div>
                             )}
@@ -1040,7 +1044,7 @@ const CategoryRevenue = () => {
               <div className="bg-white rounded-2xl shadow-sm p-4 sm:p-6 border border-slate-100">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                   <Activity className="w-5 h-5 text-blue-600" />
-                  Category Insights
+                  {t('revenue.categoryInsights')}
                 </h3>
                 <div className={`grid grid-cols-1 md:grid-cols-2 ${(summary?.returns || summary?.totalReturns) > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
                   {(() => {
@@ -1049,11 +1053,11 @@ const CategoryRevenue = () => {
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200">
                         <div className="flex items-center gap-2 mb-2">
                           <TrendingUp className="w-5 h-5 text-green-600" />
-                          <h4 className="font-semibold text-green-900">Top Performer</h4>
+                          <h4 className="font-semibold text-green-900">{t('revenue.topPerformer')}</h4>
                         </div>
                         <p className="text-lg font-bold text-green-800 mb-1">{topCategory.categoryName}</p>
-                        <p className="text-sm text-green-700">{formatCurrency(topCategory.netRevenue)} net revenue</p>
-                        <p className="text-xs text-green-600 mt-1">{topCategory.invoiceCount} invoices • {topCategory.quantity.toFixed(2)} units</p>
+                        <p className="text-sm text-green-700">{formatCurrency(topCategory.netRevenue)} {t('revenue.netRevenueLower')}</p>
+                        <p className="text-xs text-green-600 mt-1">{t('revenue.invoiceCount', { count: topCategory.invoiceCount, plural: '' })} • {t('revenue.unitCount', { count: topCategory.quantity.toFixed(2) })}</p>
                       </div>
                     );
                   })()}
@@ -1064,34 +1068,34 @@ const CategoryRevenue = () => {
                       <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
                         <div className="flex items-center gap-2 mb-2">
                           <CreditCard className="w-5 h-5 text-blue-600" />
-                          <h4 className="font-semibold text-blue-900">Best Collection</h4>
+                          <h4 className="font-semibold text-blue-900">{t('revenue.bestCollection')}</h4>
                         </div>
                         <p className="text-lg font-bold text-blue-800 mb-1">{bestPayment.categoryName}</p>
-                        <p className="text-sm text-blue-700">{bestPayment.receivedPercentage.toFixed(1)}% collected</p>
-                        <p className="text-xs text-blue-600 mt-1">{formatCurrency(bestPayment.actualReceived)} collected</p>
+                        <p className="text-sm text-blue-700">{bestPayment.receivedPercentage.toFixed(1)}% {t('revenue.collectedLower')}</p>
+                        <p className="text-xs text-blue-600 mt-1">{formatCurrency(bestPayment.actualReceived)} {t('revenue.collectedLower')}</p>
                       </div>
                     );
                   })()}
 
                   {(() => {
                     const highestDue = [...filteredCategories].sort((a, b) => b.dueAmount - a.dueAmount)[0];
-                    return highestDue.dueAmount > 0 ? (
+                    highestDue.dueAmount > 0 ? (
                       <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
                         <div className="flex items-center gap-2 mb-2">
                           <Clock className="w-5 h-5 text-orange-600" />
-                          <h4 className="font-semibold text-orange-900">Highest Pending</h4>
+                          <h4 className="font-semibold text-orange-900">{t('revenue.highestPending')}</h4>
                         </div>
                         <p className="text-lg font-bold text-orange-800 mb-1">{highestDue.categoryName}</p>
-                        <p className="text-sm text-orange-700">{formatCurrency(highestDue.dueAmount)} pending</p>
-                        <p className="text-xs text-orange-600 mt-1">{highestDue.duePercentage.toFixed(1)}% of category revenue</p>
+                        <p className="text-sm text-orange-700">{formatCurrency(highestDue.dueAmount)} {t('revenue.pending')}</p>
+                        <p className="text-xs text-orange-600 mt-1">{highestDue.duePercentage.toFixed(1)}% {t('revenue.ofCategoryRevenue')}</p>
                       </div>
                     ) : (
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200">
                         <div className="flex items-center gap-2 mb-2">
                           <CheckCircle className="w-5 h-5 text-green-600" />
-                          <h4 className="font-semibold text-green-900">Excellent!</h4>
+                          <h4 className="font-semibold text-green-900">{t('revenue.excellent')}</h4>
                         </div>
-                        <p className="text-sm text-green-700">No pending dues across selected categories</p>
+                        <p className="text-sm text-green-700">{t('revenue.noPendingDues')}</p>
                       </div>
                     );
                   })()}
@@ -1103,11 +1107,11 @@ const CategoryRevenue = () => {
                       <div className="p-4 bg-red-50 rounded-xl border border-red-200">
                         <div className="flex items-center gap-2 mb-2">
                           <RotateCcw className="w-5 h-5 text-red-600" />
-                          <h4 className="font-semibold text-red-900">Most Returned</h4>
+                          <h4 className="font-semibold text-red-900">{t('revenue.mostReturned')}</h4>
                         </div>
                         <p className="text-lg font-bold text-red-800 mb-1">{mostReturned.categoryName}</p>
-                        <p className="text-sm text-red-700">{formatCurrency(mostReturned.returnValue)} returned</p>
-                        <p className="text-xs text-red-600 mt-1">{returnRate}% return rate • {mostReturned.returnCount} txns</p>
+                        <p className="text-sm text-red-700">{formatCurrency(mostReturned.returnValue)} {t('revenue.returned')}</p>
+                        <p className="text-xs text-red-600 mt-1">{returnRate}% {t('revenue.returnRate')} • {mostReturned.returnCount} {t('revenue.txns')}</p>
                       </div>
                     ) : null;
                   })()}

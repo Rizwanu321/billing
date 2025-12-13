@@ -55,6 +55,8 @@ const stockHistoryRoutes = require("./routes/stockHistory");
 const categoryRoutes = require("./routes/categories");
 const stockRoutes = require("./routes/stock");
 const revenueRoutes = require("./routes/revenue");
+const aiRoutes = require("./routes/ai");
+const translateRoutes = require("./routes/translate");
 
 // Use routes
 app.use("/api/auth", authRoutes);
@@ -68,6 +70,8 @@ app.use("/api/stock-history", stockHistoryRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/stock", stockRoutes);
 app.use("/api/revenue", revenueRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/api/translate", translateRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

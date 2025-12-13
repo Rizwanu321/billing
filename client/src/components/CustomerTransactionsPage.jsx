@@ -31,8 +31,10 @@ import {
 } from "../api/customers";
 import InvoiceDetailModal from "./InvoiceDetailModal";
 import PaymentModal from "./PaymentModal";
+import { useTranslation } from "react-i18next";
 
 const CustomerTransactionsPage = () => {
+  const { t } = useTranslation();
   const { customerId } = useParams();
   const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
@@ -263,7 +265,7 @@ const CustomerTransactionsPage = () => {
               className="hidden sm:flex items-center space-x-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl hover:bg-blue-700 transition-all font-medium shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 transform hover:-translate-y-0.5"
             >
               <Plus size={18} />
-              <span>New Payment</span>
+              <span>{t('customerTransactions.newPayment')}</span>
             </button>
             <button
               onClick={() => setShowPaymentModal(true)}
@@ -302,14 +304,14 @@ const CustomerTransactionsPage = () => {
             <div className="relative z-10 flex flex-col justify-between h-full text-white">
               <div className="flex items-start justify-between mb-8">
                 <div>
-                  <p className="text-white/80 font-medium text-lg mb-1">Current Balance</p>
+                  <p className="text-white/80 font-medium text-lg mb-1">{t('customerTransactions.currentBalance')}</p>
                   <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
                     ₹{Math.abs(customer.amountDue).toFixed(2)}
                   </h2>
                   <div className="mt-3 inline-flex items-center">
                     {customer.amountDue > 0 ? (
                       <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-sm font-semibold border border-white/20 flex items-center gap-2 shadow-sm">
-                        <AlertCircle size={14} /> Customer Owes You
+                        <AlertCircle size={14} /> {t('customerTransactions.customerOwesYou')}
                       </span>
                     ) : customer.amountDue < 0 ? (
                       <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-sm font-semibold border border-white/20 flex items-center gap-2 shadow-sm">
@@ -329,14 +331,14 @@ const CustomerTransactionsPage = () => {
 
               <div className="grid grid-cols-2 gap-4 mt-auto">
                 <div className="p-4 bg-black/10 backdrop-blur-sm rounded-2xl border border-white/5 hover:bg-black/20 transition-colors">
-                  <p className="text-white/70 text-sm mb-1">Total Purchases</p>
+                  <p className="text-white/70 text-sm mb-1">{t('customerTransactions.totalPurchases')}</p>
                   <p className="text-xl font-bold flex items-center gap-2">
                     <ArrowUp size={16} className="text-white/60" />
                     ₹{customer.totalPurchases?.toFixed(2) || '0.00'}
                   </p>
                 </div>
                 <div className="p-4 bg-black/10 backdrop-blur-sm rounded-2xl border border-white/5 hover:bg-black/20 transition-colors">
-                  <p className="text-white/70 text-sm mb-1">Total Payments</p>
+                  <p className="text-white/70 text-sm mb-1">{t('customerTransactions.totalPayments')}</p>
                   <p className="text-xl font-bold flex items-center gap-2">
                     <ArrowDown size={16} className="text-white/60" />
                     ₹{customer.totalPayments?.toFixed(2) || '0.00'}
@@ -349,8 +351,8 @@ const CustomerTransactionsPage = () => {
           {/* Quick Actions / Stats Card */}
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-slate-900/10 flex flex-col justify-between">
             <div>
-              <h3 className="text-lg font-bold text-white/90 mb-1">Account details</h3>
-              <p className="text-slate-400 text-sm">Contact & Location</p>
+              <h3 className="text-lg font-bold text-white/90 mb-1">{t('customerTransactions.accountDetails')}</h3>
+              <p className="text-slate-400 text-sm">{t('customerTransactions.contactLocation')}</p>
             </div>
 
             <div className="space-y-4 mt-8">
@@ -359,7 +361,7 @@ const CustomerTransactionsPage = () => {
                   <Phone size={18} className="text-blue-300" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-400">Phone Number</p>
+                  <p className="text-sm text-slate-400">{t('customerTransactions.phoneNumber')}</p>
                   <p className="font-semibold text-white tracking-wide">{customer.phoneNumber}</p>
                 </div>
               </div>
@@ -369,7 +371,7 @@ const CustomerTransactionsPage = () => {
                   <MapPin size={18} className="text-emerald-300" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-400">Location</p>
+                  <p className="text-sm text-slate-400">{t('customerTransactions.location')}</p>
                   <p className="font-semibold text-white">{customer.place || "Not set"}</p>
                 </div>
               </div>
@@ -382,28 +384,28 @@ const CustomerTransactionsPage = () => {
           {/* Controls Header */}
           <div className="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <h3 className="text-lg font-bold text-gray-900">History</h3>
+              <h3 className="text-lg font-bold text-gray-900">{t('customerTransactions.history')}</h3>
               <div className="hidden sm:flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setTransactionFilter("all")}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${transactionFilter === "all" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
-                  All
+                  {t('customerTransactions.all')}
                 </button>
                 <button
                   onClick={() => setTransactionFilter("purchase")}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${transactionFilter === "purchase" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
-                  Purchases
+                  {t('customerTransactions.purchases')}
                 </button>
                 <button
                   onClick={() => setTransactionFilter("payment")}
                   className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${transactionFilter === "payment" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
-                  Payments
+                  {t('customerTransactions.payments')}
                 </button>
               </div>
             </div>
@@ -413,7 +415,7 @@ const CustomerTransactionsPage = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 group-focus-within:text-blue-500 transition-colors" />
                 <input
                   type="text"
-                  placeholder="Search transactions..."
+                  placeholder={t('customerTransactions.searchTransactions')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full sm:w-64 pl-9 pr-4 py-2 bg-gray-50 border-gray-100 rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none"
@@ -466,12 +468,12 @@ const CustomerTransactionsPage = () => {
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-500 uppercase bg-gray-50/50 border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-4 font-semibold">Date & Time</th>
-                      <th className="px-6 py-4 font-semibold">Type</th>
-                      <th className="px-6 py-4 font-semibold">Description</th>
-                      <th className="px-6 py-4 font-semibold text-center">Reference</th>
-                      <th className="px-6 py-4 font-semibold text-right">Amount</th>
-                      <th className="px-6 py-4 font-semibold text-right">Balance</th>
+                      <th className="px-6 py-4 font-semibold">{t('customerTransactions.dateTime')}</th>
+                      <th className="px-6 py-4 font-semibold">{t('customerTransactions.type')}</th>
+                      <th className="px-6 py-4 font-semibold">{t('customerTransactions.description')}</th>
+                      <th className="px-6 py-4 font-semibold text-center">{t('customerTransactions.reference')}</th>
+                      <th className="px-6 py-4 font-semibold text-right">{t('customerTransactions.amount')}</th>
+                      <th className="px-6 py-4 font-semibold text-right">{t('customerTransactions.balance')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -488,7 +490,7 @@ const CustomerTransactionsPage = () => {
                           </td>
                           <td className="px-6 py-4">
                             <div className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${txColor.replace('text-', 'border-').split(' ')[1]} ${txColor}`}>
-                              {transaction.type.replace("_", " ")}
+                              {t(`customerTransactions.${transaction.type}`)}
                             </div>
                           </td>
                           <td className="px-6 py-4 text-gray-600 max-w-xs truncate">
@@ -532,7 +534,7 @@ const CustomerTransactionsPage = () => {
                           {getTransactionIcon(transaction.type)}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900 capitalize text-sm">{transaction.type.replace("_", " ")}</p>
+                          <p className="font-semibold text-gray-900 capitalize text-sm">{t(`customerTransactions.${transaction.type}`)}</p>
                           <p className="text-xs text-gray-500">{new Date(transaction.date).toLocaleDateString()}</p>
                         </div>
                       </div>

@@ -38,8 +38,10 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import api from "../utils/api";
+import { useTranslation } from "react-i18next";
 
 const CustomerStats = () => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("month");
@@ -286,15 +288,15 @@ const CustomerStats = () => {
 
   // data for charts
   const balanceDistributionData = [
-    { name: "Customers with Due", value: stats.dues.count, color: COLORS.due },
-    { name: "Customers with Credit", value: stats.credits.count, color: COLORS.credit },
-    { name: "Settled Customers", value: Math.max(0, stats.customers.total - stats.dues.count - stats.credits.count), color: COLORS.settled },
+    { name: t('customerStats.customersWithDueLabel'), value: stats.dues.count, color: COLORS.due },
+    { name: t('customerStats.customersWithCreditLabel'), value: stats.credits.count, color: COLORS.credit },
+    { name: t('customerStats.settledCustomersLabel'), value: Math.max(0, stats.customers.total - stats.dues.count - stats.credits.count), color: COLORS.settled },
   ].filter(d => d.value > 0);
 
   const periodActivityData = [
-    { name: "Sales", amount: stats.sales?.total || 0, color: COLORS.sales },
-    { name: "Collected", amount: stats.payments?.total || 0, color: COLORS.payments },
-    { name: "Returns", amount: stats.returns?.total || 0, color: COLORS.returns },
+    { name: t('customerStats.salesLabel'), amount: stats.sales?.total || 0, color: COLORS.sales },
+    { name: t('customerStats.collectedLabel'), amount: stats.payments?.total || 0, color: COLORS.payments },
+    { name: t('customerStats.returnsLabel'), amount: stats.returns?.total || 0, color: COLORS.returns },
   ];
 
   // --- Calculations for Due Management ---
@@ -337,10 +339,10 @@ const CustomerStats = () => {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-                  Customer Analytics
+                  {t('customerStats.customerAnalytics')}
                 </h1>
                 <p className="text-sm text-gray-500 font-medium">
-                  Financial health & activity overview
+                  {t('customerStats.financialHealthOverview')}
                 </p>
               </div>
             </div>
@@ -375,13 +377,13 @@ const CustomerStats = () => {
                 onChange={handlePeriodChange}
                 className="pl-4 pr-10 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer hover:bg-gray-50"
               >
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="quarter">This Quarter</option>
-                <option value="year">This Year</option>
-                <option value="all">All Time</option>
-                <option value="custom">Custom Range</option>
+                <option value="today">{t('customerStats.thisMonth')}</option>
+                <option value="week">{t('customerStats.thisMonth')}</option>
+                <option value="month">{t('customerStats.thisMonth')}</option>
+                <option value="quarter">{t('customerStats.thisMonth')}</option>
+                <option value="year">{t('customerStats.thisMonth')}</option>
+                <option value="all">{t('customerStats.thisMonth')}</option>
+                <option value="custom">{t('customerStats.thisMonth')}</option>
               </select>
 
               <button
@@ -410,19 +412,19 @@ const CustomerStats = () => {
                 <CreditCard className="w-6 h-6" />
               </div>
               <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
-                Before Returns
+                {t('customerStats.beforeReturns')}
               </span>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Gross Credit Sales</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">{t('customerStats.grossCreditSales')}</p>
               <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{formatCurrencyFull(grossCreditSales)}</h3>
               <p className="text-xs font-medium text-gray-400 mt-2">
-                Total credit sales before deducting returns
+                {t('customerStats.totalCreditSalesBeforeReturns')}
               </p>
               {stats.sales?.total > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-100">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-gray-500">% of Total Sales</span>
+                    <span className="text-xs text-gray-500">{t('customerStats.percentOfTotalSales')}</span>
                     <span className="text-sm font-bold text-blue-600">
                       {((grossCreditSales / stats.sales.total) * 100).toFixed(1)}%
                     </span>
@@ -439,19 +441,19 @@ const CustomerStats = () => {
                 <TrendingUp className="w-6 h-6" />
               </div>
               <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-1 rounded-full">
-                After Returns
+                {t('customerStats.afterReturns')}
               </span>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Net Credit Sales</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">{t('customerStats.netCreditSales')}</p>
               <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{formatCurrencyFull(netCreditSales)}</h3>
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Gross</span>
+                  <span>{t('customerStats.gross')}</span>
                   <span className="font-medium">{formatCurrencyFull(grossCreditSales)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-rose-500">
-                  <span>- Returns</span>
+                  <span>- {t('customerStats.returns')}</span>
                   <span>{formatCurrencyFull(creditReturns)}</span>
                 </div>
               </div>
@@ -467,22 +469,22 @@ const CustomerStats = () => {
               </div>
               <span className={`text-xs font-bold px-2 py-1 rounded-full ${netPosition > 0 ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
                 }`}>
-                {netPosition > 0 ? 'To Receive' : 'Settled'}
+                {netPosition > 0 ? t('customerStats.toReceive') : 'Settled'}
               </span>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-500 mb-1">Net Position</p>
+              <p className="text-sm font-medium text-gray-500 mb-1">{t('customerStats.netPosition')}</p>
               <h3 className={`text-3xl font-bold tracking-tight ${netPosition > 0 ? 'text-orange-600' : 'text-emerald-600'
                 }`}>
                 {netPosition > 0 ? '+' : ''}{formatCurrencyFull(netPosition)}
               </h3>
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <div className="flex justify-between text-xs text-gray-500 mb-1">
-                  <span>Net Credit Sales</span>
+                  <span>{t('customerStats.netCreditSales')}</span>
                   <span className="font-medium">{formatCurrencyFull(netCreditSales)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-emerald-500">
-                  <span>- Payments</span>
+                  <span>- {t('customerStats.payments')}</span>
                   <span>{formatCurrencyFull(totalCollected)}</span>
                 </div>
               </div>
@@ -493,16 +495,16 @@ const CustomerStats = () => {
         {/* Secondary Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
           <StatCard
-            title="Period Returns"
+            title={t('customerStats.periodReturns')}
             value={formatCurrency(stats.returns?.total)}
-            subtitle={`${stats.returns?.count} returns processed`}
+            subtitle={`${stats.returns?.count} ${t('customerStats.returnsProcessed')}`}
             icon={Undo2}
             color="amber"
           />
           <StatCard
-            title="Total Receivables"
+            title={t('customerStats.totalReceivables')}
             value={formatCurrency(stats.dues.totalDue)}
-            subtitle={`${stats.dues.count} customers owe`}
+            subtitle={`${stats.dues.count} ${t('customerStats.customersOwe')}`}
             icon={AlertCircle}
             color="rose"
             trend={stats.customers.isPositive ? "up" : "down"}
@@ -515,7 +517,7 @@ const CustomerStats = () => {
           <div className="bg-white rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <PieChartIcon className="w-5 h-5 text-gray-400" />
-              Customer Distribution
+              {t('customerStats.customerDistribution')}
             </h3>
             <div className="flex-1 min-h-[250px] relative">
               <ResponsiveContainer width="100%" height="100%">
@@ -544,7 +546,7 @@ const CustomerStats = () => {
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
                 <div className="text-center">
                   <p className="text-3xl font-bold text-slate-800">{stats.customers.total}</p>
-                  <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Total</p>
+                  <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider">{t('customerStats.total')}</p>
                 </div>
               </div>
             </div>
@@ -554,7 +556,7 @@ const CustomerStats = () => {
           <div className="lg:col-span-2 bg-white rounded-3xl p-6 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100">
             <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-gray-400" />
-              Activity: Sales, Collections & Returns ({period})
+              {t('customerStats.activitySalesCollectionsReturns')}
             </h3>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -606,31 +608,31 @@ const CustomerStats = () => {
           <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 lg:col-span-1 flex flex-col">
             <div className="flex items-center gap-2 mb-6">
               <Receipt className="w-5 h-5 text-gray-400" />
-              <h3 className="text-lg font-bold text-gray-900">Due Management</h3>
+              <h3 className="text-lg font-bold text-gray-900">{t('customerStats.dueManagement')}</h3>
             </div>
 
             <div className="space-y-4 flex-1">
               <div className="bg-slate-50 rounded-2xl p-4">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium text-slate-600">Dues Collected</span>
+                  <span className="text-sm font-medium text-slate-600">{t('customerStats.duesCollected')}</span>
                   <span className="text-lg font-bold text-emerald-600">{formatCurrencyFull(totalCollected)}</span>
                 </div>
                 <div className="w-full bg-slate-200 rounded-full h-1.5 mt-2 overflow-hidden">
                   <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${Math.min(collectionEfficiency, 100)}%` }}></div>
                 </div>
                 <div className="flex justify-between mt-2 text-xs text-slate-400">
-                  <span>Collection Efficiency</span>
+                  <span>{t('customerStats.collectionEfficiency')}</span>
                   <span>{collectionEfficiency.toFixed(1)}%</span>
                 </div>
               </div>
 
               <div className="bg-slate-50 rounded-2xl p-4">
                 <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium text-slate-600">Pending (Period)</span>
+                  <span className="text-sm font-medium text-slate-600">{t('customerStats.pendingPeriod')}</span>
                   <span className="text-lg font-bold text-rose-600">{formatCurrencyFull(Math.max(0, netPosition))}</span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">
-                  Uncollected amount from sales made in this period.
+                  {t('customerStats.uncollectedAmount')}
                 </p>
               </div>
             </div>
@@ -642,18 +644,18 @@ const CustomerStats = () => {
           <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
               <Activity className="w-5 h-5 text-gray-400" />
-              Recent Transactions
+              {t('customerStats.recentTransactions')}
             </h3>
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full">
-                Last 10 Activities
+                {t('customerStats.lastActivities')}
               </span>
               <button
                 onClick={exportTransactionsPDF}
                 className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors shadow-sm"
               >
                 <Download className="w-3.5 h-3.5" />
-                Export PDF
+                {t('customerStats.exportPDF')}
               </button>
             </div>
           </div>
@@ -662,11 +664,11 @@ const CustomerStats = () => {
             <table className="w-full">
               <thead className="bg-gray-50/50">
                 <tr>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Description</th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">Date</th>
-                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('customerStats.customer')}</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('customerStats.type')}</th>
+                  <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">{t('customerStats.description')}</th>
+                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider hidden sm:table-cell">{t('customerStats.date')}</th>
+                  <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('customerStats.amount')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -697,7 +699,7 @@ const CustomerStats = () => {
                             ? "bg-emerald-50 text-emerald-700 border-emerald-100"
                             : "bg-blue-50 text-blue-700 border-blue-100"
                           }`}>
-                          {isReturn ? "Return" : isPayment ? "Payment" : "Purchase"}
+                          {isReturn ? t('customerStats.return') : isPayment ? t('customerStats.payment') : t('customerStats.purchase')}
                         </span>
                       </td>
                       <td className="px-6 py-4 hidden sm:table-cell max-w-[250px]">

@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import { fetchStockAlerts, updateAlertSettings, fetchAlertSettings } from "../../api/stock";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 const StockAlerts = () => {
+  const { t } = useTranslation();
   const [alerts, setAlerts] = useState([]);
   const [settings, setSettings] = useState({
     lowStockThreshold: 10,
@@ -110,6 +112,26 @@ const StockAlerts = () => {
     }
   };
 
+  const getAlertTitle = (alert) => {
+    if (alert.product?.stock === 0) {
+      return t('stock.outOfStock');
+    }
+    return t('stock.lowStockWarning');
+  };
+
+  const getAlertMessage = (alert) => {
+    if (alert.product?.stock === 0) {
+      return t('stock.isOutOfStock', { product: alert.product?.name || 'Product' });
+    }
+    const threshold = alert.severity === 'critical' ? settings.criticalStockThreshold : settings.lowStockThreshold;
+    return t('stock.stockIsLow', {
+      product: alert.product?.name || 'Product',
+      stock: Number(alert.product?.stock).toFixed(2).replace(/\.00$/, ''),
+      unit: alert.product?.unit || 'units',
+      threshold: threshold
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50/50 pb-12 font-sans">
       {/* Sticky Header */}
@@ -118,9 +140,9 @@ const StockAlerts = () => {
           <div>
             <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
               <ShieldAlert className="text-indigo-600" size={28} />
-              Stock Alerts
+              {t('stock.stockAlerts')}
             </h1>
-            <p className="text-sm text-slate-500 mt-1 ml-10">Real-time inventory notifications</p>
+            <p className="text-sm text-slate-500 mt-1 ml-10">{t('stock.realtimeInventoryNotifications')}</p>
           </div>
 
           <div className="flex gap-3 w-full sm:w-auto">
@@ -129,7 +151,7 @@ const StockAlerts = () => {
               className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all font-medium text-sm shadow-sm"
             >
               <Settings size={18} />
-              <span>Configure Rules</span>
+              <span>{t('stock.configureRules')}</span>
             </button>
           </div>
         </div>
@@ -145,12 +167,12 @@ const StockAlerts = () => {
                 <div className="p-2 bg-rose-100 rounded-lg text-rose-600">
                   <AlertTriangle size={20} />
                 </div>
-                <h3 className="font-bold text-slate-700">Critical</h3>
+                <h3 className="font-bold text-slate-700">{t('stock.critical')}</h3>
               </div>
               <p className="text-3xl font-bold text-slate-800">
                 {alerts.filter(a => a.severity === 'critical').length}
               </p>
-              <p className="text-xs text-slate-400 mt-1">Stock below {settings.criticalStockThreshold} units</p>
+              <p className="text-xs text-slate-400 mt-1">{t('stock.stockBelowUnits', { count: settings.criticalStockThreshold })}</p>
             </div>
           </div>
 
@@ -161,12 +183,12 @@ const StockAlerts = () => {
                 <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
                   <Bell size={20} />
                 </div>
-                <h3 className="font-bold text-slate-700">Warning</h3>
+                <h3 className="font-bold text-slate-700">{t('stock.warning')}</h3>
               </div>
               <p className="text-3xl font-bold text-slate-800">
                 {alerts.filter(a => a.severity === 'warning').length}
               </p>
-              <p className="text-xs text-slate-400 mt-1">Stock below {settings.lowStockThreshold} units</p>
+              <p className="text-xs text-slate-400 mt-1">{t('stock.stockBelowUnits', { count: settings.lowStockThreshold })}</p>
             </div>
           </div>
 
@@ -177,12 +199,12 @@ const StockAlerts = () => {
                 <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
                   <Package size={20} />
                 </div>
-                <h3 className="font-bold text-slate-700">Total Alerts</h3>
+                <h3 className="font-bold text-slate-700">{t('stock.totalAlerts')}</h3>
               </div>
               <p className="text-3xl font-bold text-slate-800">
                 {alerts.length}
               </p>
-              <p className="text-xs text-slate-400 mt-1">Active notifications</p>
+              <p className="text-xs text-slate-400 mt-1">{t('stock.activeNotifications')}</p>
             </div>
           </div>
         </div>
@@ -195,21 +217,21 @@ const StockAlerts = () => {
               onClick={() => setFilter("all")}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${filter === 'all' ? 'bg-slate-800 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
             >
-              All Alerts
+              {t('stock.allAlerts')}
             </button>
             <button
               onClick={() => setFilter("critical")}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${filter === 'critical' ? 'bg-rose-100 text-rose-700' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}
             >
               <div className={`w-2 h-2 rounded-full ${filter === 'critical' ? 'bg-rose-500' : 'bg-rose-400'}`} />
-              Critical
+              {t('stock.critical')}
             </button>
             <button
               onClick={() => setFilter("warning")}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap flex items-center gap-2 ${filter === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'}`}
             >
               <div className={`w-2 h-2 rounded-full ${filter === 'warning' ? 'bg-amber-500' : 'bg-amber-400'}`} />
-              Warnings
+              {t('stock.warnings')}
             </button>
           </div>
 
@@ -244,12 +266,12 @@ const StockAlerts = () => {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1">
-                          <h4 className="font-bold text-slate-800 truncate">{alert.title}</h4>
+                          <h4 className="font-bold text-slate-800 truncate">{getAlertTitle(alert)}</h4>
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${styles.bg} ${styles.text}`}>
-                            {alert.severity}
+                            {t(`stock.${alert.severity}`)}
                           </span>
                         </div>
-                        <p className="text-slate-600 text-sm mb-2">{alert.message}</p>
+                        <p className="text-slate-600 text-sm mb-2">{getAlertMessage(alert)}</p>
 
                         <div className="flex items-center gap-4 text-xs text-slate-400 font-medium">
                           <span className="flex items-center gap-1">
@@ -268,7 +290,7 @@ const StockAlerts = () => {
                       {/* Actions */}
                       <div className="flex items-center gap-4 sm:justify-end mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
                         <div className="text-right hidden sm:block">
-                          <p className="text-xs text-slate-400 font-bold uppercase">Current Stock</p>
+                          <p className="text-xs text-slate-400 font-bold uppercase">{t('stock.currentStock')}</p>
                           <p className={`text-lg font-bold ${styles.text}`}>
                             {Number(alert.product?.stock).toFixed(2).replace(/\.00$/, '')} <span className="text-xs">{alert.product?.unit}</span>
                           </p>

@@ -9,6 +9,7 @@ import EmptyState from "./EmptyState";
 import { Plus, Package, Grid, List, Table2 } from "lucide-react";
 import StockHistoryModal from "./StockHistoryModal";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 import {
   fetchProducts,
@@ -19,6 +20,7 @@ import {
 } from "../../api/products";
 
 const Products = () => {
+  const { t } = useTranslation();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -274,10 +276,10 @@ const Products = () => {
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900">
-                    Products
+                    {t('products.products')}
                   </h1>
                   <p className="text-sm sm:text-base text-gray-500 mt-1">
-                    Manage your inventory with ease
+                    {t('products.manageInventoryWithEase')}
                   </p>
                 </div>
               </div>
@@ -288,44 +290,44 @@ const Products = () => {
               disabled={loading}
             >
               <Plus className="h-5 w-5 mr-2" />
-              <span className="text-sm sm:text-base">Add Product</span>
+              <span className="text-sm sm:text-base">{t('products.addProduct')}</span>
             </button>
           </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-6">
-            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 border border-blue-200">
-              <p className="text-xs sm:text-sm text-blue-600 font-medium mb-2">
-                Total Products
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-blue-200 flex flex-col min-h-[80px] sm:min-h-[90px] lg:min-h-[100px]">
+              <p className="text-xs sm:text-sm text-blue-600 font-medium mb-1 sm:mb-2 truncate" title={t('products.totalProducts')}>
+                {t('products.totalProducts')}
               </p>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-900">
+              <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-blue-900 mt-auto break-words">
                 {stats.total}
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 sm:p-4 border border-amber-200">
-              <p className="text-xs sm:text-sm text-amber-600 font-medium mb-2">
-                Low Stock
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-amber-200 flex flex-col min-h-[80px] sm:min-h-[90px] lg:min-h-[100px]">
+              <p className="text-xs sm:text-sm text-amber-600 font-medium mb-1 sm:mb-2 truncate" title={t('products.lowStock')}>
+                {t('products.lowStock')}
               </p>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-amber-900">
+              <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-amber-900 mt-auto break-words">
                 {stats.lowStock}
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-3 sm:p-4 border border-red-200">
-              <p className="text-xs sm:text-sm text-red-600 font-medium mb-2">
-                Out of Stock
+            <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-red-200 flex flex-col min-h-[80px] sm:min-h-[90px] lg:min-h-[100px]">
+              <p className="text-xs sm:text-sm text-red-600 font-medium mb-1 sm:mb-2 truncate" title={t('products.outOfStock')}>
+                {t('products.outOfStock')}
               </p>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-red-900">
+              <p className="text-xl sm:text-2xl lg:text-3xl xl:text-4xl font-bold text-red-900 mt-auto break-words">
                 {stats.outOfStock}
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 sm:p-4 border border-green-200">
-              <p className="text-xs sm:text-sm text-green-600 font-medium mb-2">
-                Total Value
+            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-3 sm:p-4 lg:p-5 border border-green-200 flex flex-col min-h-[80px] sm:min-h-[90px] lg:min-h-[100px]">
+              <p className="text-xs sm:text-sm text-green-600 font-medium mb-1 sm:mb-2 truncate" title={t('products.totalValue')}>
+                {t('products.totalValue')}
               </p>
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-900">
+              <p className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-green-900 mt-auto break-all leading-tight" title={`₹${stats.totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}>
                 ₹{stats.totalValue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
             </div>
@@ -347,7 +349,7 @@ const Products = () => {
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
               >
-                <option value="all">All Categories</option>
+                <option value="all">{t('products.allCategories')}</option>
                 {categories.map((cat) => (
                   <option key={cat._id} value={cat._id}>
                     {cat.name}

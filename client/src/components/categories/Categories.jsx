@@ -20,8 +20,10 @@ import {
   deleteCategory,
 } from "../../api/categories";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 const Categories = () => {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState(null);
@@ -88,19 +90,19 @@ const Categories = () => {
 
   const stats = [
     {
-      label: "Total Categories",
+      label: t('categories.totalCategories'),
       value: categories.length,
       icon: Folder,
       color: "blue",
     },
     {
-      label: "Active",
+      label: t('categories.active'),
       value: categories.length,
       icon: Tag,
       color: "green",
     },
     {
-      label: "Newest Added",
+      label: t('categories.newestAdded'),
       value: categories.length > 0 ? categories[categories.length - 1].name : "-",
       icon: Clock,
       color: "purple",
@@ -111,7 +113,7 @@ const Categories = () => {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
-        <p className="text-gray-500 font-medium">Loading your categories...</p>
+        <p className="text-gray-500 font-medium">{t('categories.loadingCategories')}...</p>
       </div>
     );
   }
@@ -123,10 +125,10 @@ const Categories = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-              Categories
+              {t('categories.categories')}
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              Manage and organize your product catalog structure
+              {t('categories.manageAndOrganize')}
             </p>
           </div>
           <button
@@ -134,7 +136,7 @@ const Categories = () => {
             className="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
           >
             <Plus className="h-5 w-5 mr-2" />
-            Add Category
+            {t('categories.addCategory')}
           </button>
         </div>
 
@@ -169,7 +171,7 @@ const Categories = () => {
             <input
               type="text"
               className="block w-full pl-10 pr-4 py-2 bg-transparent border-none focus:ring-0 text-gray-900 placeholder-gray-500 sm:text-sm"
-              placeholder="Search categories..."
+              placeholder={t('categories.searchCategories')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -186,7 +188,7 @@ const Categories = () => {
                 }`}
             >
               <LayoutGrid className="h-4 w-4 mr-2" />
-              Grid
+              {t('categories.grid')}
             </button>
             <button
               onClick={() => setViewMode("list")}
@@ -196,7 +198,7 @@ const Categories = () => {
                 }`}
             >
               <ListIcon className="h-4 w-4 mr-2" />
-              List
+              {t('categories.list')}
             </button>
           </div>
         </div>
@@ -205,11 +207,11 @@ const Categories = () => {
           {filteredCategories.length === 0 ? (
             <EmptyState
               icon={Layers}
-              title={searchTerm ? "No matching categories" : "No categories yet"}
+              title={searchTerm ? t('categories.noMatchingCategories') : t('categories.noCategoriesYet')}
               message={
                 searchTerm
-                  ? `No categories found matching "${searchTerm}". Try a different search term.`
-                  : "Create your first category to start organizing your products."
+                  ? t('categories.noCategoriesFoundMatching', { searchTerm })
+                  : t('categories.createFirstCategory')
               }
               action={
                 !searchTerm && (
@@ -218,7 +220,7 @@ const Categories = () => {
                     className="mt-6 inline-flex items-center px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                   >
                     <Plus className="h-5 w-5 mr-2" />
-                    Create Category
+                    {t('categories.createCategory')}
                   </button>
                 )
               }

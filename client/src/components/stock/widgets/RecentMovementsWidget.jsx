@@ -1,5 +1,6 @@
 // components/stock/widgets/RecentMovementsWidget.jsx
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   Activity,
   TrendingUp,
@@ -20,6 +21,7 @@ import {
 import { Link } from "react-router-dom"; // Assuming router usage
 
 const RecentMovementsWidget = ({ movements = [] }) => {
+  const { t } = useTranslation();
   const recentMovements = movements.slice(0, 5);
 
   const getMovementIcon = (movement) => {
@@ -61,7 +63,7 @@ const RecentMovementsWidget = ({ movements = [] }) => {
 
   const getMovementDescription = (movement) => {
     const descriptions = {
-      purchase: "Purchased",
+      purchase: t('stock.purchased'),
       return_from_customer: "Customer Return",
       production: "Produced",
       found: "Found",
@@ -76,7 +78,7 @@ const RecentMovementsWidget = ({ movements = [] }) => {
       sale: "Sold",
       initial: "Initial Stock",
     };
-    return descriptions[movement.adjustmentType] || (movement.adjustment > 0 ? "Added" : "Removed");
+    return descriptions[movement.adjustmentType] || (movement.adjustment > 0 ? t('stock.added') : t('stock.removed'));
   };
 
   const getMovementColor = (movement) => {
@@ -145,7 +147,7 @@ const RecentMovementsWidget = ({ movements = [] }) => {
       {recentMovements.length > 0 && (
         <div className="p-4 border-t border-slate-50 bg-slate-50/30">
           <Link to="/inventory/movements" className="flex items-center justify-center gap-1 text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-wide py-1">
-            View All Movements <ChevronRight size={14} />
+            {t('stock.viewAllMovements')} <ChevronRight size={14} />
           </Link>
         </div>
       )}

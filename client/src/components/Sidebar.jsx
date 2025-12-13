@@ -20,9 +20,13 @@ import {
   UserCircle,
   PieChart,
   RotateCcw,
+  Sparkles,
+  MessageSquare,
+  BrainCircuit,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 const Sidebar = ({
   collapsed,
@@ -34,117 +38,126 @@ const Sidebar = ({
   const location = useLocation();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const menuItems = [
     {
       icon: LayoutDashboard,
-      label: "Dashboard",
+      label: t('sidebar.dashboard'),
       path: "/dashboard",
       single: true,
     },
     {
       icon: Package,
-      label: "Products",
+      label: t('sidebar.products'),
       id: "products",
       submenu: [
-        { icon: Package, label: "All Products", path: "/products" },
-        { icon: BarChart2, label: "Categories", path: "/categories" },
+        { icon: Package, label: t('sidebar.allProducts'), path: "/products" },
+        { icon: BarChart2, label: t('sidebar.categories'), path: "/categories" },
       ],
     },
     {
       icon: FileText,
-      label: "Billing",
+      label: t('sidebar.billing'),
       id: "billing",
       submenu: [
-        { icon: FileText, label: "New Billing", path: "/invoices" },
-        { icon: BarChart2, label: "Billing List", path: "/billinglist" },
+        { icon: FileText, label: t('sidebar.newBilling'), path: "/invoices" },
+        { icon: BarChart2, label: t('sidebar.billingList'), path: "/billinglist" },
       ],
     },
     {
       icon: Package,
-      label: "Stock Management",
+      label: t('sidebar.stockManagement'),
       id: "stock",
       submenu: [
         {
           icon: BarChart2,
-          label: "Stock Dashboard",
+          label: t('sidebar.stockDashboard'),
           path: "/stock/dashboard",
         },
         {
           icon: TrendingUp,
-          label: "Stock Movements",
+          label: t('sidebar.stockMovements'),
           path: "/stock/movements",
         },
         {
           icon: AlertTriangle,
-          label: "Stock Alerts",
+          label: t('sidebar.stockAlerts'),
           path: "/stock/alerts",
         },
         {
           icon: FileText,
-          label: "Stock Reports",
+          label: t('sidebar.stockReports'),
           path: "/stock/reports",
         },
         {
           icon: Settings,
-          label: "Stock Adjustment",
+          label: t('sidebar.stockAdjustment'),
           path: "/stock/adjustment",
         },
       ],
     },
     {
       icon: IndianRupee,
-      label: "Sales & Revenue",
+      label: t('sidebar.salesRevenue'),
       id: "revenue",
       submenu: [
         {
           icon: BarChart2,
-          label: "Revenue Dashboard",
+          label: t('sidebar.revenueDashboard'),
           path: "/revenue/dashboard",
         },
         {
           icon: FileText,
-          label: "Transactions",
+          label: t('sidebar.transactions'),
           path: "/revenue/transactions",
         },
         {
           icon: ShoppingCart,
-          label: "By Category",
+          label: t('sidebar.byCategory'),
           path: "/revenue/by-category",
         },
         {
           icon: Package,
-          label: "By Products",
+          label: t('sidebar.byProducts'),
           path: "/revenue/by-products",
         },
         {
           icon: TrendingUp,
-          label: "Analytics",
+          label: t('sidebar.analytics'),
           path: "/revenue/analytics",
         },
         {
           icon: BarChart2,
-          label: "Comparison",
+          label: t('sidebar.comparison'),
           path: "/revenue/comparison",
         },
         {
           icon: RotateCcw,
-          label: "Product Returns",
+          label: t('sidebar.productReturns'),
           path: "/revenue/returns",
         },
       ],
     },
     {
       icon: Users,
-      label: "Customers",
+      label: t('sidebar.customers'),
       id: "customers",
       submenu: [
-        { icon: Users, label: "Add Customer", path: "/customers/new" },
-        { icon: BarChart2, label: "View Customers", path: "/customers/list" },
-        { icon: PieChart, label: "Customer Stats", path: "/customers/stats" }, // NEW
+        { icon: Users, label: t('sidebar.addCustomer'), path: "/customers/new" },
+        { icon: BarChart2, label: t('sidebar.viewCustomers'), path: "/customers/list" },
+        { icon: PieChart, label: t('sidebar.customerStats'), path: "/customers/stats" },
       ],
     },
-    { icon: Settings, label: "Settings", path: "/settings", single: true },
+    {
+      icon: Sparkles,
+      label: t('sidebar.aiAssistant'),
+      id: "ai",
+      badge: "NEW",
+      disabled: true,
+      submenu: [],
+    },
+    { icon: Settings, label: t('sidebar.settings'), path: "/settings", single: true },
   ];
 
   // Auto-expand the active menu
@@ -246,6 +259,11 @@ const Sidebar = ({
                       {(!collapsed || isMobileOpen) && (
                         <span className="truncate">{item.label}</span>
                       )}
+                      {(!collapsed || isMobileOpen) && item.badge && (
+                        <span className="ml-2 px-1.5 py-0.5 text-[10px] font-bold bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded">
+                          {item.badge}
+                        </span>
+                      )}
                     </div>
                     {(!collapsed || isMobileOpen) && (
                       <ChevronRight
@@ -304,7 +322,7 @@ const Sidebar = ({
             className={`${collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
               } flex-shrink-0`}
           />
-          {(!collapsed || isMobileOpen) && <span>Profile</span>}
+          {(!collapsed || isMobileOpen) && <span>{t('sidebar.profile')}</span>}
         </button>
         <button
           onClick={handleLogout}
@@ -315,7 +333,7 @@ const Sidebar = ({
             className={`${collapsed && !isMobileOpen ? "mx-auto" : "mr-3"
               } flex-shrink-0`}
           />
-          {(!collapsed || isMobileOpen) && <span>Logout</span>}
+          {(!collapsed || isMobileOpen) && <span>{t('sidebar.logout')}</span>}
         </button>
       </div>
     </div>

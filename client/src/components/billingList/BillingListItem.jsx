@@ -10,6 +10,7 @@ import {
   User,
   Mail,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const WhatsAppIcon = ({ className }) => (
   <svg
@@ -30,6 +31,7 @@ const BillingListItem = ({
   onShareEmail,
   onShareWhatsApp,
 }) => {
+  const { t } = useTranslation();
   const [showMobileMenu, setShowMobileMenu] = React.useState(false);
 
   const getStatusColor = (status) => {
@@ -76,7 +78,7 @@ const BillingListItem = ({
               invoice.status
             )}`}
           >
-            {invoice.status || "Paid"}
+            {t(`invoiceDetail.${invoice.status || 'paid'}`)}
           </span>
         </div>
 
@@ -86,14 +88,14 @@ const BillingListItem = ({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">
-              {invoice.customer?.name || "Walk-in Customer"}
+              {invoice.customer?.name || t('billingList.walkInCustomer')}
             </p>
             <p className="text-xs text-slate-500 flex items-center gap-1">
-              {getPaymentMethodIcon(invoice.paymentMethod)} <span className="capitalize">{invoice.paymentMethod}</span>
+              {getPaymentMethodIcon(invoice.paymentMethod)} <span className="capitalize">{t(`invoiceDetail.${invoice.paymentMethod}`)}</span>
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-slate-500 mb-0.5">Amount</p>
+            <p className="text-xs text-slate-500 mb-0.5">{t('billingList.amount')}</p>
             <p className="text-base font-bold text-slate-900">
               ₹{invoice.total.toFixed(2)}
             </p>
@@ -144,26 +146,26 @@ const BillingListItem = ({
         <div className="p-5 grid grid-cols-12 gap-4 items-center">
           {/* Invoice # (2 cols) */}
           <div className="col-span-2">
-            <p className="text-xs text-slate-400 font-medium mb-0.5">Invoice</p>
+            <p className="text-xs text-slate-400 font-medium mb-0.5">{t('billingList.invoice')}</p>
             <p className="text-sm font-bold text-slate-900">#{invoice.invoiceNumber}</p>
           </div>
 
           {/* Customer (3 cols) */}
           <div className="col-span-3">
-            <p className="text-xs text-slate-400 font-medium mb-0.5">Customer</p>
+            <p className="text-xs text-slate-400 font-medium mb-0.5">{t('billingList.customer')}</p>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-500">
                 {invoice.customer?.name?.[0]?.toUpperCase() || "U"}
               </div>
               <p className="text-sm font-medium text-slate-900 truncate pr-2">
-                {invoice.customer?.name || "Walk-in Customer"}
+                {invoice.customer?.name || t('billingList.walkInCustomer')}
               </p>
             </div>
           </div>
 
           {/* Date (2 cols) */}
           <div className="col-span-2">
-            <p className="text-xs text-slate-400 font-medium mb-0.5">Date</p>
+            <p className="text-xs text-slate-400 font-medium mb-0.5">{t('billingList.date')}</p>
             <div className="flex items-center gap-1.5 text-sm text-slate-700">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
               {new Date(invoice.date).toLocaleDateString()}
@@ -172,20 +174,20 @@ const BillingListItem = ({
 
           {/* Status & Method (2 cols) */}
           <div className="col-span-2">
-            <p className="text-xs text-slate-400 font-medium mb-0.5">Status</p>
+            <p className="text-xs text-slate-400 font-medium mb-0.5">{t('billingList.status')}</p>
             <div className="flex flex-col items-start gap-1">
               <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(invoice.status)}`}>
-                {invoice.status || "Paid"}
+                {t(`invoiceDetail.${invoice.status || 'paid'}`)}
               </span>
               <div className="flex items-center gap-1 text-[11px] text-slate-500 capitalize">
-                {getPaymentMethodIcon(invoice.paymentMethod)} {invoice.paymentMethod}
+                {getPaymentMethodIcon(invoice.paymentMethod)} {t(`invoiceDetail.${invoice.paymentMethod}`)}
               </div>
             </div>
           </div>
 
           {/* Amount (2 cols) */}
           <div className="col-span-2 text-right pr-4">
-            <p className="text-xs text-slate-400 font-medium mb-0.5">Amount</p>
+            <p className="text-xs text-slate-400 font-medium mb-0.5">{t('billingList.amount')}</p>
             <p className="text-base font-bold text-slate-900">₹{invoice.total.toFixed(2)}</p>
           </div>
 

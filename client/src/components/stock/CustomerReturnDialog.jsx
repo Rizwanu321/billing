@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, initialReference }) => {
+    const { t } = useTranslation();
     const [customers, setCustomers] = useState([]);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [customerInvoices, setCustomerInvoices] = useState([]);
@@ -266,9 +268,9 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                             <ShoppingBag className="w-6 h-6" />
                         </div>
                         <div>
-                            <h2 className="text-xl sm:text-2xl font-bold">Customer Return</h2>
+                            <h2 className="text-xl sm:text-2xl font-bold">{t('stock.customerReturn')}</h2>
                             <p className="text-sm text-blue-100 mt-0.5">
-                                Select customer to process return and adjust balance
+                                {t('stock.selectCustomerToProcessReturn')}
                             </p>
                         </div>
                     </div>
@@ -292,7 +294,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                             >
                                 1
                             </div>
-                            <span className="text-sm font-medium">Select Customer</span>
+                            <span className="text-sm font-medium">{t('stock.selectCustomer')}</span>
                         </div>
                         <div className="w-12 h-0.5 bg-gray-300"></div>
                         <div className="flex items-center gap-2">
@@ -304,7 +306,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                             >
                                 2
                             </div>
-                            <span className="text-sm font-medium">Confirm Return</span>
+                            <span className="text-sm font-medium">{t('stock.confirmReturn')}</span>
                         </div>
                     </div>
                 </div>
@@ -317,8 +319,8 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
 
                                 <p className="text-sm text-gray-600 mb-3">
                                     {filteredCustomers.length === 1 && searchTerm
-                                        ? "Customer matched from invoice reference"
-                                        : "Search for a customer to process their return"}
+                                        ? t('stock.customerMatchedFromInvoice')
+                                        : t('stock.searchForCustomerToProcess')}
                                 </p>
 
                                 {/* Search - Only show when there are multiple visible customers OR when actively searching */}
@@ -381,7 +383,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                                                 <IndianRupee className="w-4 h-4" />
                                                                 <span>{customer.amountDue.toFixed(2)}</span>
                                                             </div>
-                                                            <p className="text-xs text-gray-500">Current Due</p>
+                                                            <p className="text-xs text-gray-500">{t('stock.currentDue')}</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -397,12 +399,12 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                                    <p className="text-xs text-blue-700 font-medium mb-2">CUSTOMER</p>
+                                    <p className="text-xs text-blue-700 font-medium mb-2">{t('stock.customer').toUpperCase()}</p>
                                     <p className="font-semibold text-gray-900">{selectedCustomer.name}</p>
                                     <p className="text-sm text-gray-600">{selectedCustomer.phoneNumber}</p>
                                     <div className="mt-2 pt-2 border-t border-blue-200 space-y-2">
                                         <div>
-                                            <p className="text-xs text-gray-600">Current Due</p>
+                                            <p className="text-xs text-gray-600">{t('stock.currentDue')}</p>
                                             <div className="flex items-center gap-1 text-red-600 font-semibold">
                                                 <IndianRupee className="w-4 h-4" />
                                                 <span>{selectedCustomer.amountDue.toFixed(2)}</span>
@@ -422,7 +424,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                 </div>
 
                                 <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
-                                    <p className="text-xs text-purple-700 font-medium mb-2">INVOICE</p>
+                                    <p className="text-xs text-purple-700 font-medium mb-2">{t('stock.invoice').toUpperCase()}</p>
                                     {selectedInvoice ? (
                                         <>
                                             <p className="font-semibold text-gray-900">
@@ -432,7 +434,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                                 {new Date(selectedInvoice.date).toLocaleDateString()}
                                             </p>
                                             <div className="mt-2 pt-2 border-t border-purple-200">
-                                                <p className="text-xs text-gray-600">Invoice Total</p>
+                                                <p className="text-xs text-gray-600">{t('stock.invoiceTotal')}</p>
                                                 <div className="flex items-center gap-1 font-semibold">
                                                     <IndianRupee className="w-4 h-4" />
                                                     <span>{selectedInvoice.total.toFixed(2)}</span>
@@ -458,7 +460,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                                     <div className="flex gap-3">
                                                         <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
                                                         <div className="flex-1">
-                                                            <p className="font-semibold text-red-900 mb-2">Invoice Validation Errors</p>
+                                                            <p className="font-semibold text-red-900 mb-2">{t('stock.invoiceValidationErrors')}</p>
                                                             <ul className="space-y-1 text-sm text-red-700">
                                                                 {validation.errors.map((error, index) => (
                                                                     <li key={index} className="flex items-start gap-2">
@@ -468,7 +470,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                                                 ))}
                                                             </ul>
                                                             <p className="text-xs text-red-600 mt-2 font-medium">
-                                                                ⚠️ Cannot proceed with these errors. Please adjust the return quantities or deselect the invoice.
+                                                                ⚠️ {t('stock.cannotProceedWithErrors')}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -504,7 +506,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                             <div>
                                 <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                                     <Package className="w-5 h-5 text-blue-600" />
-                                    Return Items ({selectedProducts.length})
+                                    {t('stock.returnItems')} ({selectedProducts.length})
                                 </h3>
                                 <div className="border border-gray-200 rounded-xl overflow-hidden">
                                     <div className="max-h-60 overflow-y-auto">
@@ -522,7 +524,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                                         <div className="flex-1">
                                                             <p className={`font-medium ${hasError ? "text-red-700" : "text-gray-900"}`}>
                                                                 {product.name}
-                                                                {hasError && <span className="text-xs text-red-600 ml-2 font-bold">(INVALID)</span>}
+                                                                {hasError && <span className="text-xs text-red-600 ml-2 font-bold">({t('stock.invalid')})</span>}
                                                             </p>
                                                             <p className="text-sm text-gray-600">
                                                                 {product.adjustmentQuantity} {product.unit} × ₹
@@ -544,19 +546,19 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
 
                             {/* Calculation Summary */}
                             <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-xl p-4">
-                                <h4 className="font-semibold text-gray-900 mb-3">Return Summary</h4>
+                                <h4 className="font-semibold text-gray-900 mb-3">{t('stock.returnSummary')}</h4>
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Subtotal:</span>
+                                        <span className="text-gray-600">{t('stock.subtotal')}:</span>
                                         <span className="font-medium">₹{calculateReturnTotal().toFixed(2)}</span>
                                     </div>
                                     {selectedInvoice && (
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-600">
-                                                Tax
+                                                {t('stock.tax')}
                                                 {selectedInvoice.tax > 0 && (
                                                     <span className="text-xs text-blue-600 ml-1">
-                                                        ({((selectedInvoice.tax / selectedInvoice.subtotal) * 100).toFixed(1)}% rate)
+                                                        ({((selectedInvoice.tax / selectedInvoice.subtotal) * 100).toFixed(1)}% {t('stock.rate')})
                                                     </span>
                                                 )}:
                                             </span>
@@ -564,7 +566,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                         </div>
                                     )}
                                     <div className="border-t border-gray-300 pt-2 flex justify-between">
-                                        <span className="font-semibold text-gray-900">Total Return:</span>
+                                        <span className="font-semibold text-gray-900">{t('stock.totalReturn')}:</span>
                                         <div className="flex items-center gap-1 font-bold text-lg text-blue-600">
                                             <IndianRupee className="w-5 h-5" />
                                             <span>{getTotalWithTax().toFixed(2)}</span>
@@ -604,7 +606,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                             onClick={() => setStep(step - 1)}
                             className="px-4 sm:px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
                         >
-                            Back
+                            {t('stock.back')}
                         </button>
                     )}
                     <div className="flex-1"></div>
@@ -612,7 +614,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                         onClick={handleClose}
                         className="px-4 sm:px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium"
                     >
-                        Cancel
+                        {t('stock.cancel')}
                     </button>
                     {step === 2 && (() => { // Changed from step === 3
                         const validation = selectedInvoice ? getInvoiceValidation() : { isValid: true, errors: [] };
@@ -626,7 +628,7 @@ const CustomerReturnDialog = ({ isOpen, onClose, selectedProducts, onSuccess, in
                                 title={hasErrors ? "Fix validation errors to proceed" : "Confirm return"}
                             >
                                 <CheckCircle className="w-5 h-5" />
-                                Confirm Return
+                                {t('stock.confirmReturn')}
                             </button>
                         );
                     })()}

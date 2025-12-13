@@ -1,0 +1,10 @@
+        "stockOverview": "സ്റ്റോക്ക് അവലോകനം",
+        "updated": "അപ്ഡേറ്റ് ചെയ്തത്",
+        "loadingInventory": "ഇൻവെന്ററി ലോഡ് ചെയ്യുന്നു...",
+        "totalProducts": "മൊത്തം ഉൽപ്പന്നങ്ങൾ",
+        "totalStockValue": "മൊത്തം സ്റ്റോക്ക് മൂല്യം",
+        "lowStockItems": "കുറഞ്ഞ സ്റ്റോക്ക് ഉള്ള ഇനങ്ങൾ",
+        "outOfStock": "സ്റ്റോക്ക് തീർന്നു",
+        "stockHealth": "സ്റ്റോക്ക് ആരോഗ്യം",
+        "lowStockAlerts": "കുറഞ്ഞ സ്റ്റോക്ക് മുന്നറിയിപ്പുകൾ",
+        "recentMovements": "സമീപകാല ചലനങ്ങൾ"

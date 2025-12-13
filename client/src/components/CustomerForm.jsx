@@ -11,8 +11,10 @@ import {
   Save,
   X,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const CustomerForm = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
@@ -60,10 +62,10 @@ const CustomerForm = () => {
               </button>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-                  Add New Customer
+                  {t('customerForm.addNewCustomer')}
                 </h1>
                 <p className="text-sm text-gray-500 mt-0.5 hidden sm:block">
-                  Fill in the customer details below
+                  {t('customerForm.fillDetails')}
                 </p>
               </div>
             </div>
@@ -96,7 +98,7 @@ const CustomerForm = () => {
               {/* Name Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Customer Name <span className="text-red-500">*</span>
+                  {t('customerForm.customerName')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -108,7 +110,7 @@ const CustomerForm = () => {
                     value={formData.name}
                     onChange={handleChange}
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Enter customer name"
+                    placeholder={t('customerForm.enterCustomerName')}
                     required
                   />
                 </div>
@@ -117,7 +119,7 @@ const CustomerForm = () => {
               {/* Phone Number Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number <span className="text-red-500">*</span>
+                  {t('customerForm.phoneNumber')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -129,7 +131,7 @@ const CustomerForm = () => {
                     value={formData.phoneNumber}
                     onChange={handleChange}
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Enter phone number"
+                    placeholder={t('customerForm.enterPhoneNumber')}
                     required
                   />
                 </div>
@@ -138,7 +140,7 @@ const CustomerForm = () => {
               {/* Address Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Address <span className="text-red-500">*</span>
+                  {t('customerForm.address')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute top-3 left-3 pointer-events-none">
@@ -150,7 +152,7 @@ const CustomerForm = () => {
                     onChange={handleChange}
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
                     rows="3"
-                    placeholder="Enter full address"
+                    placeholder={t('customerForm.enterFullAddress')}
                     required
                   />
                 </div>
@@ -159,7 +161,7 @@ const CustomerForm = () => {
               {/* Place Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Place <span className="text-red-500">*</span>
+                  {t('customerForm.place')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -171,7 +173,7 @@ const CustomerForm = () => {
                     value={formData.place}
                     onChange={handleChange}
                     className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    placeholder="Enter city or place"
+                    placeholder={t('customerForm.enterCityOrPlace')}
                     required
                   />
                 </div>
@@ -180,7 +182,7 @@ const CustomerForm = () => {
               {/* Amount Due Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Initial Amount Due <span className="text-red-500">*</span>
+                  {t('customerForm.initialAmountDue')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -199,7 +201,7 @@ const CustomerForm = () => {
                   />
                 </div>
                 <p className="mt-1.5 text-xs text-gray-500">
-                  Enter the initial outstanding amount (if any)
+                  {t('customerForm.enterInitialAmount')}
                 </p>
               </div>
             </div>
@@ -212,7 +214,7 @@ const CustomerForm = () => {
                 className="w-full sm:w-auto px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
                 disabled={loading}
               >
-                Cancel
+                {t('customerForm.cancel')}
               </button>
               <button
                 type="submit"
@@ -227,7 +229,7 @@ const CustomerForm = () => {
                 ) : (
                   <>
                     <Save size={18} />
-                    <span>Save Customer</span>
+                    <span>{t('customerForm.saveCustomer')}</span>
                   </>
                 )}
               </button>

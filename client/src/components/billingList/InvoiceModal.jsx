@@ -10,11 +10,13 @@ import {
   Package,
 } from "lucide-react";
 import { generatePDF } from "../../api/invoices";
+import { useTranslation } from "react-i18next";
 
 const InvoiceModal = ({ invoice, onClose }) => {
+  const { t } = useTranslation();
   if (!invoice) return null;
 
-  const customerName = invoice?.customer?.name || "Walk-in Customer";
+  const customerName = invoice?.customer?.name || t('billingList.walkInCustomer');
   const customerPhone = invoice?.customer?.phoneNumber || "N/A";
   const customerEmail = invoice?.customer?.email || "N/A";
   const invoiceNumber = invoice?.invoiceNumber || "N/A";
@@ -78,10 +80,10 @@ const InvoiceModal = ({ invoice, onClose }) => {
           <div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
               <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
-              Invoice Details
+              {t('invoiceDetail.invoiceDetails')}
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
-              Reference #{invoiceNumber}
+              {t('invoiceDetail.reference')} #{invoiceNumber}
             </p>
           </div>
           <button
@@ -104,22 +106,22 @@ const InvoiceModal = ({ invoice, onClose }) => {
                     <User className="w-4 h-4 text-indigo-600" />
                   </div>
                   <h3 className="font-semibold text-slate-900 text-sm sm:text-base">
-                    Customer Details
+                    {t('invoiceDetail.customerDetails')}
                   </h3>
                 </div>
                 <div className="space-y-2.5 sm:space-y-3">
                   <div className="flex justify-between items-start gap-2">
-                    <span className="text-xs sm:text-sm text-slate-500">Name</span>
+                    <span className="text-xs sm:text-sm text-slate-500">{t('invoiceDetail.name')}</span>
                     <span className="text-xs sm:text-sm font-semibold text-slate-900 text-right">{customerName}</span>
                   </div>
                   <div className="w-full h-px bg-slate-200/50"></div>
                   <div className="flex justify-between items-start gap-2">
-                    <span className="text-xs sm:text-sm text-slate-500">Phone</span>
+                    <span className="text-xs sm:text-sm text-slate-500">{t('invoiceDetail.phone')}</span>
                     <span className="text-xs sm:text-sm font-medium text-slate-900 text-right">{customerPhone}</span>
                   </div>
                   <div className="w-full h-px bg-slate-200/50"></div>
                   <div className="flex justify-between items-start gap-2">
-                    <span className="text-xs sm:text-sm text-slate-500">Email</span>
+                    <span className="text-xs sm:text-sm text-slate-500">{t('invoiceDetail.email')}</span>
                     <span className="text-xs sm:text-sm font-medium text-slate-900 text-right truncate max-w-[120px] sm:max-w-[150px]">{customerEmail}</span>
                   </div>
                 </div>
@@ -132,25 +134,25 @@ const InvoiceModal = ({ invoice, onClose }) => {
                     <FileText className="w-4 h-4 text-emerald-600" />
                   </div>
                   <h3 className="font-semibold text-slate-900 text-sm sm:text-base">
-                    Invoice Info
+                    {t('invoiceDetail.invoiceInfo')}
                   </h3>
                 </div>
                 <div className="space-y-2.5 sm:space-y-3">
                   <div className="flex justify-between items-start">
-                    <span className="text-xs sm:text-sm text-slate-500">Date</span>
+                    <span className="text-xs sm:text-sm text-slate-500">{t('invoiceDetail.date')}</span>
                     <span className="text-xs sm:text-sm font-medium text-slate-900">{invoiceDate}</span>
                   </div>
                   <div className="w-full h-px bg-slate-200/50"></div>
                   <div className="flex justify-between items-start">
-                    <span className="text-xs sm:text-sm text-slate-500">Payment</span>
+                    <span className="text-xs sm:text-sm text-slate-500">{t('invoiceDetail.payment')}</span>
                     <span className="text-xs sm:text-sm font-medium text-slate-900 capitalize flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                      {invoice.paymentMethod}
+                      {t(`invoiceDetail.${invoice.paymentMethod}`)}
                     </span>
                   </div>
                   <div className="w-full h-px bg-slate-200/50"></div>
                   <div className="flex justify-between items-start">
-                    <span className="text-xs sm:text-sm text-slate-500">Status</span>
+                    <span className="text-xs sm:text-sm text-slate-500">{t('invoiceDetail.status')}</span>
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${invoice.status === "paid"
                         ? "bg-emerald-100 text-emerald-700"
@@ -159,7 +161,7 @@ const InvoiceModal = ({ invoice, onClose }) => {
                           : "bg-slate-100 text-slate-700"
                         }`}
                     >
-                      {invoice.status || "Paid"}
+                      {t(`invoiceDetail.${invoice.status || 'paid'}`)}
                     </span>
                   </div>
                 </div>
@@ -170,7 +172,7 @@ const InvoiceModal = ({ invoice, onClose }) => {
             <div>
               <div className="flex items-center gap-2 mb-3 sm:mb-4 px-1">
                 <Package className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-                <h3 className="font-bold text-slate-900 text-base sm:text-lg">Purchased Items</h3>
+                <h3 className="font-bold text-slate-900 text-base sm:text-lg">{t('invoiceDetail.purchasedItems')}</h3>
                 <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-full">{items.length}</span>
               </div>
 
@@ -180,10 +182,10 @@ const InvoiceModal = ({ invoice, onClose }) => {
                   <table className="w-full">
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-200 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                        <th className="px-5 py-3">Item Name</th>
-                        <th className="px-5 py-3 text-center">Unit Price</th>
-                        <th className="px-5 py-3 text-center">Qty / Unit</th>
-                        <th className="px-5 py-3 text-right">Total</th>
+                        <th className="px-5 py-3">{t('invoiceDetail.itemName')}</th>
+                        <th className="px-5 py-3 text-center">{t('invoiceDetail.unitPrice')}</th>
+                        <th className="px-5 py-3 text-center">{t('invoiceDetail.qtyUnit')}</th>
+                        <th className="px-5 py-3 text-right">{t('invoiceDetail.total')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -236,18 +238,18 @@ const InvoiceModal = ({ invoice, onClose }) => {
               <div className="w-full sm:w-80 bg-slate-50 rounded-xl p-4 sm:p-5 border border-slate-100">
                 <div className="space-y-2.5 sm:space-y-3">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500 font-medium">Subtotal</span>
+                    <span className="text-slate-500 font-medium">{t('invoiceDetail.subtotal')}</span>
                     <span className="text-slate-900 font-semibold">₹{subtotal}</span>
                   </div>
                   {tax !== "0.00" && (
                     <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 font-medium">Tax</span>
+                      <span className="text-slate-500 font-medium">{t('invoiceDetail.tax')}</span>
                       <span className="text-slate-900 font-semibold">₹{tax}</span>
                     </div>
                   )}
                   <div className="pt-2.5 sm:pt-3 border-t border-slate-200">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm sm:text-base font-bold text-slate-900">Total</span>
+                      <span className="text-sm sm:text-base font-bold text-slate-900">{t('invoiceDetail.total')}</span>
                       <span className="text-lg sm:text-xl font-bold text-indigo-600">₹{total}</span>
                     </div>
                   </div>
@@ -263,7 +265,7 @@ const InvoiceModal = ({ invoice, onClose }) => {
             onClick={onClose}
             className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 bg-slate-50 text-slate-700 font-medium rounded-xl hover:bg-slate-100 transition-colors flex items-center justify-center gap-2 text-sm"
           >
-            Close
+            {t('invoiceDetail.close')}
           </button>
           <div className="flex gap-2.5 sm:gap-3 w-full sm:w-auto">
             <button
@@ -271,14 +273,14 @@ const InvoiceModal = ({ invoice, onClose }) => {
               className="flex-1 sm:flex-none sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 border border-slate-200 text-slate-700 font-medium rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm"
             >
               <Printer className="w-4 h-4" />
-              <span>Print</span>
+              <span>{t('invoiceDetail.print')}</span>
             </button>
             <button
               onClick={handleDownload}
               className="flex-1 sm:flex-none sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-sm shadow-indigo-200 text-sm"
             >
               <Download className="w-4 h-4" />
-              <span>Download PDF</span>
+              <span>{t('invoiceDetail.downloadPDF')}</span>
             </button>
           </div>
         </div>
