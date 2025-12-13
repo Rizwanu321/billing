@@ -1,6 +1,7 @@
 import React from "react";
 import { Plus, Trash, Package, DollarSign, ShoppingCart } from "lucide-react";
 import ProductAutocomplete from "./ProductAutocomplete";
+import { useTranslation } from "react-i18next";
 
 const InvoiceItemsSection = ({
   localInvoice,
@@ -8,6 +9,7 @@ const InvoiceItemsSection = ({
   calculateTotals,
   updateInvoiceItems,
 }) => {
+  const { t } = useTranslation();
   const handleAddItem = () => {
     const newItems = [
       ...localInvoice.items,
@@ -108,30 +110,38 @@ const InvoiceItemsSection = ({
   };
 
   return (
-    <div className="bg-white rounded-lg sm:rounded-xl border border-gray-200 shadow-sm overflow-visible">
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-visible">
       {/* Section Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 sm:p-6 border-b border-gray-200">
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <ShoppingCart className="w-5 sm:w-6 h-5 sm:h-6 text-indigo-600" />
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-800">
-            Invoice Items
-          </h3>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-5 border-b border-slate-100">
+        <div className="flex items-center space-x-2">
+          <div className="bg-indigo-50 p-2 rounded-lg">
+            <ShoppingCart className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              {t('invoice.invoiceItems')}
+            </h3>
+            <p className="text-sm text-slate-500">{t('invoice.addProductsToInvoice')}</p>
+          </div>
         </div>
         <button
           onClick={handleAddItem}
-          className="w-full sm:w-auto flex items-center justify-center px-3 sm:px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 transition-colors group text-sm sm:text-base"
+          className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-indigo-50 text-indigo-700 font-medium rounded-xl hover:bg-indigo-100 transition-colors group border border-indigo-100"
         >
           <Plus className="w-4 h-4 mr-2 group-hover:rotate-90 transition-transform" />
-          Add Item
+          {t('invoice.addItem')}
         </button>
       </div>
 
       {/* Empty State */}
       {localInvoice.items.length === 0 && (
-        <div className="text-center py-8 sm:py-12 px-4 sm:px-6">
-          <Package className="w-12 sm:w-16 h-12 sm:h-16 mx-auto text-gray-300 mb-3 sm:mb-4" />
-          <p className="text-gray-500 text-base sm:text-lg">
-            No items added. Click "Add Item" to begin.
+        <div className="text-center py-16 px-6 bg-slate-50/50">
+          <div className="bg-white w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100">
+            <Package className="w-8 h-8 text-slate-300" />
+          </div>
+          <h4 className="text-slate-900 font-medium mb-1">{t('invoice.noItemsAddedYet')}</h4>
+          <p className="text-slate-500 text-sm">
+            {t('invoice.clickAddItemButton')}
           </p>
         </div>
       )}
@@ -141,29 +151,37 @@ const InvoiceItemsSection = ({
         <>
           {/* Mobile Cards */}
           <div className="block sm:hidden">
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-slate-100">
               {localInvoice.items.map((item, index) => {
                 const selectedProduct = getProductFromItem(item);
                 return (
-                  <div key={index} className="p-4 space-y-3">
+                  <div key={index} className="p-5 space-y-4 bg-white">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Item #{index + 1}</span>
+                      <button
+                        onClick={() => handleRemoveItem(index)}
+                        className="text-slate-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </div>
+
                     {/* Product Selection */}
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">
-                        Product
-                      </label>
                       <ProductAutocomplete
                         products={products}
                         value={selectedProduct}
                         onChange={(product) => handleItemChange(index, product)}
-                        placeholder="Select Product"
+                        placeholder={t('invoice.selectProduct')}
+                      // className="border-slate-200 rounded-xl"
                       />
                     </div>
 
                     {/* Quantity, Unit, Price Row */}
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
-                          Qty
+                        <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                          {t('invoice.qty')}
                         </label>
                         <input
                           type="number"
@@ -173,43 +191,35 @@ const InvoiceItemsSection = ({
                           onChange={(e) =>
                             handleQuantityChange(index, e.target.value)
                           }
-                          className="w-full text-center border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                          className="w-full text-center border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 focus:bg-white transition-all font-medium"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
-                          Unit
+                        <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                          {t('invoice.unit')}
                         </label>
-                        <div className="bg-gray-50 px-2 py-1.5 rounded text-center text-sm text-gray-600">
+                        <div className="bg-slate-100 border border-slate-200 px-2 py-2 rounded-lg text-center text-sm text-slate-600 font-medium">
                           {getProductUnit(item.product)}
                         </div>
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 mb-1 block">
-                          Price
+                        <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+                          {t('invoice.price')}
                         </label>
-                        <div className="bg-gray-50 px-2 py-1.5 rounded text-center text-sm font-medium">
+                        <div className="bg-slate-100 border border-slate-200 px-2 py-2 rounded-lg text-center text-sm font-medium text-slate-900">
                           ₹{(item.price || 0).toFixed(2)}
                         </div>
                       </div>
                     </div>
 
-                    {/* Subtotal and Delete */}
-                    <div className="flex justify-between items-center pt-2">
-                      <div>
-                        <span className="text-xs text-gray-500">
-                          Subtotal:{" "}
-                        </span>
-                        <span className="font-bold text-indigo-600">
-                          ₹{(item.subtotal || 0).toFixed(2)}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveItem(index)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors"
-                      >
-                        <Trash className="w-4 h-4" />
-                      </button>
+                    {/* Subtotal */}
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-50">
+                      <span className="text-sm font-medium text-slate-500">
+                        Subtotal
+                      </span>
+                      <span className="font-bold text-lg text-indigo-600">
+                        ₹{(item.subtotal || 0).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 );
@@ -220,51 +230,48 @@ const InvoiceItemsSection = ({
           {/* Desktop/Tablet View - Table Layout */}
           <div className="hidden sm:block overflow-visible">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-slate-50/80 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
-                    <div className="flex items-center">
-                      <Package className="w-4 h-4 mr-2 text-gray-400" />
-                      Product
-                    </div>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[240px]">
+                    {t('invoice.productDetails')}
                   </th>
-                  <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Quantity
+                  <th className="px-4 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-32">
+                    {t('invoice.qty')}
                   </th>
-                  <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Unit
+                  <th className="px-4 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-24">
+                    {t('invoice.unit')}
                   </th>
-                  <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Price
+                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-32">
+                    {t('invoice.price')}
                   </th>
-                  <th className="px-4 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Subtotal
+                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider w-32">
+                    {t('invoice.total')}
                   </th>
-                  <th className="px-4 lg:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
+                  <th className="px-4 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider w-16">
+
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-slate-100">
                 {localInvoice.items.map((item, index) => {
                   const selectedProduct = getProductFromItem(item);
                   return (
                     <tr
                       key={index}
-                      className="hover:bg-gray-50 transition-colors"
+                      className="hover:bg-slate-50/50 transition-colors group"
                     >
-                      <td className="px-4 lg:px-6 py-3">
+                      <td className="px-6 py-4">
                         <ProductAutocomplete
                           products={products}
                           value={selectedProduct}
                           onChange={(product) =>
                             handleItemChange(index, product)
                           }
-                          placeholder="Select Product"
+                          placeholder={t('invoice.selectProduct')}
                         />
                       </td>
-                      <td className="px-4 lg:px-6 py-3 text-center">
+                      <td className="px-4 py-4 text-center">
                         <input
                           type="number"
                           min={getProductMinQuantity(item.product)}
@@ -273,24 +280,25 @@ const InvoiceItemsSection = ({
                           onChange={(e) =>
                             handleQuantityChange(index, e.target.value)
                           }
-                          className="w-16 lg:w-20 text-center border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-20 text-center border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                         />
                       </td>
-                      <td className="px-4 lg:px-6 py-3 text-center text-sm text-gray-500">
+                      <td className="px-4 py-4 text-center text-sm text-slate-500 font-medium">
                         {getProductUnit(item.product)}
                       </td>
-                      <td className="px-4 lg:px-6 py-3 text-right text-sm font-medium">
+                      <td className="px-6 py-4 text-right text-sm font-medium text-slate-600">
                         ₹{(item.price || 0).toFixed(2)}
                       </td>
-                      <td className="px-4 lg:px-6 py-3 text-right text-sm font-bold text-indigo-600">
+                      <td className="px-6 py-4 text-right text-sm font-bold text-indigo-600">
                         ₹{(item.subtotal || 0).toFixed(2)}
                       </td>
-                      <td className="px-4 lg:px-6 py-3 text-center">
+                      <td className="px-4 py-4 text-center">
                         <button
                           onClick={() => handleRemoveItem(index)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors"
+                          className="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
+                          title="Remove Item"
                         >
-                          <Trash className="w-4 lg:w-5 h-4 lg:h-5" />
+                          <Trash className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>

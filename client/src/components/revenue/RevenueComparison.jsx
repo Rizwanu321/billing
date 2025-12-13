@@ -1,5 +1,6 @@
 // components/revenue/RevenueComparison.jsx - COMPLETE PROFESSIONAL VERSION
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   BarChart,
   Bar,
@@ -45,6 +46,7 @@ import {
 import { fetchRevenueComparison } from "../../api/revenue";
 
 const RevenueComparison = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [comparisonData, setComparisonData] = useState(null);
   const [comparisonType, setComparisonType] = useState("month-over-month");
@@ -111,12 +113,38 @@ const RevenueComparison = () => {
 
   const getComparisonTypeLabel = (type) => {
     const labels = {
-      "week-over-week": "Week over Week",
-      "month-over-month": "Month over Month",
-      "quarter-over-quarter": "Quarter over Quarter",
-      "year-over-year": "Year over Year",
+      "day-over-day": t('revenue.dayOverDay'),
+      "week-over-week": t('revenue.weekOverWeek'),
+      "month-over-month": t('revenue.monthOverMonth'),
+      "quarter-over-quarter": t('revenue.quarterOverQuarter'),
+      "year-over-year": t('revenue.yearOverYear'),
     };
-    return labels[type] || "Comparison";
+    return labels[type] || t('revenue.comparison');
+  };
+
+  const getMetricLabel = (metricName) => {
+    const metricMap = {
+      'Gross Revenue': t('revenue.grossRevenue'),
+      'Returns': t('revenue.totalReturns'),
+      'Net Revenue': t('revenue.netRevenue'),
+      'Total Collected': t('revenue.totalCollected'),
+      'Credit Payments': t('revenue.creditPayments'),
+      'Net Position': t('revenue.netPosition'),
+      'Transactions': t('revenue.transactions'),
+      'Avg Order Value': t('revenue.avgOrderValue'),
+      'Collection Rate': t('revenue.collectionRate'),
+    };
+    return metricMap[metricName] || metricName;
+  };
+
+  const getPaymentMethodLabel = (method) => {
+    const methodUpper = (method || '').toUpperCase();
+    if (methodUpper === 'CASH') return t('revenue.paymentMethods.cash');
+    if (methodUpper === 'DUE') return t('revenue.paymentMethods.due');
+    if (methodUpper === 'ONLINE') return t('revenue.paymentMethods.online');
+    if (methodUpper === 'CARD') return t('revenue.paymentMethods.card');
+    if (methodUpper === 'UPI') return t('revenue.paymentMethods.upi');
+    return method;
   };
 
   // Enhanced Metric Card Component
@@ -135,22 +163,19 @@ const RevenueComparison = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 hover:shadow-md transition-all duration-200">
         <div className="flex items-center justify-between mb-4">
           <div
-            className={`p-3 rounded-lg ${
-              isPositive ? "bg-green-100" : "bg-red-100"
-            }`}
+            className={`p-3 rounded-lg ${isPositive ? "bg-green-100" : "bg-red-100"
+              }`}
           >
             <Icon
-              className={`w-5 h-5 ${
-                isPositive ? "text-green-600" : "text-red-600"
-              }`}
+              className={`w-5 h-5 ${isPositive ? "text-green-600" : "text-red-600"
+                }`}
             />
           </div>
           <div
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${
-              isPositive
-                ? "bg-green-100 text-green-700"
-                : "bg-red-100 text-red-700"
-            }`}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${isPositive
+              ? "bg-green-100 text-green-700"
+              : "bg-red-100 text-red-700"
+              }`}
           >
             {isPositive ? (
               <ArrowUpRight className="w-4 h-4" />
@@ -165,40 +190,39 @@ const RevenueComparison = () => {
 
         <div className="space-y-3">
           <div>
-            <p className="text-xs text-gray-500 mb-1">Current Period</p>
+            <p className="text-xs text-gray-500 mb-1">{t('revenue.currentPeriod')}</p>
             <p className="text-2xl sm:text-3xl font-bold text-gray-900">
               {format === "currency"
                 ? formatCompactCurrency(current)
                 : format === "percentage"
-                ? formatPercentage(current)
-                : current}
+                  ? formatPercentage(current)
+                  : current}
             </p>
           </div>
 
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <div>
-              <p className="text-xs text-gray-500 mb-1">Previous Period</p>
+              <p className="text-xs text-gray-500 mb-1">{t('revenue.previousPeriod')}</p>
               <p className="text-lg font-semibold text-gray-600">
                 {format === "currency"
                   ? formatCompactCurrency(previous)
                   : format === "percentage"
-                  ? formatPercentage(previous)
-                  : previous}
+                    ? formatPercentage(previous)
+                    : previous}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs text-gray-500 mb-1">Change</p>
+              <p className="text-xs text-gray-500 mb-1">{t('revenue.difference')}</p>
               <p
-                className={`text-sm font-bold ${
-                  isPositive ? "text-green-600" : "text-red-600"
-                }`}
+                className={`text-sm font-bold ${isPositive ? "text-green-600" : "text-red-600"
+                  }`}
               >
                 {isPositive ? "+" : ""}
                 {format === "currency"
                   ? formatCompactCurrency(difference)
                   : format === "percentage"
-                  ? formatPercentage(difference)
-                  : difference}
+                    ? formatPercentage(difference)
+                    : difference}
               </p>
             </div>
           </div>
@@ -226,9 +250,8 @@ const RevenueComparison = () => {
 
     return (
       <div
-        className={`flex items-start gap-3 p-4 rounded-lg border ${
-          colors[insight.type] || colors.info
-        }`}
+        className={`flex items-start gap-3 p-4 rounded-lg border ${colors[insight.type] || colors.info
+          }`}
       >
         <Icon className="w-5 h-5 flex-shrink-0 mt-0.5" />
         <p className="text-sm font-medium">{insight.message}</p>
@@ -265,10 +288,10 @@ const RevenueComparison = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent mx-auto mb-4"></div>
           <p className="text-gray-600 font-medium">
-            Loading comparison data...
+            {t('common.loading')}...
           </p>
           <p className="text-sm text-gray-400 mt-2">
-            Analyzing your revenue trends
+            Analysis
           </p>
         </div>
       </div>
@@ -283,10 +306,10 @@ const RevenueComparison = () => {
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
               <TrendingUp className="w-8 h-8 text-blue-600" />
-              Revenue Comparison
+              {t('revenue.revenueComparison')}
             </h1>
             <p className="text-sm sm:text-base text-gray-600 mt-1">
-              Compare performance across different time periods
+              {t('revenue.comparePerformance')}
             </p>
           </div>
 
@@ -299,15 +322,16 @@ const RevenueComparison = () => {
               <RefreshCw
                 className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
               />
-              <span className="hidden sm:inline">Refresh</span>
+              <span className="hidden sm:inline">{t('common.refresh')}</span>
             </button>
 
             <button
               onClick={() => window.print()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm"
+              disabled={true}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export Report</span>
+              <span className="hidden sm:inline">{t('common.export')}</span>
             </button>
           </div>
         </div>
@@ -316,35 +340,27 @@ const RevenueComparison = () => {
         <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center gap-3 mb-3">
             <Calendar className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-900">Comparison Period</h3>
+            <h3 className="font-semibold text-gray-900">{t('revenue.comparisonPeriod')}</h3>
           </div>
           <div className="flex flex-wrap gap-2">
             {[
-              { value: "week-over-week", label: "Week vs Week", icon: "📅" },
-              {
-                value: "month-over-month",
-                label: "Month vs Month",
-                icon: "📊",
-              },
-              {
-                value: "quarter-over-quarter",
-                label: "Quarter vs Quarter",
-                icon: "💹",
-              },
-              { value: "year-over-year", label: "Year vs Year", icon: "📆" },
+              { value: "day-over-day", label: t('revenue.dayOverDay'), icon: "📆", shortLabel: t('revenue.today') || "Today" },
+              { value: "week-over-week", label: t('revenue.weekOverWeek'), icon: "📅", shortLabel: t('revenue.week') || "Week" },
+              { value: "month-over-month", label: t('revenue.monthOverMonth'), icon: "📊", shortLabel: t('revenue.month') || "Month" },
+              { value: "quarter-over-quarter", label: t('revenue.quarterOverQuarter'), icon: "💹", shortLabel: t('revenue.quarter') || "Quarter" },
+              { value: "year-over-year", label: t('revenue.yearOverYear'), icon: "📈", shortLabel: t('revenue.year') || "Year" },
             ].map((type) => (
               <button
                 key={type.value}
                 onClick={() => setComparisonType(type.value)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all text-sm ${
-                  comparisonType === type.value
-                    ? "bg-blue-600 text-white shadow-md scale-105"
-                    : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
-                }`}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all text-sm ${comparisonType === type.value
+                  ? "bg-blue-600 text-white shadow-md scale-105"
+                  : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
+                  }`}
               >
                 <span>{type.icon}</span>
                 <span className="hidden sm:inline">{type.label}</span>
-                <span className="sm:hidden">{type.label.split(" ")[0]}</span>
+                <span className="sm:hidden">{type.shortLabel}</span>
               </button>
             ))}
           </div>
@@ -360,7 +376,7 @@ const RevenueComparison = () => {
                 </div>
                 <div>
                   <p className="text-xs font-medium text-blue-600 mb-1">
-                    Current Period
+                    {t('revenue.currentPeriod')}
                   </p>
                   <p className="text-sm font-semibold text-gray-900">
                     {comparisonData.dateRanges.current.label}
@@ -373,7 +389,7 @@ const RevenueComparison = () => {
                 </div>
                 <div>
                   <p className="text-xs font-medium text-gray-600 mb-1">
-                    Previous Period
+                    {t('revenue.previousPeriod')}
                   </p>
                   <p className="text-sm font-semibold text-gray-900">
                     {comparisonData.dateRanges.previous.label}
@@ -388,19 +404,18 @@ const RevenueComparison = () => {
         <div className="mt-6 border-b border-gray-200">
           <div className="flex flex-wrap gap-1">
             {[
-              { id: "overview", label: "Overview", icon: Activity },
-              { id: "metrics", label: "Detailed Metrics", icon: BarChart },
-              { id: "trends", label: "Trends", icon: TrendingUp },
-              { id: "insights", label: "Insights", icon: Award },
+              { id: "overview", label: t('revenue.overview'), icon: Activity },
+              { id: "metrics", label: t('revenue.detailedMetrics'), icon: BarChart },
+              { id: "trends", label: t('revenue.trends'), icon: TrendingUp },
+              { id: "insights", label: t('revenue.insights'), icon: Award },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all text-sm ${
-                  activeTab === tab.id
-                    ? "text-blue-600 border-b-2 border-blue-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
+                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all text-sm ${activeTab === tab.id
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+                  }`}
               >
                 <tab.icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{tab.label}</span>
@@ -416,28 +431,28 @@ const RevenueComparison = () => {
           {/* Overview Tab */}
           {activeTab === "overview" && (
             <div className="space-y-6">
-              {/* Key Metrics Grid */}
+              {/* Key Metrics Grid - Row 1: Revenue metrics */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
-                  title="Total Revenue"
+                  title={t('revenue.grossRevenue')}
                   current={comparisonData.current.revenue}
                   previous={comparisonData.previous.revenue}
                   icon={DollarSign}
                 />
                 <MetricCard
-                  title="Amount Received"
-                  current={comparisonData.current.actualReceived}
-                  previous={comparisonData.previous.actualReceived}
-                  icon={CheckCircle}
+                  title={t('revenue.totalReturns')}
+                  current={comparisonData.current.totalReturns || 0}
+                  previous={comparisonData.previous.totalReturns || 0}
+                  icon={TrendingDown}
                 />
                 <MetricCard
-                  title="Pending Dues"
-                  current={comparisonData.current.totalDue}
-                  previous={comparisonData.previous.totalDue}
-                  icon={AlertTriangle}
+                  title={t('revenue.netRevenue')}
+                  current={comparisonData.current.netRevenue || comparisonData.current.revenue}
+                  previous={comparisonData.previous.netRevenue || comparisonData.previous.revenue}
+                  icon={TrendingUp}
                 />
                 <MetricCard
-                  title="Total Invoices"
+                  title={t('revenue.totalInvoices')}
                   current={comparisonData.current.transactionCount}
                   previous={comparisonData.previous.transactionCount}
                   icon={FileText}
@@ -445,29 +460,58 @@ const RevenueComparison = () => {
                 />
               </div>
 
+              {/* Key Metrics Grid - Row 2: Collection metrics */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                  title={t('revenue.totalCollected')}
+                  current={comparisonData.current.actualReceived}
+                  previous={comparisonData.previous.actualReceived}
+                  icon={CheckCircle}
+                />
+                <MetricCard
+                  title={t('revenue.creditPayments')}
+                  current={comparisonData.current.creditPayments || 0}
+                  previous={comparisonData.previous.creditPayments || 0}
+                  icon={CreditCard}
+                />
+                <MetricCard
+                  title={t('revenue.netPosition')}
+                  current={comparisonData.current.totalDue}
+                  previous={comparisonData.previous.totalDue}
+                  icon={AlertTriangle}
+                />
+                <MetricCard
+                  title={t('revenue.collectionRate')}
+                  current={comparisonData.current.collectionRate}
+                  previous={comparisonData.previous.collectionRate}
+                  icon={Percent}
+                  format="percentage"
+                />
+              </div>
+
               {/* Performance Summary */}
               <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white shadow-lg">
                 <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
                   <Target className="w-5 h-5" />
-                  Performance Summary
+                  {t('revenue.performanceSummary')}
                 </h3>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-blue-100 text-sm mb-1">Revenue Growth</p>
+                    <p className="text-blue-100 text-sm mb-1">{t('revenue.netRevenueGrowth')}</p>
                     <p className="text-2xl font-bold flex items-center gap-2">
-                      {comparisonData.growth.revenue >= 0 ? (
+                      {(comparisonData.growth.netRevenue || comparisonData.growth.revenue) >= 0 ? (
                         <ArrowUpRight className="w-5 h-5 text-green-300" />
                       ) : (
                         <ArrowDownRight className="w-5 h-5 text-red-300" />
                       )}
                       {formatPercentage(
-                        Math.abs(comparisonData.growth.revenue)
+                        Math.abs(comparisonData.growth.netRevenue || comparisonData.growth.revenue)
                       )}
                     </p>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                     <p className="text-blue-100 text-sm mb-1">
-                      Collection Growth
+                      {t('revenue.collectionGrowth')}
                     </p>
                     <p className="text-2xl font-bold flex items-center gap-2">
                       {comparisonData.growth.collection >= 0 ? (
@@ -482,7 +526,7 @@ const RevenueComparison = () => {
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
                     <p className="text-blue-100 text-sm mb-1">
-                      Transaction Growth
+                      {t('revenue.transactionGrowth')}
                     </p>
                     <p className="text-2xl font-bold flex items-center gap-2">
                       {comparisonData.growth.transactions >= 0 ? (
@@ -496,14 +540,14 @@ const RevenueComparison = () => {
                     </p>
                   </div>
                   <div className="bg-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <p className="text-blue-100 text-sm mb-1">Profit Growth</p>
+                    <p className="text-blue-100 text-sm mb-1">{t('revenue.customerGrowth')}</p>
                     <p className="text-2xl font-bold flex items-center gap-2">
-                      {comparisonData.growth.profit >= 0 ? (
+                      {comparisonData.growth.customers >= 0 ? (
                         <ArrowUpRight className="w-5 h-5 text-green-300" />
                       ) : (
                         <ArrowDownRight className="w-5 h-5 text-red-300" />
                       )}
-                      {formatPercentage(Math.abs(comparisonData.growth.profit))}
+                      {formatPercentage(Math.abs(comparisonData.growth.customers || 0))}
                     </p>
                   </div>
                 </div>
@@ -515,13 +559,21 @@ const RevenueComparison = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                     <BarChart className="w-5 h-5" />
-                    Revenue Comparison
+                    {t('revenue.revenueComparison')}
                   </h3>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={comparisonData.trendData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+                        <XAxis
+                          dataKey="period"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => {
+                            if (value === 'Current') return t('revenue.dashboardInfo.current');
+                            if (value === 'Previous') return t('revenue.dashboardInfo.previous');
+                            return value;
+                          }}
+                        />
                         <YAxis
                           tick={{ fontSize: 11 }}
                           tickFormatter={(value) =>
@@ -533,19 +585,25 @@ const RevenueComparison = () => {
                         <Bar
                           dataKey="revenue"
                           fill={CHART_COLORS.current}
-                          name="Total Revenue"
+                          name={t('revenue.dashboardInfo.grossRevenueChart')}
+                          radius={[8, 8, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="netRevenue"
+                          fill="#6366f1"
+                          name={t('revenue.netRevenue')}
                           radius={[8, 8, 0, 0]}
                         />
                         <Bar
                           dataKey="received"
                           fill={CHART_COLORS.positive}
-                          name="Received"
+                          name={t('revenue.totalCollected')}
                           radius={[8, 8, 0, 0]}
                         />
                         <Bar
                           dataKey="due"
                           fill={CHART_COLORS.warning}
-                          name="Pending"
+                          name={t('revenue.netPosition')}
                           radius={[8, 8, 0, 0]}
                         />
                       </BarChart>
@@ -557,13 +615,21 @@ const RevenueComparison = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                     <Percent className="w-5 h-5" />
-                    Collection Rate Trend
+                    {t('revenue.collectionRateTrend')}
                   </h3>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={comparisonData.trendData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="period" tick={{ fontSize: 12 }} />
+                        <XAxis
+                          dataKey="period"
+                          tick={{ fontSize: 12 }}
+                          tickFormatter={(value) => {
+                            if (value === 'Current') return t('revenue.dashboardInfo.current');
+                            if (value === 'Previous') return t('revenue.dashboardInfo.previous');
+                            return value;
+                          }}
+                        />
                         <YAxis
                           yAxisId="left"
                           tick={{ fontSize: 11 }}
@@ -583,7 +649,7 @@ const RevenueComparison = () => {
                           yAxisId="left"
                           dataKey="received"
                           fill={CHART_COLORS.positive}
-                          name="Received"
+                          name={t('revenue.totalCollected')}
                           radius={[8, 8, 0, 0]}
                         />
                         <Line
@@ -592,7 +658,7 @@ const RevenueComparison = () => {
                           dataKey="collectionRate"
                           stroke={CHART_COLORS.current}
                           strokeWidth={3}
-                          name="Collection Rate (%)"
+                          name={t('revenue.dashboardInfo.collectionRatePercent')}
                           dot={{ r: 5 }}
                         />
                       </ComposedChart>
@@ -604,30 +670,29 @@ const RevenueComparison = () => {
               {/* Additional Metrics */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
-                  title="Credit Used"
-                  current={comparisonData.current.totalCreditUsed}
-                  previous={comparisonData.previous.totalCreditUsed}
-                  icon={CreditCard}
+                  title={t('revenue.totalTaxCollected')}
+                  current={comparisonData.current.totalTax || 0}
+                  previous={comparisonData.previous.totalTax || 0}
+                  icon={DollarSign}
                 />
                 <MetricCard
-                  title="Avg Order Value"
+                  title={t('revenue.avgOrderValue')}
                   current={comparisonData.current.avgOrderValue}
                   previous={comparisonData.previous.avgOrderValue}
                   icon={ShoppingCart}
                 />
                 <MetricCard
-                  title="Collection Rate"
-                  current={comparisonData.current.collectionRate}
-                  previous={comparisonData.previous.collectionRate}
-                  icon={Percent}
-                  format="percentage"
+                  title={t('revenue.customerCount')}
+                  current={comparisonData.current.customerCount || 0}
+                  previous={comparisonData.previous.customerCount || 0}
+                  icon={Users}
+                  format="number"
                 />
                 <MetricCard
-                  title="Profit Margin"
-                  current={comparisonData.current.profitMargin}
-                  previous={comparisonData.previous.profitMargin}
-                  icon={TrendingUp}
-                  format="percentage"
+                  title={t('revenue.creditUsed')}
+                  current={comparisonData.current.totalCreditUsed || 0}
+                  previous={comparisonData.previous.totalCreditUsed || 0}
+                  icon={CreditCard}
                 />
               </div>
             </div>
@@ -641,7 +706,7 @@ const RevenueComparison = () => {
                 <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                   <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <FileText className="w-5 h-5" />
-                    Comprehensive Metrics Comparison
+                    {t('revenue.comprehensiveMetricsComparison')}
                   </h3>
                 </div>
                 <div className="overflow-x-auto">
@@ -649,19 +714,19 @@ const RevenueComparison = () => {
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
-                          Metric
+                          {t('revenue.metrics')}
                         </th>
                         <th className="text-right py-4 px-6 text-sm font-semibold text-gray-700">
-                          Current Period
+                          {t('revenue.currentPeriod')}
                         </th>
                         <th className="text-right py-4 px-6 text-sm font-semibold text-gray-700">
-                          Previous Period
+                          {t('revenue.previousPeriod')}
                         </th>
                         <th className="text-right py-4 px-6 text-sm font-semibold text-gray-700">
-                          Difference
+                          {t('revenue.difference')}
                         </th>
                         <th className="text-right py-4 px-6 text-sm font-semibold text-gray-700">
-                          Change %
+                          {t('revenue.changePercent')}
                         </th>
                       </tr>
                     </thead>
@@ -674,46 +739,46 @@ const RevenueComparison = () => {
                             className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                           >
                             <td className="py-4 px-6 font-medium text-gray-900">
-                              {row.metric}
+                              {getMetricLabel(row.metric)}
                             </td>
                             <td className="text-right py-4 px-6 text-gray-900 font-semibold">
                               {row.isPercentage
                                 ? formatPercentage(row.current)
                                 : typeof row.current === "number" &&
                                   row.current > 100
-                                ? formatCurrency(row.current)
-                                : row.current}
+                                  ? formatCurrency(row.current)
+                                  : row.current}
                             </td>
                             <td className="text-right py-4 px-6 text-gray-600">
                               {row.isPercentage
                                 ? formatPercentage(row.previous)
                                 : typeof row.previous === "number" &&
                                   row.previous > 100
-                                ? formatCurrency(row.previous)
-                                : row.previous}
+                                  ? formatCurrency(row.previous)
+                                  : row.previous}
                             </td>
                             <td
-                              className={`text-right py-4 px-6 font-semibold ${
-                                row.isPositive
-                                  ? "text-green-600"
-                                  : "text-red-600"
-                              }`}
+                              className={`text-right py-4 px-6 font-semibold ${row.isPositive
+                                ? "text-green-600"
+                                : "text-red-600"
+                                }`}
                             >
                               {row.isPositive ? "+" : ""}
                               {row.isPercentage
                                 ? formatPercentage(difference)
                                 : typeof difference === "number" &&
                                   Math.abs(difference) > 100
-                                ? formatCompactCurrency(difference)
-                                : difference}
+                                  ? formatCompactCurrency(difference)
+                                  : typeof difference === "number"
+                                    ? Number(difference.toFixed(2))
+                                    : difference}
                             </td>
                             <td className="text-right py-4 px-6">
                               <span
-                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${
-                                  row.isPositive
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
+                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold ${row.isPositive
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                                  }`}
                               >
                                 {row.isPositive ? (
                                   <ArrowUpRight className="w-4 h-4" />
@@ -737,7 +802,7 @@ const RevenueComparison = () => {
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                       <CreditCard className="w-5 h-5" />
-                      Payment Methods Comparison
+                      {t('revenue.paymentMethodsComparison')}
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div className="h-80">
@@ -765,13 +830,13 @@ const RevenueComparison = () => {
                             <Bar
                               dataKey="current"
                               fill={CHART_COLORS.current}
-                              name="Current"
+                              name={t('revenue.dashboardInfo.current')}
                               radius={[8, 8, 0, 0]}
                             />
                             <Bar
                               dataKey="previous"
                               fill={CHART_COLORS.previous}
-                              name="Previous"
+                              name={t('revenue.dashboardInfo.previous')}
                               radius={[8, 8, 0, 0]}
                             />
                           </BarChart>
@@ -786,14 +851,13 @@ const RevenueComparison = () => {
                           >
                             <div className="flex items-center justify-between mb-3">
                               <h4 className="font-semibold text-gray-900">
-                                {method.type?.toUpperCase() || "Unknown"}
+                                {getPaymentMethodLabel(method.type)}
                               </h4>
                               <span
-                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                  method.growth >= 0
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-red-100 text-red-700"
-                                }`}
+                                className={`px-2.5 py-1 rounded-full text-xs font-bold ${method.growth >= 0
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-red-100 text-red-700"
+                                  }`}
                               >
                                 {method.growth >= 0 ? "+" : ""}
                                 {formatPercentage(method.growth)}
@@ -801,26 +865,26 @@ const RevenueComparison = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                               <div>
-                                <p className="text-gray-500 mb-1">Current</p>
+                                <p className="text-gray-500 mb-1">{t('revenue.dashboardInfo.current')}</p>
                                 <p className="font-semibold text-gray-900">
                                   {formatCurrency(method.current)}
                                 </p>
                                 <p className="text-xs text-gray-400">
-                                  {method.currentCount} transactions
+                                  {method.currentCount} {t('revenue.dashboardInfo.transactions')}
                                 </p>
                               </div>
                               <div>
-                                <p className="text-gray-500 mb-1">Previous</p>
+                                <p className="text-gray-500 mb-1">{t('revenue.dashboardInfo.previous')}</p>
                                 <p className="font-semibold text-gray-600">
                                   {formatCurrency(method.previous)}
                                 </p>
                                 <p className="text-xs text-gray-400">
-                                  {method.previousCount} transactions
+                                  {method.previousCount} {t('revenue.dashboardInfo.transactions')}
                                 </p>
                               </div>
                               <div>
                                 <p className="text-gray-500 mb-1">
-                                  Current Collection
+                                  {t('revenue.dashboardInfo.currentCollection')}
                                 </p>
                                 <p className="font-semibold text-green-600">
                                   {formatPercentage(
@@ -830,7 +894,7 @@ const RevenueComparison = () => {
                               </div>
                               <div>
                                 <p className="text-gray-500 mb-1">
-                                  Previous Collection
+                                  {t('revenue.dashboardInfo.previousCollection')}
                                 </p>
                                 <p className="font-semibold text-gray-600">
                                   {formatPercentage(
@@ -852,29 +916,29 @@ const RevenueComparison = () => {
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                       <Package className="w-5 h-5" />
-                      Category Performance Comparison
+                      {t('revenue.dashboardInfo.categoryPerformanceComparison')}
                     </h3>
                     <div className="overflow-x-auto">
                       <table className="w-full min-w-[800px]">
                         <thead className="bg-gray-50">
                           <tr>
                             <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">
-                              Category
+                              {t('revenue.dashboardInfo.category')}
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                              Current Revenue
+                              {t('revenue.dashboardInfo.currentRevenue')}
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                              Previous Revenue
+                              {t('revenue.dashboardInfo.previousRevenue')}
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                              Growth
+                              {t('revenue.dashboardInfo.growth')}
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                              Current Collection
+                              {t('revenue.dashboardInfo.currentCollection')}
                             </th>
                             <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">
-                              Collection Growth
+                              {t('revenue.dashboardInfo.collectionGrowthLabel')}
                             </th>
                           </tr>
                         </thead>
@@ -896,11 +960,10 @@ const RevenueComparison = () => {
                                 </td>
                                 <td className="text-right py-3 px-4">
                                   <span
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                                      category.growth >= 0
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-red-100 text-red-700"
-                                    }`}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${category.growth >= 0
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-700"
+                                      }`}
                                   >
                                     {category.growth >= 0 ? (
                                       <ArrowUpRight className="w-3 h-3" />
@@ -919,11 +982,10 @@ const RevenueComparison = () => {
                                 </td>
                                 <td className="text-right py-3 px-4">
                                   <span
-                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-                                      category.collectionGrowth >= 0
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-red-100 text-red-700"
-                                    }`}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${category.collectionGrowth >= 0
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-red-100 text-red-700"
+                                      }`}
                                   >
                                     {category.collectionGrowth >= 0 ? "+" : ""}
                                     {formatPercentage(
@@ -951,7 +1013,7 @@ const RevenueComparison = () => {
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                       <Activity className="w-5 h-5" />
-                      Daily Revenue Trend (Current Period)
+                      {t('revenue.dailyRevenueTrend')}
                     </h3>
                     <div className="h-96">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1011,13 +1073,13 @@ const RevenueComparison = () => {
                             dataKey="revenue"
                             stroke={CHART_COLORS.current}
                             fill="url(#colorRevenue)"
-                            name="Revenue"
+                            name={t('revenue.revenue')}
                           />
                           <Bar
                             yAxisId="left"
                             dataKey="received"
                             fill={CHART_COLORS.positive}
-                            name="Received"
+                            name={t('revenue.received')}
                           />
                           <Line
                             yAxisId="right"
@@ -1025,7 +1087,7 @@ const RevenueComparison = () => {
                             dataKey="collectionRate"
                             stroke={CHART_COLORS.warning}
                             strokeWidth={2}
-                            name="Collection Rate (%)"
+                            name={t('revenue.dashboardInfo.collectionRatePercent')}
                             dot={{ r: 3 }}
                           />
                         </ComposedChart>
@@ -1039,14 +1101,14 @@ const RevenueComparison = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                     <Target className="w-5 h-5" />
-                    Performance Radar
+                    {t('revenue.performanceRadar')}
                   </h3>
                   <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart
                         data={[
                           {
-                            metric: "Revenue",
+                            metric: t('revenue.revenue'),
                             current: Math.min(
                               100,
                               (comparisonData.current.revenue /
@@ -1054,7 +1116,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.revenue,
                                   comparisonData.previous.revenue
                                 )) *
-                                100
+                              100
                             ),
                             previous: Math.min(
                               100,
@@ -1063,16 +1125,16 @@ const RevenueComparison = () => {
                                   comparisonData.current.revenue,
                                   comparisonData.previous.revenue
                                 )) *
-                                100
+                              100
                             ),
                           },
                           {
-                            metric: "Collection",
+                            metric: t('revenue.collection'),
                             current: comparisonData.current.collectionRate,
                             previous: comparisonData.previous.collectionRate,
                           },
                           {
-                            metric: "Transactions",
+                            metric: t('revenue.transactions'),
                             current: Math.min(
                               100,
                               (comparisonData.current.transactionCount /
@@ -1080,7 +1142,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.transactionCount,
                                   comparisonData.previous.transactionCount
                                 )) *
-                                100
+                              100
                             ),
                             previous: Math.min(
                               100,
@@ -1089,11 +1151,11 @@ const RevenueComparison = () => {
                                   comparisonData.current.transactionCount,
                                   comparisonData.previous.transactionCount
                                 )) *
-                                100
+                              100
                             ),
                           },
                           {
-                            metric: "Avg Order",
+                            metric: t('revenue.avgOrder'),
                             current: Math.min(
                               100,
                               (comparisonData.current.avgOrderValue /
@@ -1101,7 +1163,7 @@ const RevenueComparison = () => {
                                   comparisonData.current.avgOrderValue,
                                   comparisonData.previous.avgOrderValue
                                 )) *
-                                100
+                              100
                             ),
                             previous: Math.min(
                               100,
@@ -1110,11 +1172,11 @@ const RevenueComparison = () => {
                                   comparisonData.current.avgOrderValue,
                                   comparisonData.previous.avgOrderValue
                                 )) *
-                                100
+                              100
                             ),
                           },
                           {
-                            metric: "Profit",
+                            metric: t('revenue.dashboardInfo.profit'),
                             current: comparisonData.current.profitMargin,
                             previous: comparisonData.previous.profitMargin,
                           },
@@ -1131,14 +1193,14 @@ const RevenueComparison = () => {
                           tick={{ fontSize: 11 }}
                         />
                         <Radar
-                          name="Current Period"
+                          name={t('revenue.currentPeriod')}
                           dataKey="current"
                           stroke={CHART_COLORS.current}
                           fill={CHART_COLORS.current}
                           fillOpacity={0.6}
                         />
                         <Radar
-                          name="Previous Period"
+                          name={t('revenue.previousPeriod')}
                           dataKey="previous"
                           stroke={CHART_COLORS.previous}
                           fill={CHART_COLORS.previous}
@@ -1154,32 +1216,32 @@ const RevenueComparison = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                     <Zap className="w-5 h-5" />
-                    Growth Indicators
+                    {t('revenue.growthIndicators')}
                   </h3>
                   <div className="space-y-4">
                     {[
                       {
-                        label: "Revenue Growth",
+                        label: t('revenue.revenueGrowth'),
                         value: comparisonData.growth.revenue,
                         icon: DollarSign,
                       },
                       {
-                        label: "Collection Growth",
+                        label: t('revenue.collectionGrowth'),
                         value: comparisonData.growth.collection,
                         icon: CheckCircle,
                       },
                       {
-                        label: "Transaction Growth",
+                        label: t('revenue.transactionGrowth'),
                         value: comparisonData.growth.transactions,
                         icon: FileText,
                       },
                       {
-                        label: "Customer Growth",
+                        label: t('revenue.customerGrowth'),
                         value: comparisonData.growth.customers,
                         icon: Users,
                       },
                       {
-                        label: "Profit Growth",
+                        label: t('revenue.profitGrowth'),
                         value: comparisonData.growth.profit,
                         icon: TrendingUp,
                       },
@@ -1193,14 +1255,12 @@ const RevenueComparison = () => {
                         >
                           <div className="flex items-center gap-3">
                             <div
-                              className={`p-2.5 rounded-lg ${
-                                isPositive ? "bg-green-100" : "bg-red-100"
-                              }`}
+                              className={`p-2.5 rounded-lg ${isPositive ? "bg-green-100" : "bg-red-100"
+                                }`}
                             >
                               <Icon
-                                className={`w-5 h-5 ${
-                                  isPositive ? "text-green-600" : "text-red-600"
-                                }`}
+                                className={`w-5 h-5 ${isPositive ? "text-green-600" : "text-red-600"
+                                  }`}
                               />
                             </div>
                             <span className="font-medium text-gray-900">
@@ -1210,9 +1270,8 @@ const RevenueComparison = () => {
                           <div className="flex items-center gap-3">
                             <div className="w-32 bg-gray-200 rounded-full h-2">
                               <div
-                                className={`h-2 rounded-full ${
-                                  isPositive ? "bg-green-500" : "bg-red-500"
-                                }`}
+                                className={`h-2 rounded-full ${isPositive ? "bg-green-500" : "bg-red-500"
+                                  }`}
                                 style={{
                                   width: `${Math.min(
                                     100,
@@ -1222,9 +1281,8 @@ const RevenueComparison = () => {
                               />
                             </div>
                             <span
-                              className={`text-lg font-bold ${
-                                isPositive ? "text-green-600" : "text-red-600"
-                              }`}
+                              className={`text-lg font-bold ${isPositive ? "text-green-600" : "text-red-600"
+                                }`}
                             >
                               {isPositive ? "+" : ""}
                               {formatPercentage(item.value)}
@@ -1248,7 +1306,7 @@ const RevenueComparison = () => {
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
                       <Award className="w-5 h-5" />
-                      Key Insights & Recommendations
+                      {t('revenue.keyInsightsRecommendations')}
                     </h3>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                       {comparisonData.insights.map((insight, index) => (
@@ -1264,14 +1322,14 @@ const RevenueComparison = () => {
                 <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-lg font-semibold">
-                      Revenue Performance
+                      {t('revenue.revenuePerformance')}
                     </h4>
                     <DollarSign className="w-8 h-8 opacity-80" />
                   </div>
                   <div className="space-y-4">
                     <div>
                       <p className="text-blue-100 text-sm mb-2">
-                        Current Period
+                        {t('revenue.currentPeriod')}
                       </p>
                       <p className="text-3xl font-bold">
                         {formatCompactCurrency(comparisonData.current.revenue)}
@@ -1279,7 +1337,7 @@ const RevenueComparison = () => {
                     </div>
                     <div className="pt-4 border-t border-blue-400">
                       <div className="flex items-center justify-between">
-                        <span className="text-blue-100 text-sm">Growth</span>
+                        <span className="text-blue-100 text-sm">{t('revenue.dashboardInfo.growth')}</span>
                         <span className="text-xl font-bold">
                           {comparisonData.growth.revenue >= 0 ? "+" : ""}
                           {formatPercentage(comparisonData.growth.revenue)}
@@ -1293,14 +1351,14 @@ const RevenueComparison = () => {
                 <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-lg font-semibold">
-                      Collection Performance
+                      {t('revenue.collectionPerformance')}
                     </h4>
                     <CheckCircle className="w-8 h-8 opacity-80" />
                   </div>
                   <div className="space-y-4">
                     <div>
                       <p className="text-green-100 text-sm mb-2">
-                        Collection Rate
+                        {t('revenue.collectionRate')}
                       </p>
                       <p className="text-3xl font-bold">
                         {formatPercentage(
@@ -1311,17 +1369,17 @@ const RevenueComparison = () => {
                     <div className="pt-4 border-t border-green-400">
                       <div className="flex items-center justify-between">
                         <span className="text-green-100 text-sm">
-                          Improvement
+                          {t('revenue.improvement')}
                         </span>
                         <span className="text-xl font-bold">
                           {comparisonData.current.collectionRate -
                             comparisonData.previous.collectionRate >=
-                          0
+                            0
                             ? "+"
                             : ""}
                           {formatPercentage(
                             comparisonData.current.collectionRate -
-                              comparisonData.previous.collectionRate
+                            comparisonData.previous.collectionRate
                           )}
                         </span>
                       </div>
@@ -1333,14 +1391,14 @@ const RevenueComparison = () => {
                 <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="text-lg font-semibold">
-                      Transaction Volume
+                      {t('revenue.transactionVolume')}
                     </h4>
                     <ShoppingCart className="w-8 h-8 opacity-80" />
                   </div>
                   <div className="space-y-4">
                     <div>
                       <p className="text-purple-100 text-sm mb-2">
-                        Total Transactions
+                        {t('revenue.totalTransactions')}
                       </p>
                       <p className="text-3xl font-bold">
                         {comparisonData.current.transactionCount}
@@ -1348,7 +1406,7 @@ const RevenueComparison = () => {
                     </div>
                     <div className="pt-4 border-t border-purple-400">
                       <div className="flex items-center justify-between">
-                        <span className="text-purple-100 text-sm">Growth</span>
+                        <span className="text-purple-100 text-sm">{t('revenue.dashboardInfo.growth')}</span>
                         <span className="text-xl font-bold">
                           {comparisonData.growth.transactions >= 0 ? "+" : ""}
                           {formatPercentage(comparisonData.growth.transactions)}
@@ -1365,7 +1423,7 @@ const RevenueComparison = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-600" />
-                    Strengths
+                    {t('revenue.strengths')}
                   </h4>
                   <div className="space-y-3">
                     {comparisonData.chartData
@@ -1378,7 +1436,7 @@ const RevenueComparison = () => {
                           <div className="flex items-center gap-3">
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                             <span className="text-sm font-medium text-gray-900">
-                              {item.metric}
+                              {getMetricLabel(item.metric)}
                             </span>
                           </div>
                           <span className="text-sm font-bold text-green-600">
@@ -1389,10 +1447,10 @@ const RevenueComparison = () => {
                     {comparisonData.chartData.filter(
                       (item) => item.isPositive && item.growth > 5
                     ).length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        Continue building momentum in all areas
-                      </p>
-                    )}
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          {t('revenue.continueBuilding')}
+                        </p>
+                      )}
                   </div>
                 </div>
 
@@ -1400,7 +1458,7 @@ const RevenueComparison = () => {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5 text-orange-600" />
-                    Areas for Improvement
+                    {t('revenue.areasForImprovement')}
                   </h4>
                   <div className="space-y-3">
                     {comparisonData.chartData
@@ -1413,7 +1471,7 @@ const RevenueComparison = () => {
                           <div className="flex items-center gap-3">
                             <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                             <span className="text-sm font-medium text-gray-900">
-                              {item.metric}
+                              {getMetricLabel(item.metric)}
                             </span>
                           </div>
                           <span className="text-sm font-bold text-orange-600">
@@ -1424,10 +1482,10 @@ const RevenueComparison = () => {
                     {comparisonData.chartData.filter(
                       (item) => !item.isPositive || item.growth < -5
                     ).length === 0 && (
-                      <p className="text-sm text-gray-500 text-center py-4">
-                        All metrics showing positive trends! 🎉
-                      </p>
-                    )}
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          {t('revenue.allPositiveTrends')}
+                        </p>
+                      )}
                   </div>
                 </div>
               </div>
@@ -1436,21 +1494,16 @@ const RevenueComparison = () => {
               <div className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-xl p-6 border border-indigo-200">
                 <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <Info className="w-5 h-5 text-indigo-600" />
-                  Actionable Recommendations
+                  {t('revenue.actionableRecommendations')}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {comparisonData.current.collectionRate < 70 && (
                     <div className="bg-white p-4 rounded-lg border border-indigo-200">
                       <h5 className="font-semibold text-gray-900 mb-2">
-                        Improve Collection Rate
+                        {t('revenue.improveCollectionRate')}
                       </h5>
                       <p className="text-sm text-gray-600">
-                        Your collection rate is{" "}
-                        {formatPercentage(
-                          comparisonData.current.collectionRate
-                        )}
-                        . Consider implementing stricter credit policies or
-                        offering early payment discounts.
+                        {t('revenue.yourCollectionRateIs')} {formatPercentage(comparisonData.current.collectionRate)}. {t('revenue.considerStricterPolicies')}
                       </p>
                     </div>
                   )}
@@ -1458,15 +1511,10 @@ const RevenueComparison = () => {
                   {comparisonData.growth.revenue < 0 && (
                     <div className="bg-white p-4 rounded-lg border border-indigo-200">
                       <h5 className="font-semibold text-gray-900 mb-2">
-                        Boost Revenue Growth
+                        {t('revenue.boostRevenueGrowth')}
                       </h5>
                       <p className="text-sm text-gray-600">
-                        Revenue declined by{" "}
-                        {formatPercentage(
-                          Math.abs(comparisonData.growth.revenue)
-                        )}
-                        . Focus on customer retention and upselling
-                        opportunities.
+                        {t('revenue.revenueDeclinedBy')} {formatPercentage(Math.abs(comparisonData.growth.revenue))}. {t('revenue.focusOnRetention')}
                       </p>
                     </div>
                   )}
@@ -1474,32 +1522,31 @@ const RevenueComparison = () => {
                   {comparisonData.growth.transactions < 0 && (
                     <div className="bg-white p-4 rounded-lg border border-indigo-200">
                       <h5 className="font-semibold text-gray-900 mb-2">
-                        Increase Transaction Volume
+                        {t('revenue.increaseTransactionVolume')}
                       </h5>
                       <p className="text-sm text-gray-600">
-                        Transaction count decreased. Consider running promotions
-                        or loyalty programs to drive more sales.
+                        {t('revenue.transactionCountDecreased')}
                       </p>
                     </div>
                   )}
 
                   {comparisonData.current.avgOrderValue <
                     comparisonData.previous.avgOrderValue && (
-                    <div className="bg-white p-4 rounded-lg border border-indigo-200">
-                      <h5 className="font-semibold text-gray-900 mb-2">
-                        Increase Average Order Value
-                      </h5>
-                      <p className="text-sm text-gray-600">
-                        AOV decreased by{" "}
-                        {formatCurrency(
-                          comparisonData.previous.avgOrderValue -
+                      <div className="bg-white p-4 rounded-lg border border-indigo-200">
+                        <h5 className="font-semibold text-gray-900 mb-2">
+                          Increase Average Order Value
+                        </h5>
+                        <p className="text-sm text-gray-600">
+                          AOV decreased by{" "}
+                          {formatCurrency(
+                            comparisonData.previous.avgOrderValue -
                             comparisonData.current.avgOrderValue
-                        )}
-                        . Try bundling products or suggesting complementary
-                        items.
-                      </p>
-                    </div>
-                  )}
+                          )}
+                          . Try bundling products or suggesting complementary
+                          items.
+                        </p>
+                      </div>
+                    )}
 
                   {comparisonData.growth.revenue >= 10 &&
                     comparisonData.growth.collection >= 5 && (

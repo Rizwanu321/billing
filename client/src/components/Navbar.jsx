@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import {
   Bell,
   Search,
@@ -10,9 +11,11 @@ import {
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const Navbar = ({ onMenuClick, isMobileMenuOpen }) => {
   const { user, logout } = useAuth();
+  const { t } = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState(3);
   const dropdownRef = useRef(null);
@@ -53,7 +56,7 @@ const Navbar = ({ onMenuClick, isMobileMenuOpen }) => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-30 shadow-sm">
+    <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-50 shadow-sm">
       <div className="h-16 px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-full">
           {/* Left side - Menu button and Logo */}
@@ -74,29 +77,8 @@ const Navbar = ({ onMenuClick, isMobileMenuOpen }) => {
             </div>
           </div>
 
-          {/* Center - Search bar */}
-          <div className="flex-1 max-w-2xl mx-4 hidden sm:block">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="search"
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 text-sm"
-                placeholder="Search products, customers, invoices..."
-              />
-            </div>
-          </div>
-
           {/* Right side - Notifications and Profile */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Mobile Search */}
-            <button
-              className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 sm:hidden flex-shrink-0"
-              aria-label="Search"
-            >
-              <Search size={20} />
-            </button>
 
             {/* Notifications */}
             <button className="relative p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0">
@@ -107,6 +89,9 @@ const Navbar = ({ onMenuClick, isMobileMenuOpen }) => {
                 </span>
               )}
             </button>
+
+            {/* Language Switcher */}
+            <LanguageSwitcher variant="compact" />
 
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -148,14 +133,14 @@ const Navbar = ({ onMenuClick, isMobileMenuOpen }) => {
                       onClick={() => handleMenuItemClick("profile")}
                     >
                       <UserCircle className="w-4 h-4 mr-3 text-gray-400 flex-shrink-0" />
-                      <span>View Profile</span>
+                      <span>{t('navbar.viewProfile')}</span>
                     </button>
                     <button
                       className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center text-gray-700 text-sm transition-colors"
                       onClick={() => handleMenuItemClick("settings")}
                     >
                       <Settings className="w-4 h-4 mr-3 text-gray-400 flex-shrink-0" />
-                      <span>Settings & Preferences</span>
+                      <span>{t('navbar.settingsPreferences')}</span>
                     </button>
                   </div>
 
@@ -165,7 +150,7 @@ const Navbar = ({ onMenuClick, isMobileMenuOpen }) => {
                       onClick={() => handleMenuItemClick("logout")}
                     >
                       <LogOut className="w-4 h-4 mr-3 flex-shrink-0" />
-                      <span>Sign out</span>
+                      <span>{t('navbar.signOut')}</span>
                     </button>
                   </div>
                 </div>

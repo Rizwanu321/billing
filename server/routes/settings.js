@@ -18,6 +18,7 @@ router.get("/", auth, async (req, res) => {
         currency: "USD",
         businessName: "",
         businessAddress: "",
+        businessPhone: "",
       });
       await defaultSettings.save();
       return res.json(defaultSettings);
@@ -32,7 +33,7 @@ router.get("/", auth, async (req, res) => {
 // Update settings
 router.post("/", auth, async (req, res) => {
   try {
-    const { taxEnabled, taxRate, currency, businessName, businessAddress } =
+    const { taxEnabled, taxRate, currency, businessName, businessAddress, businessPhone } =
       req.body;
 
     let settings = await Settings.findOne({ user: req.user.userId });
@@ -45,6 +46,7 @@ router.post("/", auth, async (req, res) => {
         currency,
         businessName,
         businessAddress,
+        businessPhone,
       });
     } else {
       settings.taxEnabled = taxEnabled;
@@ -52,6 +54,7 @@ router.post("/", auth, async (req, res) => {
       settings.currency = currency;
       settings.businessName = businessName;
       settings.businessAddress = businessAddress;
+      settings.businessPhone = businessPhone;
     }
 
     await settings.save();

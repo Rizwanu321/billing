@@ -6,6 +6,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./contexts/AuthContext";
 import PrivateRoute from "./components/PrivateRoute";
 import Dashboard from "./components/Dashboard";
@@ -44,13 +45,61 @@ import {
   RevenueAnalytics,
   RevenueComparison,
   RevenueByProducts,
+  ProductReturns,
 } from "./components/revenue";
 import CustomerStats from "./components/CustomerStats";
+
+// AI Assistant
+import AIAssistant from "./components/ai/AIAssistant";
 
 const App = () => {
   return (
     <AuthProvider>
       <Router>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+              padding: '16px',
+              borderRadius: '12px',
+              fontSize: '14px',
+              maxWidth: '500px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            },
+            success: {
+              style: {
+                background: '#ffffff',
+                color: '#10B981',
+                border: '1px solid #E5E7EB',
+              },
+              iconTheme: {
+                primary: '#10B981',
+                secondary: '#ffffff',
+              },
+            },
+            error: {
+              style: {
+                background: '#ffffff',
+                color: '#EF4444',
+                border: '1px solid #E5E7EB',
+              },
+              iconTheme: {
+                primary: '#EF4444',
+                secondary: '#ffffff',
+              },
+            },
+            loading: {
+              style: {
+                background: '#ffffff',
+                color: '#3B82F6',
+                border: '1px solid #E5E7EB',
+              },
+            },
+          }}
+        />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -110,6 +159,15 @@ const App = () => {
               path="/revenue/by-products"
               element={<RevenueByProducts />}
             />
+            <Route path="/revenue/returns" element={<ProductReturns />} />
+            {/* AI Assistant Routes */}
+            <Route
+              path="/ai"
+              element={<Navigate to="/ai/predictions" replace />}
+            />
+            <Route path="/ai/predictions" element={<AIAssistant />} />
+            <Route path="/ai/insights" element={<AIAssistant />} />
+            <Route path="/ai/chat" element={<AIAssistant />} />
           </Route>
 
           <Route

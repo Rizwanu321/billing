@@ -1,5 +1,6 @@
 // components/stock/charts/StockMovementChart.jsx
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   LineChart,
   Line,
@@ -12,9 +13,10 @@ import {
 } from "recharts";
 
 const StockMovementChart = ({ data }) => {
+  const { t } = useTranslation();
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 hover:shadow-xl transition-shadow duration-300">
-      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">Stock Movement Trends</h3>
+      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">{t('stock.stockMovementTrends')}</h3>
       <div className="h-64 sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data}>
@@ -25,8 +27,8 @@ const StockMovementChart = ({ data }) => {
               stroke="#6B7280"
               tick={{ fontSize: 10 }}
             />
-            <YAxis 
-              style={{ fontSize: "10px" }} 
+            <YAxis
+              style={{ fontSize: "10px" }}
               stroke="#6B7280"
               tick={{ fontSize: 10 }}
             />
@@ -38,7 +40,7 @@ const StockMovementChart = ({ data }) => {
                 fontSize: "12px",
               }}
             />
-            <Legend 
+            <Legend
               wrapperStyle={{ fontSize: '12px' }}
             />
             <Line
@@ -47,7 +49,7 @@ const StockMovementChart = ({ data }) => {
               stroke="#10B981"
               strokeWidth={2}
               dot={{ r: 3 }}
-              name="Stock In"
+              name={t('stock.stockIn')}
             />
             <Line
               type="monotone"
@@ -55,7 +57,7 @@ const StockMovementChart = ({ data }) => {
               stroke="#EF4444"
               strokeWidth={2}
               dot={{ r: 3 }}
-              name="Stock Out"
+              name={t('stock.stockOut')}
             />
           </LineChart>
         </ResponsiveContainer>

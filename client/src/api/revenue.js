@@ -183,3 +183,17 @@ export const fetchProductComparison = async (params) => {
     throw error;
   }
 };
+
+// Get product returns analytics
+export const fetchProductReturns = async (params) => {
+  try {
+    const response = await axios.get(`${API_URL}/revenue/returns`, {
+      params,
+      headers: getHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching product returns:", error);
+    throw error;
+  }
+};

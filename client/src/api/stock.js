@@ -61,6 +61,19 @@ export const fetchStockAlerts = async () => {
   }
 };
 
+// Fetch alert settings
+export const fetchAlertSettings = async () => {
+  try {
+    const response = await axios.get(`${API_URL}/stock/alerts/settings`, {
+      headers: getHeaders(),
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching alert settings:", error);
+    throw error;
+  }
+};
+
 // Update alert settings
 export const updateAlertSettings = async (settings) => {
   try {

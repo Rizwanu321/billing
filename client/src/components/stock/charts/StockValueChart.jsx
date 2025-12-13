@@ -1,5 +1,6 @@
 // components/stock/charts/StockValueChart.jsx
 import React from "react";
+import { useTranslation } from "react-i18next";
 import {
   PieChart,
   Pie,
@@ -10,6 +11,7 @@ import {
 } from "recharts";
 
 const StockValueChart = ({ data }) => {
+  const { t } = useTranslation();
   const COLORS = [
     "#3B82F6",
     "#10B981",
@@ -38,7 +40,7 @@ const StockValueChart = ({ data }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 hover:shadow-xl transition-shadow duration-300">
-      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">Stock Value by Category</h3>
+      <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 text-gray-900">{t('stock.stockValueByCategory')}</h3>
       <div className="h-64 sm:h-80">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>

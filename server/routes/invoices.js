@@ -3,9 +3,8 @@ const express = require("express");
 const router = express.Router();
 const Invoice = require("../models/Invoice");
 const auth = require("../middleware/auth");
-const Product = require("../models/Product"); // Add this import
+const Product = require("../models/Product");
 const mongoose = require("mongoose");
-
 const generateCompactInvoicePDF = require("../utils/generateInvoicePDF");
 const StockHistory = require("../models/StockHistory");
 
@@ -15,7 +14,8 @@ async function updateProductStock(
   userId,
   invoiceNumber,
   invoiceId,
-  increase = false
+  increase = false,
+  typeOverride = null
 ) {
   for (const item of items) {
     const product = await Product.findById(item.product).session(session);
@@ -45,6 +45,12 @@ async function updateProductStock(
         { session }
       );
 
+      // Determine type
+      let type = increase ? "return" : "sale";
+      if (typeOverride) {
+        type = typeOverride;
+      }
+
       // Create stock history entry with invoice reference
       const stockHistory = new StockHistory({
         product: item.product,
@@ -53,7 +59,7 @@ async function updateProductStock(
         previousStock: previousStock,
         newStock: newStock,
         user: userId,
-        type: increase ? "return" : "sale",
+        type: type,
         description: increase
           ? `Returned ${item.quantity} ${product.unit} from invoice ${invoiceNumber}`
           : `Sold ${item.quantity} ${product.unit} via invoice ${invoiceNumber}`,
@@ -67,8 +73,7 @@ async function updateProductStock(
   }
 }
 
-// Update the post route to include unit in items
-// Update the post route to include unit in items
+// Create Invoice
 router.post("/", auth, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -98,81 +103,104 @@ router.post("/", auth, async (req, res) => {
     // Check stock and calculate subtotal
     for (const item of items) {
       if (!item.product || !item.quantity || !item.price || !item.unit) {
-        throw new Error(
-          "Invalid item: missing product, quantity, price, or unit"
-        );
+        throw new Error("Invalid item data");
       }
 
+      // Verify product exists and check stock if required
       const product = await Product.findById(item.product).session(session);
       if (!product) {
         throw new Error(`Product not found: ${item.product}`);
       }
 
-      if (product.unit !== item.unit) {
-        throw new Error(
-          `Unit mismatch for product ${product.name}: expected ${product.unit}, got ${item.unit}`
-        );
+      if (product.isStockRequired && status !== "draft") {
+        if (product.stock < item.quantity) {
+          throw new Error(`Insufficient stock for ${product.name}`);
+        }
       }
 
-      if (product.isStockRequired && product.stock < item.quantity) {
-        throw new Error(`Insufficient stock for product: ${product.name}`);
-      }
-
-      const itemSubtotal = item.quantity * item.price;
-      subtotal += itemSubtotal;
+      const itemTotal = item.quantity * item.price;
+      subtotal += itemTotal;
     }
 
     // Calculate tax
-    if (settings && settings.taxEnabled) {
-      tax = subtotal * (settings.taxRate / 100);
+    if (settings?.taxEnabled && settings?.taxRate > 0) {
+      tax = (subtotal * settings.taxRate) / 100;
     }
 
     const total = subtotal + tax;
 
-    // Generate invoice number
-    const invoiceCount = await Invoice.countDocuments();
-    const invoiceNumber = `INV${String(invoiceCount + 1).padStart(5, "0")}`;
+    // Generate professional invoice number
+    // Format: INV-YYYYMMDD-XXXX (e.g., INV-20251130-0001)
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD
 
-    // Initialize invoice data
-    let finalTotal = total;
+    // Find the last invoice created today
+    const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(today.setHours(23, 59, 59, 999));
+
+    const lastTodayInvoice = await Invoice.findOne({
+      createdBy: req.user.userId,
+      createdAt: { $gte: startOfDay, $lte: endOfDay }
+    })
+      .sort({ createdAt: -1 })
+      .session(session);
+
+    let sequenceNumber = 1;
+
+    if (lastTodayInvoice && lastTodayInvoice.invoiceNumber) {
+      // Extract sequence from last invoice (format: INV-YYYYMMDD-XXXX)
+      const parts = lastTodayInvoice.invoiceNumber.split('-');
+      if (parts.length === 3 && parts[1] === dateStr) {
+        // Same day, increment sequence
+        sequenceNumber = parseInt(parts[2]) + 1;
+      }
+      // Different day, sequence resets to 1
+    }
+
+    // Format: INV-YYYYMMDD-0001
+    const invoiceNumber = `INV-${dateStr}-${String(sequenceNumber).padStart(4, '0')}`;
+
+
+    // Handle payments and credit
     let creditUsed = 0;
+    let finalTotal = total;
     let dueAmount = 0;
     let actualPaymentMethod = paymentMethod;
 
-    // Handle credit usage ONLY if customer exists, payment is due, and status is final
-    if (customer?._id && paymentMethod === "due" && status === "final") {
+    if (customer?._id) {
       const existingCustomer = await Customer.findById(customer._id).session(
         session
       );
-
       if (existingCustomer) {
-        const availableCredit = existingCustomer.creditBalance || 0;
+        if (paymentMethod === "credit_balance") {
+          const availableCredit = existingCustomer.creditBalance || 0;
 
-        // Automatically use credit if available
-        if (availableCredit > 0) {
-          if (availableCredit >= total) {
-            // Credit covers entire invoice
-            creditUsed = total;
-            finalTotal = 0;
-            dueAmount = 0;
-            actualPaymentMethod = "credit"; // Fully paid with credit
+          // Automatically use credit if available
+          if (availableCredit > 0) {
+            if (availableCredit >= total) {
+              // Credit covers entire invoice
+              creditUsed = total;
+              finalTotal = 0;
+              dueAmount = 0;
+              actualPaymentMethod = "credit"; // Fully paid with credit
+            } else {
+              // Credit partially covers invoice
+              creditUsed = availableCredit;
+              finalTotal = total - creditUsed;
+              dueAmount = finalTotal;
+              actualPaymentMethod = "mixed"; // Partially paid with credit
+            }
           } else {
-            // Credit partially covers invoice
-            creditUsed = availableCredit;
-            finalTotal = total - creditUsed;
-            dueAmount = finalTotal;
-            actualPaymentMethod = "mixed"; // Partially paid with credit
+            // No credit available
+            dueAmount = total;
           }
         } else {
-          // No credit available
           dueAmount = total;
         }
-      } else {
+      } else if (paymentMethod === "due") {
+        // Due payment without customer (walk-in customer with due)
         dueAmount = total;
       }
-    } else if (paymentMethod === "due") {
-      // Due payment without customer (walk-in customer with due)
-      dueAmount = total;
     }
 
     // Create invoice
@@ -248,28 +276,8 @@ router.post("/", auth, async (req, res) => {
             balanceBefore: currentDue,
             balanceAfter: newDue,
             creditBefore: creditUsed > 0 ? currentCredit : newCredit,
-            creditAfter: newCredit,
-            description:
-              creditUsed > 0
-                ? `Purchase of ₹${total} (₹${creditUsed} from credit, ₹${dueAmount} added to due)`
-                : `Purchase of ₹${total} via invoice ${invoice.invoiceNumber}`,
-            createdBy: req.user.userId,
-          });
-          await purchaseTransaction.save({ session });
-        } else if (creditUsed === total) {
-          // Fully paid with credit - still create a purchase record
-          const purchaseTransaction = new Transaction({
-            customerId: existingCustomer._id,
-            type: "purchase",
-            amount: total,
-            date: new Date(),
-            invoiceId: invoice._id,
-            invoiceNumber: invoice.invoiceNumber,
-            balanceBefore: currentDue,
-            balanceAfter: newDue,
-            creditBefore: currentCredit,
-            creditAfter: newCredit,
-            description: `Purchase of ₹${total} (fully paid with credit)`,
+            creditAfter: creditUsed > 0 ? newCredit : currentCredit,
+            description: `Invoice #${invoice.invoiceNumber}`,
             createdBy: req.user.userId,
           });
           await purchaseTransaction.save({ session });
@@ -278,77 +286,36 @@ router.post("/", auth, async (req, res) => {
         // Update customer balances
         existingCustomer.amountDue = newDue;
         existingCustomer.creditBalance = newCredit;
-        existingCustomer.totalPurchases =
-          (existingCustomer.totalPurchases || 0) + total;
-        existingCustomer.lastTransactionDate = new Date();
         await existingCustomer.save({ session });
       }
     }
 
-    // Update product stock if invoice is not a draft
+    // Update stock if status is not draft
     if (status !== "draft") {
       await updateProductStock(
         items,
         session,
         req.user.userId,
-        invoice.invoiceNumber,
-        invoice._id
+        invoiceNumber,
+        invoice._id,
+        false // decrease stock
       );
     }
 
-    // Commit transaction
     await session.commitTransaction();
-
-    // Populate and return the invoice
-    const populatedInvoice = await Invoice.findById(invoice._id)
-      .populate("items.product")
-      .populate("createdBy", "name email");
-
-    // Add message if credit was used
-    if (creditUsed > 0) {
-      populatedInvoice._doc.message =
-        dueAmount > 0
-          ? `Invoice created! ₹${creditUsed.toFixed(
-              2
-            )} credit applied. Remaining ₹${dueAmount.toFixed(
-              2
-            )} added to dues.`
-          : `Invoice created! Fully paid with ₹${creditUsed.toFixed(
-              2
-            )} credit.`;
-    }
-
-    res.status(201).json(populatedInvoice);
+    res.status(201).json(invoice);
   } catch (error) {
     await session.abortTransaction();
-    console.error("Invoice creation error:", error);
+    console.error("Create invoice error:", error);
     res.status(500).json({
-      message: "Error creating invoice",
-      error: error.message,
-      details: error.toString(),
+      message: error.message || "Error creating invoice",
     });
   } finally {
     session.endSession();
   }
 });
 
-function validateDateFilter(fromDate, toDate) {
-  if ((fromDate && !toDate) || (!fromDate && toDate)) {
-    throw new Error("Both from and to dates must be provided together");
-  }
-
-  if (fromDate && toDate) {
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
-      throw new Error("Invalid date format");
-    }
-    if (from > to) {
-      throw new Error("From date must be before or equal to to date");
-    }
-  }
-}
-
+// Get all invoices
 router.get("/", auth, async (req, res) => {
   try {
     const {
@@ -405,11 +372,11 @@ router.get("/", auth, async (req, res) => {
     // Build search query
     const searchQuery = search
       ? {
-          $or: [
-            { "customer.name": { $regex: search, $options: "i" } },
-            { invoiceNumber: { $regex: search, $options: "i" } },
-          ],
-        }
+        $or: [
+          { "customer.name": { $regex: search, $options: "i" } },
+          { invoiceNumber: { $regex: search, $options: "i" } },
+        ],
+      }
       : {};
 
     // Build sort options
@@ -487,6 +454,7 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+// Update Invoice Status
 router.patch("/:id/status", auth, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -526,7 +494,8 @@ router.patch("/:id/status", auth, async (req, res) => {
         req.user.userId,
         invoice.invoiceNumber,
         invoice._id,
-        true // increase = true means restore
+        true, // increase = true means restore
+        "adjustment" // Override to adjustment
       );
     }
 
@@ -546,6 +515,7 @@ router.patch("/:id/status", auth, async (req, res) => {
   }
 });
 
+// Update Invoice
 router.put("/:id", auth, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -586,7 +556,8 @@ router.put("/:id", auth, async (req, res) => {
         req.user.userId,
         originalInvoice.invoiceNumber,
         originalInvoice._id,
-        true
+        true,
+        "adjustment" // Override to adjustment
       );
     }
     // If updating items in a final/paid invoice
@@ -598,7 +569,8 @@ router.put("/:id", auth, async (req, res) => {
         req.user.userId,
         originalInvoice.invoiceNumber,
         originalInvoice._id,
-        true
+        true,
+        "adjustment" // Override to adjustment
       );
       // Deduct new stock
       await updateProductStock(
@@ -609,6 +581,94 @@ router.put("/:id", auth, async (req, res) => {
         originalInvoice._id,
         false
       );
+    }
+
+    // Handle customer transaction updates for due invoices
+    const Customer = require("../models/Customer");
+    const Transaction = require("../models/Transaction");
+
+    const oldPaymentMethod = originalInvoice.paymentMethod;
+    const oldCustomerId = originalInvoice.customer?._id;
+    const newPaymentMethod = req.body.paymentMethod;
+    const newCustomerId = req.body.customer?._id;
+    const newDueAmount = req.body.dueAmount;
+    const newTotal = req.body.total;
+    const newStatus = req.body.status || originalInvoice.status;
+
+    // Case 1: Editing existing due invoice
+    if (oldCustomerId && oldPaymentMethod === "due" && newStatus === "final") {
+      const customer = await Customer.findById(oldCustomerId).session(session);
+
+      if (customer) {
+        // Delete old transactions for this invoice
+        await Transaction.deleteMany({
+          customerId: oldCustomerId,
+          invoiceId: originalInvoice._id,
+        }).session(session);
+
+        // Recalculate all customer transactions
+        const allTransactions = await Transaction.find({
+          customerId: oldCustomerId,
+        }).sort({ date: 1 }).session(session);
+
+        let runningBalance = 0;
+        for (const trans of allTransactions) {
+          if (trans.type === "purchase") {
+            runningBalance += trans.amount;
+          } else if (trans.type === "payment") {
+            runningBalance -= trans.amount;
+          }
+          trans.balanceAfter = runningBalance;
+          await trans.save({ session });
+        }
+
+        // If new version is still due, create new transaction
+        if (newPaymentMethod === "due" && newDueAmount > 0) {
+          const newPurchaseTrans = new Transaction({
+            customerId: oldCustomerId,
+            type: "purchase",
+            amount: newDueAmount,
+            date: new Date(),
+            invoiceId: originalInvoice._id,
+            invoiceNumber: originalInvoice.invoiceNumber,
+            balanceBefore: runningBalance,
+            balanceAfter: runningBalance + newDueAmount,
+            description: `Purchase for invoice ${originalInvoice.invoiceNumber} (₹${newTotal})`,
+            createdBy: req.user.userId,
+          });
+          await newPurchaseTrans.save({ session });
+          runningBalance += newDueAmount;
+        }
+
+        // Update customer balance
+        customer.amountDue = runningBalance;
+        await customer.save({ session });
+      }
+    }
+    // Case 2: Converting TO due invoice
+    else if (newCustomerId && newPaymentMethod === "due" && newDueAmount > 0 && newStatus === "final" && oldPaymentMethod !== "due") {
+      const customer = await Customer.findById(newCustomerId).session(session);
+
+      if (customer) {
+        const currentDue = customer.amountDue || 0;
+
+        const newPurchaseTrans = new Transaction({
+          customerId: newCustomerId,
+          type: "purchase",
+          amount: newDueAmount,
+          date: new Date(),
+          invoiceId: originalInvoice._id,
+          invoiceNumber: originalInvoice.invoiceNumber,
+          balanceBefore: currentDue,
+          balanceAfter: currentDue + newDueAmount,
+          description: `Purchase for invoice ${originalInvoice.invoiceNumber} (₹${newTotal})`,
+          createdBy: req.user.userId,
+        });
+        await newPurchaseTrans.save({ session });
+
+        customer.amountDue = currentDue + newDueAmount;
+        await customer.save({ session });
+      }
     }
 
     // Update the invoice
@@ -631,6 +691,7 @@ router.put("/:id", auth, async (req, res) => {
   }
 });
 
+// Delete Invoice
 router.delete("/:id", auth, async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -653,7 +714,8 @@ router.delete("/:id", auth, async (req, res) => {
         req.user.userId,
         invoice.invoiceNumber,
         invoice._id,
-        true // increase = true means restore
+        true, // increase = true means restore
+        "adjustment" // Override to adjustment
       );
     }
 
@@ -672,9 +734,35 @@ router.delete("/:id", auth, async (req, res) => {
   }
 });
 
+// Get single invoice
+router.get("/:id", auth, async (req, res) => {
+  try {
+    const invoice = await Invoice.findOne({
+      _id: req.params.id,
+      createdBy: req.user.userId,
+    }).populate("items.product");
+
+    if (!invoice) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+
+    res.json(invoice);
+  } catch (error) {
+    console.error("Error fetching invoice:", error);
+    res.status(500).json({
+      message: "Error fetching invoice",
+      error: error.message,
+    });
+  }
+});
+
 // Generate PDF for invoice
 router.get("/:id/pdf", auth, async (req, res) => {
   try {
+    const Customer = require("../models/Customer");
+    const Transaction = require("../models/Transaction");
+    const Settings = require("../models/Settings");
+
     // Find the invoice and populate product details
     const invoice = await Invoice.findOne({
       _id: req.params.id,
@@ -685,8 +773,27 @@ router.get("/:id/pdf", auth, async (req, res) => {
       return res.status(404).json({ message: "Invoice not found" });
     }
 
-    // Generate PDF
-    const pdfBuffer = await generateCompactInvoicePDF(invoice);
+    // Fetch shop settings for business information
+    const settings = await Settings.findOne({
+      user: req.user.userId,
+    });
+
+    // Fetch customer data if invoice has a customer
+    let customerData = null;
+    let recentPayment = null;
+    if (invoice.customer?._id) {
+      customerData = await Customer.findById(invoice.customer._id);
+
+      // Fetch the most recent payment transaction
+      recentPayment = await Transaction.findOne({
+        customerId: invoice.customer._id,
+        type: "payment",
+        createdBy: req.user.userId,
+      }).sort({ date: -1 }).limit(1);
+    }
+
+    // Generate PDF with customer context and shop settings
+    const pdfBuffer = await generateCompactInvoicePDF(invoice, customerData, recentPayment, settings);
 
     // Set response headers
     res.set({
@@ -698,32 +805,11 @@ router.get("/:id/pdf", auth, async (req, res) => {
     // Send the PDF
     res.send(pdfBuffer);
   } catch (error) {
-    console.error("PDF Generation Error:", error);
+    console.error("PDF generation error:", error);
     res.status(500).json({
       message: "Error generating PDF",
       error: error.message,
     });
-  }
-});
-
-// Get single invoice
-router.get("/:id", auth, async (req, res) => {
-  try {
-    const invoice = await Invoice.findOne({
-      _id: req.params.id,
-      createdBy: req.user.userId,
-    })
-      .populate("items.product", "name price unit")
-      .populate("customer", "name phoneNumber");
-
-    if (!invoice) {
-      return res.status(404).json({ message: "Invoice not found" });
-    }
-
-    res.json(invoice);
-  } catch (error) {
-    console.error("Error fetching invoice:", error);
-    res.status(500).json({ message: "Error fetching invoice details" });
   }
 });
 

@@ -56,6 +56,11 @@ const invoiceSchema = new mongoose.Schema(
           required: [true, "Subtotal is required for each item"],
           min: [0, "Subtotal cannot be negative"],
         },
+        returnedQuantity: {
+          type: Number,
+          default: 0,
+          min: [0, "Returned quantity cannot be negative"],
+        },
       },
     ],
     subtotal: {
@@ -128,13 +133,31 @@ invoiceSchema.pre("save", function (next) {
     return;
   }
 
-  // Update dueAmount based on payment method
-  if (this.paymentMethod === "due") {
-    this.dueAmount = this.total;
-  } else {
-    // Cash, online, or card - fully paid
-    this.dueAmount = 0;
+  // Only set initial dueAmount for NEW invoices or when payment method is explicitly changed
+  // Don't override dueAmount if it has been manually updated (e.g., by payment processing)
+  if (this.isNew) {
+    // For new invoices, set dueAmount based on payment method
+    if (this.paymentMethod === "due") {
+      this.dueAmount = this.total;
+    } else {
+      // Cash, online, or card - fully paid
+      this.dueAmount = 0;
+    }
+  } else if (this.isModified("paymentMethod")) {
+    // Only update dueAmount if payment method is being changed
+    if (this.paymentMethod === "due") {
+      // Only set to total if dueAmount hasn't been manually set
+      if (!this.isModified("dueAmount")) {
+        this.dueAmount = this.total;
+      }
+    } else if (["cash", "online", "card"].includes(this.paymentMethod)) {
+      // Changing to a paid method - clear dues if not manually set
+      if (!this.isModified("dueAmount")) {
+        this.dueAmount = 0;
+      }
+    }
   }
+  // If dueAmount was manually modified, keep it as-is
 
   next();
 });

@@ -1,6 +1,4 @@
-// components/stock/StockReports.jsx - Complete with Professional Report Preview
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   FileText,
   Download,
@@ -14,19 +12,23 @@ import {
   FileSpreadsheet,
   Eye,
   EyeOff,
-  Filter,
   ArrowUp,
   ArrowDown,
   ChevronRight,
   DollarSign,
   TrendingDown,
+  Loader2,
+  ShieldCheck,
+  Filter
 } from "lucide-react";
 import DatePicker from "react-datepicker";
 import { generateStockReport, fetchStockReportData } from "../../api/stock";
 import { toast } from "react-hot-toast";
 import "react-datepicker/dist/react-datepicker.css";
+import { useTranslation } from "react-i18next";
 
 const StockReports = () => {
+  const { t } = useTranslation();
   const [reportType, setReportType] = useState("summary");
   const [dateRange, setDateRange] = useState({
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -41,31 +43,31 @@ const StockReports = () => {
   const reportTypes = [
     {
       id: "summary",
-      name: "Stock Summary Report",
-      description: "Overview of current stock levels and values",
+      name: t('stock.stockSummary'),
+      description: t('stock.overviewOfCurrentStockLevels'),
       icon: BarChart3,
-      color: "blue",
+      color: "indigo",
     },
     {
       id: "movement",
-      name: "Movement Analysis",
-      description: "Detailed analysis of stock movements",
+      name: t('stock.movementAnalysis'),
+      description: t('stock.detailedAnalysisOfStockMovements'),
       icon: Activity,
-      color: "green",
+      color: "emerald",
     },
     {
       id: "valuation",
-      name: "Stock Valuation Report",
-      description: "Complete stock valuation by category",
+      name: t('stock.stockValuation'),
+      description: t('stock.completeStockValuationByCategory'),
       icon: TrendingUp,
-      color: "purple",
+      color: "violet",
     },
     {
       id: "lowstock",
-      name: "Low Stock Report",
-      description: "Products below reorder level",
+      name: t('stock.lowStock'),
+      description: t('stock.productsBelowReorderLevel'),
       icon: AlertTriangle,
-      color: "red",
+      color: "rose",
     },
   ];
 
@@ -101,8 +103,7 @@ const StockReports = () => {
       const link = document.createElement("a");
       link.href = url;
 
-      const extension =
-        format === "pdf" ? "pdf" : format === "excel" ? "xlsx" : "csv";
+      const extension = format === "pdf" ? "pdf" : format === "excel" ? "xlsx" : "csv";
       link.setAttribute(
         "download",
         `stock-report-${reportType}-${Date.now()}.${extension}`
@@ -142,180 +143,83 @@ const StockReports = () => {
     });
   };
 
-  const ReportPreview = () => {
-    if (!reportData || !showPreview) return null;
+  const StatCard = ({ icon: Icon, label, value, colorType }) => {
+    const colors = {
+      blue: "bg-blue-50 text-blue-600 border-blue-100",
+      green: "bg-emerald-50 text-emerald-600 border-emerald-100",
+      orange: "bg-amber-50 text-amber-600 border-amber-100",
+      red: "bg-rose-50 text-rose-600 border-rose-100",
+      indigo: "bg-indigo-50 text-indigo-600 border-indigo-100",
+    };
+    const activeColor = colors[colorType] || colors.blue;
 
     return (
-      <div className="bg-white rounded-xl shadow-sm mt-6 overflow-hidden animate-fadeIn">
-        {/* Preview Header */}
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Eye className="w-5 h-5 text-gray-600" />
-              <h3 className="text-lg font-semibold text-gray-900">
-                Report Preview
-              </h3>
-            </div>
-            <button
-              onClick={() => setShowPreview(false)}
-              className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-            >
-              <EyeOff className="w-5 h-5 text-gray-500" />
-            </button>
+      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-all">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+            <p className="text-2xl font-bold text-slate-800 mt-1">{value}</p>
           </div>
-        </div>
-
-        <div className="p-6">
-          {/* Summary Stats - Common for all reports */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <StatCard
-              icon={Package}
-              label="Total Products"
-              value={reportData.totalProducts}
-              color="bg-blue-500"
-              iconBg="bg-blue-100"
-              iconColor="text-blue-600"
-            />
-            <StatCard
-              icon={DollarSign}
-              label="Total Stock Value"
-              value={`₹${reportData.totalValue?.toFixed(2)}`}
-              color="bg-green-500"
-              iconBg="bg-green-100"
-              iconColor="text-green-600"
-            />
-            <StatCard
-              icon={AlertTriangle}
-              label="Low Stock Items"
-              value={reportData.lowStockCount}
-              color="bg-orange-500"
-              iconBg="bg-orange-100"
-              iconColor="text-orange-600"
-            />
-            <StatCard
-              icon={Package}
-              label="Out of Stock"
-              value={reportData.outOfStockCount}
-              color="bg-red-500"
-              iconBg="bg-red-100"
-              iconColor="text-red-600"
-            />
+          <div className={`p-3 rounded-xl border ${activeColor}`}>
+            <Icon className="w-6 h-6" />
           </div>
-
-          {/* Report Type Specific Content */}
-          {reportType === "summary" && <SummaryReportTable data={reportData} />}
-          {reportType === "movement" && (
-            <MovementReportTable
-              data={reportData}
-              sortConfig={sortConfig}
-              handleSort={handleSort}
-              sortData={sortData}
-            />
-          )}
-          {reportType === "lowstock" && (
-            <LowStockReportTable
-              data={reportData}
-              sortConfig={sortConfig}
-              handleSort={handleSort}
-              sortData={sortData}
-            />
-          )}
-          {reportType === "valuation" && (
-            <ValuationReportTable data={reportData} />
-          )}
         </div>
       </div>
     );
   };
 
-  const StatCard = ({ icon: Icon, label, value, iconBg, iconColor }) => (
-    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{label}</p>
-          <p className="text-xl font-bold text-gray-900 mt-1">{value}</p>
+  const SortableHeader = ({ label, sortKey, sortConfig, onSort, align = "left" }) => {
+    const textAlign = align === "center" ? "text-center" : align === "right" ? "text-right" : "text-left";
+    return (
+      <th
+        className={`px-6 py-4 ${textAlign} text-xs font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors select-none`}
+        onClick={() => onSort(sortKey)}
+      >
+        <div className={`flex items-center gap-1.5 ${align === "center" ? "justify-center" : align === "right" ? "justify-end" : ""}`}>
+          {label}
+          {sortConfig.key === sortKey && (
+            sortConfig.direction === "asc" ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />
+          )}
         </div>
-        <div className={`p-3 rounded-lg ${iconBg}`}>
-          <Icon className={`w-6 h-6 ${iconColor}`} />
-        </div>
-      </div>
-    </div>
-  );
+      </th>
+    );
+  };
+
+  const StockStatusBadge = ({ stock }) => {
+    if (stock === 0) return <span className="inline-flex px-2.5 py-1 text-xs font-bold rounded-full bg-rose-100 text-rose-700 border border-rose-200">Out of Stock</span>;
+    if (stock <= 5) return <span className="inline-flex px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-700 border border-amber-200">Critical</span>;
+    if (stock <= 10) return <span className="inline-flex px-2.5 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-700 border border-yellow-200">Low Stock</span>;
+    return <span className="inline-flex px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">In Stock</span>;
+  };
 
   const SummaryReportTable = ({ data }) => {
-    // Mock products data for demonstration - in real scenario, this would come from the API
     const products = data.products || [];
-
     return (
-      <div>
-        <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Package className="w-5 h-5 text-gray-600" />
-          All Products Summary
-        </h4>
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
+      <div className="space-y-4">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-slate-50/75 border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Product Name
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stock
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Unit
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Unit Price
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total Value
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Product</th>
+                <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Stock</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Price</th>
+                <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Value</th>
+                <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-slate-100">
               {products.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
-                    No products found
-                  </td>
-                </tr>
+                <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-500 font-medium">No data found</td></tr>
               ) : (
-                products.map((product, index) => (
-                  <tr
-                    key={index}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {product.name}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {product.category}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center text-gray-900">
-                      {product.stock}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center text-gray-600">
-                      {product.unit}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right text-gray-900">
-                      ₹{product.price?.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-right font-medium text-gray-900">
-                      ₹{product.totalValue?.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <StockStatusBadge stock={product.stock} />
-                    </td>
+                products.map((p, i) => (
+                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-800">{p.name}</td>
+                    <td className="px-6 py-4 text-sm text-slate-500">{p.category}</td>
+                    <td className="px-6 py-4 text-sm text-center font-bold text-slate-700">{Number(p.stock).toFixed(2).replace(/\.00$/, '')} <span className="text-xs font-normal text-slate-400">{p.unit}</span></td>
+                    <td className="px-6 py-4 text-sm text-right text-slate-600">₹{p.price?.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-sm text-right font-bold text-slate-800">₹{p.totalValue?.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-center"><StockStatusBadge stock={p.stock} /></td>
                   </tr>
                 ))
               )}
@@ -327,99 +231,96 @@ const StockReports = () => {
   };
 
   const MovementReportTable = ({ data, sortConfig, handleSort, sortData }) => {
-    const movements = sortData(
-      data.movements || [],
-      sortConfig.key,
-      sortConfig.direction
-    );
-
+    const movements = sortData(data.movements || [], sortConfig.key, sortConfig.direction);
     return (
-      <div>
-        <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-gray-600" />
-          Stock Movement Analysis
-        </h4>
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <SortableHeader
-                  label="Product Name"
-                  sortKey="productName"
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  label="Total Added"
-                  sortKey="totalIn"
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  align="center"
-                />
-                <SortableHeader
-                  label="Total Removed"
-                  sortKey="totalOut"
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  align="center"
-                />
-                <SortableHeader
-                  label="Net Change"
-                  sortKey="netChange"
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  align="center"
-                />
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trend
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {movements.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="5"
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
-                    No stock movements found for the selected period
+      <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+        <table className="w-full">
+          <thead className="bg-slate-50/75 border-b border-slate-200">
+            <tr>
+              <SortableHeader label="Product" sortKey="productName" sortConfig={sortConfig} onSort={handleSort} />
+              <SortableHeader label="Total Added" sortKey="totalIn" sortConfig={sortConfig} onSort={handleSort} align="center" />
+              <SortableHeader label="Total Removed" sortKey="totalOut" sortConfig={sortConfig} onSort={handleSort} align="center" />
+              <SortableHeader label="Net Change" sortKey="netChange" sortConfig={sortConfig} onSort={handleSort} align="center" />
+              <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Trend</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-100">
+            {movements.length === 0 ? (
+              <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-500 font-medium">No movements found</td></tr>
+            ) : (
+              movements.map((m, i) => (
+                <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="px-6 py-4 text-sm font-semibold text-slate-800">{m.productName || "Unknown"}</td>
+                  <td className="px-6 py-4 text-center"><span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-md text-xs">+{Number(m.totalIn).toFixed(2).replace(/\.00$/, '')}</span></td>
+                  <td className="px-6 py-4 text-center"><span className="text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded-md text-xs">-{Number(m.totalOut).toFixed(2).replace(/\.00$/, '')}</span></td>
+                  <td className="px-6 py-4 text-center">
+                    <span className={`font-bold ${m.netChange > 0 ? 'text-emerald-600' : m.netChange < 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                      {m.netChange > 0 ? '+' : ''}{Number(m.netChange).toFixed(2).replace(/\.00$/, '')}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    {m.netChange > 0 ? <span className="flex items-center justify-center gap-1 text-xs font-bold text-emerald-600"><TrendingUp size={14} /> Rising</span> :
+                      m.netChange < 0 ? <span className="flex items-center justify-center gap-1 text-xs font-bold text-rose-600"><TrendingDown size={14} /> Falling</span> :
+                        <span className="text-xs text-slate-400 font-medium">No Change</span>}
                   </td>
                 </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  const LowStockReportTable = ({ data, sortConfig, handleSort, sortData }) => {
+    const products = sortData(data.lowStockProducts || [], sortConfig.key, sortConfig.direction);
+    const outOfStock = products.filter((p) => p.currentStock === 0);
+    const criticalStock = products.filter((p) => p.currentStock > 0 && p.currentStock <= 5);
+    const lowStock = products.filter((p) => p.currentStock > 5);
+
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Summary Cards */}
+          <div className="bg-rose-50 border border-rose-100 rounded-xl p-5">
+            <h5 className="font-bold text-rose-800 mb-1 flex items-center gap-2"><AlertTriangle size={18} /> Out of Stock</h5>
+            <p className="text-3xl font-bold text-rose-600">{outOfStock.length}</p>
+          </div>
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-5">
+            <h5 className="font-bold text-amber-800 mb-1 flex items-center gap-2"><AlertTriangle size={18} /> Critical</h5>
+            <p className="text-3xl font-bold text-amber-600">{criticalStock.length}</p>
+          </div>
+          <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-5">
+            <h5 className="font-bold text-yellow-800 mb-1 flex items-center gap-2"><AlertTriangle size={18} /> Low Stock</h5>
+            <p className="text-3xl font-bold text-yellow-600">{lowStock.length}</p>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-xl border border-slate-200 shadow-sm">
+          <table className="w-full">
+            <thead className="bg-slate-50/75 border-b border-slate-200">
+              <tr>
+                <SortableHeader label="Product" sortKey="name" sortConfig={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Category" sortKey="category" sortConfig={sortConfig} onSort={handleSort} />
+                <SortableHeader label="Stock" sortKey="currentStock" sortConfig={sortConfig} onSort={handleSort} align="center" />
+                <SortableHeader label="Value" sortKey="value" sortConfig={sortConfig} onSort={handleSort} align="right" />
+                <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-100">
+              {products.length === 0 ? (
+                <tr><td colSpan="5" className="px-6 py-12 text-center text-slate-500 font-medium">No low stock items</td></tr>
               ) : (
-                movements.map((movement, index) => (
-                  <tr
-                    key={index}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {movement.productName || "Unknown Product"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center">
-                      <span className="inline-flex items-center gap-1 text-green-600 font-medium">
-                        <ArrowUp className="w-4 h-4" />
-                        {movement.totalIn || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center">
-                      <span className="inline-flex items-center gap-1 text-red-600 font-medium">
-                        <ArrowDown className="w-4 h-4" />
-                        {movement.totalOut || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 font-bold ${
-                          movement.netChange >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {movement.netChange > 0 && "+"}
-                        {movement.netChange || 0}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <MovementTrendIndicator change={movement.netChange} />
+                products.map((p, i) => (
+                  <tr key={i} className={`hover:bg-slate-50/50 transition-colors ${p.currentStock === 0 ? 'bg-rose-50/30' : ''}`}>
+                    <td className="px-6 py-4 text-sm font-semibold text-slate-800">{p.name}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{p.category}</td>
+                    <td className="px-6 py-4 text-center font-bold text-slate-800">{Number(p.currentStock).toFixed(2).replace(/\.00$/, '')} <span className="text-xs font-normal text-slate-400">{p.unit}</span></td>
+                    <td className="px-6 py-4 text-right font-bold text-slate-700">₹{p.value?.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-center">
+                      {p.currentStock === 0 ? <span className="text-xs font-bold text-rose-600">ORDER NOW</span> :
+                        p.currentStock <= 5 ? <span className="text-xs font-bold text-amber-600">ORDER SOON</span> :
+                          <span className="text-xs font-bold text-yellow-600">MONITOR</span>}
                     </td>
                   </tr>
                 ))
@@ -431,256 +332,50 @@ const StockReports = () => {
     );
   };
 
-  const LowStockReportTable = ({ data, sortConfig, handleSort, sortData }) => {
-    const products = sortData(
-      data.lowStockProducts || [],
-      sortConfig.key,
-      sortConfig.direction
-    );
-
-    // Group products by status
-    const outOfStock = products.filter((p) => p.currentStock === 0);
-    const criticalStock = products.filter(
-      (p) => p.currentStock > 0 && p.currentStock <= 5
-    );
-    const lowStock = products.filter(
-      (p) => p.currentStock > 5 && p.currentStock <= 10
-    );
-
-    return (
-      <div className="space-y-6">
-        {/* Critical Alerts Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h5 className="font-semibold text-red-800 mb-1">Out of Stock</h5>
-            <p className="text-2xl font-bold text-red-600">
-              {outOfStock.length}
-            </p>
-            <p className="text-sm text-red-600">Immediate attention required</p>
-          </div>
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <h5 className="font-semibold text-orange-800 mb-1">
-              Critical Level
-            </h5>
-            <p className="text-2xl font-bold text-orange-600">
-              {criticalStock.length}
-            </p>
-            <p className="text-sm text-orange-600">Order soon</p>
-          </div>
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h5 className="font-semibold text-yellow-800 mb-1">Low Stock</h5>
-            <p className="text-2xl font-bold text-yellow-600">
-              {lowStock.length}
-            </p>
-            <p className="text-sm text-yellow-600">Monitor closely</p>
-          </div>
-        </div>
-
-        {/* Detailed Table */}
-        <div>
-          <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            Low Stock Products Detail
-          </h4>
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <SortableHeader
-                    label="Product Name"
-                    sortKey="name"
-                    sortConfig={sortConfig}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label="Category"
-                    sortKey="category"
-                    sortConfig={sortConfig}
-                    onSort={handleSort}
-                  />
-                  <SortableHeader
-                    label="Current Stock"
-                    sortKey="currentStock"
-                    sortConfig={sortConfig}
-                    onSort={handleSort}
-                    align="center"
-                  />
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Unit
-                  </th>
-                  <SortableHeader
-                    label="Stock Value"
-                    sortKey="value"
-                    sortConfig={sortConfig}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Action Required
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {products.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="7"
-                      className="px-4 py-8 text-center text-gray-500"
-                    >
-                      No low stock products found
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((product, index) => (
-                    <tr
-                      key={index}
-                      className={`hover:bg-gray-50 transition-colors ${
-                        product.currentStock === 0
-                          ? "bg-red-50"
-                          : product.currentStock <= 5
-                          ? "bg-orange-50"
-                          : "bg-yellow-50"
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {product.name}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {product.category}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-center font-bold">
-                        <span
-                          className={
-                            product.currentStock === 0
-                              ? "text-red-600"
-                              : product.currentStock <= 5
-                              ? "text-orange-600"
-                              : "text-yellow-600"
-                          }
-                        >
-                          {product.currentStock}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-center text-gray-600">
-                        {product.unit}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-right text-gray-900">
-                        ₹{product.value?.toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <StockStatusBadge stock={product.currentStock} />
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <ActionRequiredBadge stock={product.currentStock} />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const ValuationReportTable = ({ data }) => {
     const categories = data.categoryValuation || [];
     const totalValue = categories.reduce((sum, cat) => sum + cat.totalValue, 0);
 
     return (
       <div className="space-y-6">
-        {/* Category Summary Cards */}
-        <div>
-          <h4 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <PieChart className="w-5 h-5 text-purple-600" />
-            Stock Valuation by Category
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {categories.map((category, index) => (
-              <div
-                key={index}
-                className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <h5 className="font-semibold text-gray-900">
-                    {category.name}
-                  </h5>
-                  <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
-                    {((category.totalValue / totalValue) * 100).toFixed(1)}%
-                  </span>
-                </div>
-                <p className="text-2xl font-bold text-gray-900 mb-1">
-                  ₹{category.totalValue.toFixed(2)}
-                </p>
-                <p className="text-sm text-gray-600">
-                  {category.totalItems} products
-                </p>
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <p className="text-xs font-medium text-gray-500">
-                    Average value per product
-                  </p>
-                  <p className="text-sm font-semibold text-gray-900">
-                    ₹{(category.totalValue / category.totalItems).toFixed(2)}
-                  </p>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {categories.map((cat, i) => (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all">
+              <div className="flex justify-between items-start mb-2">
+                <h5 className="font-bold text-slate-800">{cat.name}</h5>
+                <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md font-bold">
+                  {((cat.totalValue / totalValue) * 100).toFixed(1)}%
+                </span>
               </div>
-            ))}
-          </div>
+              <p className="text-2xl font-bold text-slate-800">₹{cat.totalValue.toFixed(2)}</p>
+              <p className="text-sm text-slate-500 mt-1">{cat.totalItems} products</p>
+            </div>
+          ))}
         </div>
 
-        {/* Detailed Breakdown */}
-        <div>
-          <h5 className="font-medium text-gray-900 mb-3">
-            Detailed Product Breakdown
-          </h5>
-          {categories.map((category, catIndex) => (
-            <div key={catIndex} className="mb-6">
-              <div className="bg-gray-50 px-4 py-2 rounded-t-lg border border-gray-200">
-                <h6 className="font-medium text-gray-900">{category.name}</h6>
+        <div className="space-y-4">
+          {categories.map((cat, i) => (
+            <div key={i} className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="bg-slate-50 px-6 py-3 border-b border-slate-200">
+                <h6 className="font-bold text-slate-700">{cat.name} Breakdown</h6>
               </div>
-              <div className="overflow-x-auto border-x border-b border-gray-200 rounded-b-lg">
+              <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-white">
-                    <tr className="border-b border-gray-200">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
-                        Product
-                      </th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">
-                        Stock
-                      </th>
-                      <th className="px-4 py-2 text-center text-xs font-medium text-gray-500">
-                        Unit
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
-                        Unit Price
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
-                        Total Value
-                      </th>
+                  <thead className="bg-white border-b border-slate-100">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 uppercase">Product</th>
+                      <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 uppercase">Stock</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">Price</th>
+                      <th className="px-6 py-3 text-right text-xs font-bold text-slate-500 uppercase">Total</th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {category.products?.map((product, prodIndex) => (
-                      <tr key={prodIndex} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm text-gray-900">
-                          {product.name}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-center text-gray-600">
-                          {product.stock}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-center text-gray-600">
-                          {product.unit}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-right text-gray-600">
-                          ₹{product.price.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-right font-medium text-gray-900">
-                          ₹{product.value.toFixed(2)}
-                        </td>
+                  <tbody className="bg-white divide-y divide-slate-50">
+                    {cat.products?.map((p, j) => (
+                      <tr key={j} className="hover:bg-slate-50">
+                        <td className="px-6 py-3 text-sm font-medium text-slate-800">{p.name}</td>
+                        <td className="px-6 py-3 text-center text-sm text-slate-600">{Number(p.stock).toFixed(2).replace(/\.00$/, '')} {p.unit}</td>
+                        <td className="px-6 py-3 text-right text-sm text-slate-600">₹{p.price.toFixed(2)}</td>
+                        <td className="px-6 py-3 text-right text-sm font-bold text-slate-800">₹{p.value.toFixed(2)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -693,279 +388,139 @@ const StockReports = () => {
     );
   };
 
-  const SortableHeader = ({
-    label,
-    sortKey,
-    sortConfig,
-    onSort,
-    align = "left",
-  }) => {
-    const textAlign =
-      align === "center"
-        ? "text-center"
-        : align === "right"
-        ? "text-right"
-        : "text-left";
+  const ReportPreview = () => {
+    if (!reportData || !showPreview) return null;
     return (
-      <th
-        className={`px-4 py-3 ${textAlign} text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100`}
-        onClick={() => onSort(sortKey)}
-      >
-        <div
-          className={`flex items-center gap-1 ${
-            align === "center"
-              ? "justify-center"
-              : align === "right"
-              ? "justify-end"
-              : ""
-          }`}
-        >
-          {label}
-          {sortConfig.key === sortKey &&
-            (sortConfig.direction === "asc" ? (
-              <ArrowUp className="w-3 h-3" />
-            ) : (
-              <ArrowDown className="w-3 h-3" />
-            ))}
+      <div className="bg-white rounded-2xl shadow-lg border border-slate-200 mt-8 overflow-hidden animate-fadeIn">
+        <div className="bg-slate-50/50 px-6 sm:px-8 py-4 border-b border-slate-200 flex justify-between items-center">
+          <h3 className="font-bold text-slate-800 flex items-center gap-2"><Eye className="text-indigo-600" size={20} /> {t('stock.reportPreview')}</h3>
+          <button onClick={() => setShowPreview(false)} className="text-slate-400 hover:text-slate-600"><EyeOff size={20} /></button>
         </div>
-      </th>
+        <div className="p-6 sm:p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <StatCard icon={Package} label={t('stock.totalProducts')} value={reportData.totalProducts} colorType="blue" />
+            <StatCard icon={DollarSign} label={t('stock.totalValue')} value={`₹${reportData.totalValue?.toFixed(2)}`} colorType="green" />
+            <StatCard icon={AlertTriangle} label={t('stock.lowStock')} value={reportData.lowStockCount} colorType="orange" />
+            <StatCard icon={ShieldCheck} label={t('stock.outOfStock')} value={reportData.outOfStockCount} colorType="red" />
+          </div>
+
+          {reportType === "summary" && <SummaryReportTable data={reportData} />}
+          {reportType === "movement" && <MovementReportTable data={reportData} sortConfig={sortConfig} handleSort={handleSort} sortData={sortData} />}
+          {reportType === "lowstock" && <LowStockReportTable data={reportData} sortConfig={sortConfig} handleSort={handleSort} sortData={sortData} />}
+          {reportType === "valuation" && <ValuationReportTable data={reportData} />}
+        </div>
+      </div>
     );
   };
 
-  const StockStatusBadge = ({ stock }) => {
-    if (stock === 0) {
-      return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-          Out of Stock
-        </span>
-      );
-    } else if (stock <= 5) {
-      return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
-          Critical
-        </span>
-      );
-    } else if (stock <= 10) {
-      return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-          Low Stock
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-          In Stock
-        </span>
-      );
-    }
-  };
-
-  const ActionRequiredBadge = ({ stock }) => {
-    if (stock === 0) {
-      return <span className="text-xs font-bold text-red-600">Order Now!</span>;
-    } else if (stock <= 5) {
-      return (
-        <span className="text-xs font-bold text-orange-600">Order Soon</span>
-      );
-    } else {
-      return <span className="text-xs text-gray-500">Monitor</span>;
-    }
-  };
-
-  const MovementTrendIndicator = ({ change }) => {
-    if (change > 0) {
-      return (
-        <div className="inline-flex items-center gap-1 text-green-600">
-          <TrendingUp className="w-4 h-4" />
-          <span className="text-xs font-medium">Rising</span>
-        </div>
-      );
-    } else if (change < 0) {
-      return (
-        <div className="inline-flex items-center gap-1 text-red-600">
-          <TrendingDown className="w-4 h-4" />
-          <span className="text-xs font-medium">Falling</span>
-        </div>
-      );
-    } else {
-      return (
-        <div className="inline-flex items-center gap-1 text-gray-500">
-          <span className="text-xs">No Change</span>
-        </div>
-      );
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-4 sm:mb-6 lg:mb-8 animate-fadeIn">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex-shrink-0 bg-gradient-to-br from-purple-500 to-purple-600 p-2.5 sm:p-3 rounded-xl shadow-lg">
-              <FileText className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight">
-                Stock Reports
-              </h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-0.5 sm:mt-1">
-                Generate comprehensive stock reports and analytics
-              </p>
-            </div>
+    <div className="min-h-screen bg-slate-50/50 pb-12 font-sans">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 sm:px-8 py-4 mb-8">
+        <div className="max-w-[1600px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
+              <FileSpreadsheet className="text-indigo-600" size={28} />
+              {t('stock.stockReports')}
+            </h1>
+            <p className="text-sm text-slate-500 mt-1 ml-10">{t('stock.generateComprehensiveInventoryAnalytics')}</p>
           </div>
         </div>
+      </div>
 
-        {/* Report Type Selection */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 mb-4 sm:mb-6 animate-fadeIn">
-          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Select Report Type</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-            {reportTypes.map((type) => (
-              <button
-                key={type.id}
-                onClick={() => {
-                  setReportType(type.id);
-                  setReportData(null);
-                  setShowPreview(false);
-                }}
-                className={`p-3 sm:p-4 rounded-xl border-2 text-left transition-all hover:shadow-lg ${
-                  reportType === type.id
-                    ? `border-${type.color}-500 bg-${type.color}-50 shadow-sm`
-                    : "border-gray-200 hover:border-gray-300"
+      <div className="max-w-[1600px] mx-auto px-6 sm:px-8">
+        {/* Report Type Selector */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {reportTypes.map((type) => (
+            <button
+              key={type.id}
+              onClick={() => { setReportType(type.id); setReportData(null); setShowPreview(false); }}
+              className={`p-6 rounded-2xl border-2 text-left transition-all group ${reportType === type.id
+                ? `border-${type.color}-500 bg-white shadow-md ring-4 ring-${type.color}-500/10`
+                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
                 }`}
-              >
-                <div className="flex items-start gap-2 sm:gap-3">
-                  <div
-                    className={`p-2 rounded-lg flex-shrink-0 ${
-                      reportType === type.id
-                        ? `bg-${type.color}-100`
-                        : "bg-gray-100"
-                    }`}
-                  >
-                    <type.icon
-                      className={`w-5 h-5 sm:w-6 sm:h-6 ${
-                        reportType === type.id
-                          ? `text-${type.color}-600`
-                          : "text-gray-400"
-                      }`}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm sm:text-base font-medium text-gray-900 line-clamp-1">{type.name}</h4>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1 line-clamp-2">
-                      {type.description}
-                    </p>
-                  </div>
-                  {reportType === type.id && (
-                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 mt-1 flex-shrink-0" />
-                  )}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className={`p-3 rounded-xl ${reportType === type.id ? `bg-${type.color}-100 text-${type.color}-600` : "bg-slate-100 text-slate-500"}`}>
+                  <type.icon size={24} />
                 </div>
-              </button>
-            ))}
-          </div>
+                {reportType === type.id && <div className={`w-3 h-3 rounded-full bg-${type.color}-500`} />}
+              </div>
+              <h3 className={`font-bold text-lg mb-1 ${reportType === type.id ? "text-slate-800" : "text-slate-600"}`}>{type.name}</h3>
+              <p className="text-sm text-slate-500 font-medium">{type.description}</p>
+            </button>
+          ))}
         </div>
 
-        {/* Date Range and Actions */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-6 animate-fadeIn">
-          <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Report Parameters</h3>
-          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 items-stretch lg:items-end">
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+        {/* Parameters */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 animate-fadeIn">
+          <h3 className="font-bold text-lg text-slate-800 mb-6 flex items-center gap-2"><Filter size={20} className="text-slate-400" /> {t('stock.reportParameters')}</h3>
+          <div className="flex flex-col lg:flex-row gap-6 items-end">
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                  Start Date
-                </label>
-                <DatePicker
-                  selected={dateRange.startDate}
-                  onChange={(date) =>
-                    setDateRange({ ...dateRange, startDate: date })
-                  }
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  dateFormat="dd/MM/yyyy"
-                  placeholderText="Select start date"
-                />
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t('stock.startDate')}</label>
+                <div className="relative">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <DatePicker
+                    selected={dateRange.startDate}
+                    onChange={(date) => setDateRange({ ...dateRange, startDate: date })}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-700 outline-none transition-all"
+                    dateFormat="dd/MM/yyyy"
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1" />
-                  End Date
-                </label>
-                <DatePicker
-                  selected={dateRange.endDate}
-                  onChange={(date) =>
-                    setDateRange({ ...dateRange, endDate: date })
-                  }
-                  minDate={dateRange.startDate}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  dateFormat="dd/MM/yyyy"
-                  placeholderText="Select end date"
-                />
+                <label className="block text-sm font-bold text-slate-700 mb-2">{t('stock.endDate')}</label>
+                <div className="relative">
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <DatePicker
+                    selected={dateRange.endDate}
+                    onChange={(date) => setDateRange({ ...dateRange, endDate: date })}
+                    minDate={dateRange.startDate}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-medium text-slate-700 outline-none transition-all"
+                    dateFormat="dd/MM/yyyy"
+                  />
+                </div>
               </div>
             </div>
             <button
               onClick={handleGenerateReport}
               disabled={loading}
-              className="px-4 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm sm:text-base rounded-xl hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-95 transform flex items-center justify-center gap-2 font-medium"
+              className="w-full lg:w-auto px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 h-4 sm:h-5 sm:w-5 border-2 border-white border-t-transparent" />
-                  <span className="hidden sm:inline">Generating...</span>
-                </>
-              ) : (
-                <>
-                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="hidden sm:inline">Generate Report</span>
-                  <span className="sm:hidden">Generate</span>
-                </>
-              )}
+              {loading ? <Loader2 className="animate-spin" size={20} /> : <BarChart3 size={20} />}
+              {t('stock.generateReport')}
             </button>
           </div>
 
-          {/* Download Options */}
+          {/* Check download options */}
           {reportData && showPreview && (
-            <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">
-                    Download Report:
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Export your report in your preferred format
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => handleDownloadReport("pdf")}
-                    disabled={downloadingFormat === "pdf"}
-                    className="group flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm rounded-xl hover:from-red-700 hover:to-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-95 transform"
-                  >
-                    {downloadingFormat === "pdf" ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    ) : (
-                      <FileText className="w-4 h-4" />
-                    )}
-                    PDF Report
-                  </button>
-                  <button
-                    onClick={() => handleDownloadReport("csv")}
-                    disabled={downloadingFormat === "csv"}
-                    className="group flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white text-sm rounded-xl hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl active:scale-95 transform"
-                  >
-                    {downloadingFormat === "csv" ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                    ) : (
-                      <FileSpreadsheet className="w-4 h-4" />
-                    )}
-                    CSV Export
-                  </button>
-                </div>
+            <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div>
+                <p className="font-bold text-slate-700">{t('stock.exportResults')}</p>
+                <p className="text-sm text-slate-400">{t('stock.downloadReportInPreferredFormat')}</p>
+              </div>
+              <div className="flex gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => handleDownloadReport("pdf")}
+                  disabled={downloadingFormat === "pdf"}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-lg shadow-rose-200 transition-all disabled:opacity-70"
+                >
+                  {downloadingFormat === "pdf" ? <Loader2 className="animate-spin" size={18} /> : <FileText size={18} />} {t('stock.pdfReport')}
+                </button>
+                <button
+                  onClick={() => handleDownloadReport("csv")}
+                  disabled={downloadingFormat === "csv"}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200 transition-all disabled:opacity-70"
+                >
+                  {downloadingFormat === "csv" ? <Loader2 className="animate-spin" size={18} /> : <FileSpreadsheet size={18} />} {t('stock.csvExport')}
+                </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Report Preview */}
+        {/* Preview Content */}
         <ReportPreview />
       </div>
     </div>

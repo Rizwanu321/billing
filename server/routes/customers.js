@@ -5,6 +5,7 @@ const router = express.Router();
 const Customer = require("../models/Customer");
 const auth = require("../middleware/auth");
 const Transaction = require("../models/Transaction");
+const Invoice = require("../models/Invoice");
 const mongoose = require("mongoose");
 
 // ============================================
@@ -12,51 +13,80 @@ const mongoose = require("mongoose");
 // ============================================
 
 // Get customer statistics - MOVE THIS TO THE TOP
+// Get customer statistics
 router.get("/stats", auth, async (req, res) => {
   try {
-    const { period = "month" } = req.query;
+    // Get parameters
+    const { startDate, endDate, period = "month" } = req.query;
 
-    // Calculate date ranges
-    const now = new Date();
-    let currentStart, previousStart, previousEnd;
+    let currentStart, currentEnd, previousStart, previousEnd;
 
-    switch (period) {
-      case "today":
-        currentStart = new Date(now.setHours(0, 0, 0, 0));
-        previousStart = new Date(currentStart);
-        previousStart.setDate(previousStart.getDate() - 1);
-        previousEnd = new Date(currentStart);
-        break;
-      case "week":
-        currentStart = new Date(now.setDate(now.getDate() - 7));
-        previousStart = new Date(currentStart);
-        previousStart.setDate(previousStart.getDate() - 7);
-        previousEnd = new Date(currentStart);
-        break;
-      case "month":
-        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-        break;
-      case "quarter":
-        const quarter = Math.floor(now.getMonth() / 3);
-        currentStart = new Date(now.getFullYear(), quarter * 3, 1);
-        previousStart = new Date(now.getFullYear(), (quarter - 1) * 3, 1);
-        previousEnd = new Date(now.getFullYear(), quarter * 3, 0);
-        break;
-      case "year":
-        currentStart = new Date(now.getFullYear(), 0, 1);
-        previousStart = new Date(now.getFullYear() - 1, 0, 1);
-        previousEnd = new Date(now.getFullYear() - 1, 11, 31);
-        break;
-      default:
-        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    // 1. Priority: Explicit Date Range
+    if (startDate && endDate) {
+      currentStart = new Date(startDate);
+      // Ensure start is beginning of day if string doesn't include time
+      if (startDate.indexOf('T') === -1) currentStart.setHours(0, 0, 0, 0);
+
+      currentEnd = new Date(endDate);
+      // Ensure end is end of day if implicit
+      if (endDate.indexOf('T') === -1) currentEnd.setHours(23, 59, 59, 999);
+
+      // Calculate previous period duration
+      const duration = currentEnd.getTime() - currentStart.getTime();
+      previousEnd = new Date(currentStart.getTime() - 1);
+      previousStart = new Date(previousEnd.getTime() - duration);
+    }
+    // 2. Fallback: Period Logic
+    else {
+      const now = new Date();
+      currentEnd = new Date(now); // Default to now
+
+      switch (period) {
+        case "all":
+          currentStart = new Date(0);
+          previousStart = new Date(0);
+          previousEnd = new Date(0);
+          break;
+        case "today":
+          currentStart = new Date(now.setHours(0, 0, 0, 0));
+          previousStart = new Date(currentStart);
+          previousStart.setDate(previousStart.getDate() - 1);
+          previousEnd = new Date(currentStart.getTime() - 1);
+          break;
+        case "week":
+          const day = now.getDay();
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+          currentStart = new Date(now.setDate(diff));
+          currentStart.setHours(0, 0, 0, 0);
+          previousStart = new Date(currentStart);
+          previousStart.setDate(previousStart.getDate() - 7);
+          previousEnd = new Date(currentStart.getTime() - 1);
+          break;
+        case "month":
+          currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          previousEnd = new Date(currentStart.getTime() - 1);
+          break;
+        case "quarter":
+          const quarter = Math.floor(now.getMonth() / 3);
+          currentStart = new Date(now.getFullYear(), quarter * 3, 1);
+          previousStart = new Date(now.getFullYear(), (quarter - 1) * 3, 1);
+          previousEnd = new Date(currentStart.getTime() - 1);
+          break;
+        case "year":
+          currentStart = new Date(now.getFullYear(), 0, 1);
+          previousStart = new Date(now.getFullYear() - 1, 0, 1);
+          previousEnd = new Date(now.getFullYear() - 1, 11, 31);
+          break;
+        default:
+          currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+          previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          previousEnd = new Date(currentStart.getTime() - 1);
+      }
     }
 
     // Enhanced statistics
-    const [totalStats, dueStats, creditStats, recentTransactions] =
+    const [totalStats, dueStats, creditStats, returnStats, salesStats, paymentStats, recentTransactions] =
       await Promise.all([
         // Total customers and growth
         Customer.aggregate([
@@ -65,13 +95,20 @@ router.get("/stats", auth, async (req, res) => {
             $facet: {
               total: [{ $count: "count" }],
               currentPeriod: [
-                { $match: { createdAt: { $gte: currentStart } } },
+                {
+                  $match: {
+                    createdAt: {
+                      $gte: currentStart,
+                      $lte: currentEnd
+                    }
+                  }
+                },
                 { $count: "count" },
               ],
               previousPeriod: [
                 {
                   $match: {
-                    createdAt: { $gte: previousStart, $lt: previousEnd },
+                    createdAt: { $gte: previousStart, $lte: previousEnd },
                   },
                 },
                 { $count: "count" },
@@ -90,7 +127,7 @@ router.get("/stats", auth, async (req, res) => {
           },
         ]),
 
-        // Due amount statistics
+        // Due amount (Current Snapshot)
         Customer.aggregate([
           { $match: { createdBy: req.user.userId, amountDue: { $gt: 0 } } },
           {
@@ -104,7 +141,7 @@ router.get("/stats", auth, async (req, res) => {
           },
         ]),
 
-        // Credit balance statistics
+        // Credit balance (Current Snapshot)
         Customer.aggregate([
           { $match: { createdBy: req.user.userId, creditBalance: { $gt: 0 } } },
           {
@@ -118,14 +155,86 @@ router.get("/stats", auth, async (req, res) => {
           },
         ]),
 
+        // Returns (Date Filtered)
+        Transaction.aggregate([
+          {
+            $match: {
+              createdBy: req.user.userId,
+              paymentMode: 'return',
+              date: { $gte: currentStart, $lte: currentEnd }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              totalReturns: { $sum: "$amount" },
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+
+        // Sales Breakdown by Payment Method (from Invoices) - Date Filtered
+        Invoice.aggregate([
+          {
+            $match: {
+              createdBy: req.user.userId,
+              status: { $in: ["final", "paid"] },
+              date: { $gte: currentStart, $lte: currentEnd }
+            }
+          },
+          {
+            $group: {
+              _id: "$paymentMethod",
+              total: { $sum: "$total" },
+              // Amount received at time of invoice creation
+              initiallyReceived: {
+                $sum: {
+                  $cond: {
+                    if: { $eq: ["$paymentMethod", "due"] },
+                    then: 0, // For "due", nothing paid initially (full credit)
+                    else: {
+                      $subtract: ["$total", { $ifNull: ["$dueAmount", 0] }],
+                    },
+                  },
+                },
+              },
+              // Current outstanding due amount  
+              currentDue: { $sum: { $ifNull: ["$dueAmount", 0] } },
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+
+        // Payments Collected (Date Filtered)
+        Transaction.aggregate([
+          {
+            $match: {
+              createdBy: req.user.userId,
+              type: 'payment',
+              paymentMode: { $ne: 'return' },
+              date: { $gte: currentStart, $lte: currentEnd }
+            }
+          },
+          {
+            $group: {
+              _id: null,
+              totalCollected: { $sum: "$amount" },
+              count: { $sum: 1 },
+            },
+          },
+        ]),
+
         // Recent transactions
-        Transaction.find({ createdBy: req.user.userId })
+        Transaction.find({
+          createdBy: req.user.userId,
+          date: { $gte: currentStart, $lte: currentEnd }
+        })
           .sort({ date: -1 })
-          .limit(5)
+          .limit(20)
           .populate("customerId", "name"),
       ]);
 
-    // Process the data
+    // Process data
     const total = totalStats[0]?.total[0]?.count || 0;
     const currentCount = totalStats[0]?.currentPeriod[0]?.count || 0;
     const previousCount = totalStats[0]?.previousPeriod[0]?.count || 0;
@@ -137,6 +246,43 @@ router.get("/stats", auth, async (req, res) => {
         : currentCount > 0
           ? 100
           : 0;
+
+    // Calculate Total Sales from breakdown
+    const totalSalesAmount = salesStats.reduce((sum, item) => sum + item.total, 0);
+    const totalSalesCount = salesStats.reduce((sum, item) => sum + item.count, 0);
+
+    // Calculate Due Sales Amount (matching Revenue Dashboard logic)
+    let dueSalesAmount = 0;
+    let instantCollection = 0;
+
+    salesStats.forEach((method) => {
+      if (method._id === 'due') {
+        // For "due" invoices, the full total is credit sales
+        dueSalesAmount += method.total || 0;
+      } else if (method._id === 'mixed') {
+        // For "mixed", the currentDue portion is credit sales
+        dueSalesAmount += method.currentDue || 0;
+        instantCollection += method.initiallyReceived || 0;
+      } else if (['cash', 'online', 'card', 'credit'].includes(method._id)) {
+        // These are instant payment methods
+        instantCollection += method.initiallyReceived || 0;
+      }
+    });
+
+    // Format Sales Breakdown dictionary with all fields
+    const salesBreakdown = salesStats.reduce((acc, item) => {
+      acc[item._id] = {
+        total: item.total,
+        count: item.count,
+        initiallyReceived: item.initiallyReceived || 0,
+        currentDue: item.currentDue || 0
+      };
+      return acc;
+    }, {});
+
+    // Add calculated dueSalesAmount to breakdown
+    salesBreakdown.dueSalesAmount = dueSalesAmount;
+    salesBreakdown.instantCollection = instantCollection;
 
     res.json({
       customers: {
@@ -159,11 +305,22 @@ router.get("/stats", auth, async (req, res) => {
         avgCredit: 0,
         maxCredit: 0,
       },
+      returns: {
+        total: returnStats[0]?.totalReturns || 0,
+        count: returnStats[0]?.count || 0,
+      },
+      sales: {
+        total: totalSalesAmount,
+        count: totalSalesCount,
+        breakdown: salesBreakdown
+      },
+      payments: {
+        total: paymentStats[0]?.totalCollected || 0,
+        count: paymentStats[0]?.count || 0,
+      },
       netBalance: {
-        total:
-          (dueStats[0]?.totalDue || 0) - (creditStats[0]?.totalCredit || 0),
-        isPositive:
-          (dueStats[0]?.totalDue || 0) > (creditStats[0]?.totalCredit || 0),
+        total: (dueStats[0]?.totalDue || 0) - (creditStats[0]?.totalCredit || 0),
+        isPositive: (dueStats[0]?.totalDue || 0) > (creditStats[0]?.totalCredit || 0),
       },
       recentTransactions,
     });
@@ -353,39 +510,9 @@ router.post("/:id/payments", auth, async (req, res) => {
 
     if (newDue < 0) console.log(`✓ Advance: ₹${Math.abs(newDue)}`);
 
-    // Update invoices (if any outstanding)
+    // Note: Payments are tracked at customer level only
+    // Individual invoices remain as-is and are not automatically updated
     const invoicesUpdated = [];
-    if (currentDue > 0) {
-      const outstandingInvoices = await Invoice.find({
-        "customer._id": customerObjectId,
-        dueAmount: { $gt: 0 },
-        status: { $in: ["final", "paid"] },
-        createdBy: req.user.userId,
-      }).sort({ date: 1 }).session(session);
-
-      let remainingPayment = paymentAmount;
-      for (const invoice of outstandingInvoices) {
-        if (remainingPayment <= 0) break;
-        const paymentForInvoice = Math.min(remainingPayment, invoice.dueAmount);
-        const previousDue = invoice.dueAmount;
-
-        invoice.dueAmount = Math.max(0, invoice.dueAmount - paymentForInvoice);
-        if (invoice.dueAmount === 0) {
-          invoice.status = "paid";
-          if (invoice.paymentMethod === "due") invoice.paymentMethod = "cash";
-        }
-        await invoice.save({ session });
-
-        invoicesUpdated.push({
-          invoiceId: invoice._id,
-          invoiceNumber: invoice.invoiceNumber,
-          previousDue,
-          paymentApplied: paymentForInvoice,
-          remainingDue: invoice.dueAmount,
-        });
-        remainingPayment -= paymentForInvoice;
-      }
-    }
 
     // Create transaction
     const transaction = new Transaction({
@@ -396,7 +523,7 @@ router.post("/:id/payments", auth, async (req, res) => {
       balanceBefore: currentDue,
       balanceAfter: newDue,
       paymentMode,
-      description: description || `Payment of ₹${paymentAmount.toFixed(2)}${newDue < 0 ? ` - Advance: ₹${Math.abs(newDue).toFixed(2)}` : newDue > 0 ? ` - Due: ₹${newDue.toFixed(2)}` : ' - Settled'}`,
+      description: description || `Payment of Rs. ${paymentAmount.toFixed(2)}${newDue < 0 ? ` - Advance: Rs. ${Math.abs(newDue).toFixed(2)}` : newDue > 0 ? ` - Due: Rs. ${newDue.toFixed(2)}` : ' - Settled'}`,
       createdBy: req.user.userId,
     });
     await transaction.save({ session });

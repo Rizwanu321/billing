@@ -22,8 +22,10 @@ import {
   changePassword,
   uploadProfilePicture,
 } from "../../api/profile";
+import { useTranslation } from "react-i18next";
 
 const ProfilePage = () => {
+  const { t } = useTranslation();
   const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(false);
@@ -182,8 +184,8 @@ const ProfilePage = () => {
   };
 
   const tabs = [
-    { id: "profile", label: "Profile", icon: User },
-    { id: "security", label: "Security", icon: Lock },
+    { id: "profile", label: t('profileSettings.profile'), icon: User },
+    { id: "security", label: t('profileSettings.security'), icon: Lock },
   ];
 
   return (
@@ -194,10 +196,10 @@ const ProfilePage = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                Profile Settings
+                {t('profileSettings.profileSettings')}
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Manage your account settings and preferences
+                {t('profileSettings.manageAccount')}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -213,11 +215,10 @@ const ProfilePage = () => {
       {message.text && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
           <div
-            className={`flex items-start gap-3 p-4 rounded-lg ${
-              message.type === "success"
-                ? "bg-green-50 border border-green-200"
-                : "bg-red-50 border border-red-200"
-            }`}
+            className={`flex items-start gap-3 p-4 rounded-lg ${message.type === "success"
+              ? "bg-green-50 border border-green-200"
+              : "bg-red-50 border border-red-200"
+              }`}
           >
             {message.type === "success" ? (
               <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -226,9 +227,8 @@ const ProfilePage = () => {
             )}
             <div className="flex-1">
               <p
-                className={`text-sm font-medium ${
-                  message.type === "success" ? "text-green-800" : "text-red-800"
-                }`}
+                className={`text-sm font-medium ${message.type === "success" ? "text-green-800" : "text-red-800"
+                  }`}
               >
                 {message.text}
               </p>
@@ -315,11 +315,10 @@ const ProfilePage = () => {
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                        activeTab === tab.id
-                          ? "bg-blue-50 text-blue-700 font-medium"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === tab.id
+                        ? "bg-blue-50 text-blue-700 font-medium"
+                        : "text-gray-700 hover:bg-gray-50"
+                        }`}
                     >
                       <tab.icon className="w-5 h-5 flex-shrink-0" />
                       <span className="text-sm">{tab.label}</span>
@@ -332,16 +331,16 @@ const ProfilePage = () => {
               <div className="p-4 border-t border-gray-200">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Member since</span>
+                    <span className="text-gray-600">{t('profileSettings.memberSince')}</span>
                     <span className="font-medium text-gray-900">
                       {new Date(user?.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Account status</span>
+                    <span className="text-gray-600">{t('profileSettings.accountStatus')}</span>
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                       <span className="w-1.5 h-1.5 bg-green-600 rounded-full"></span>
-                      Active
+                      {t('profileSettings.active')}
                     </span>
                   </div>
                 </div>
@@ -356,10 +355,10 @@ const ProfilePage = () => {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Personal Information
+                    {t('profileSettings.personalInformation')}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Update your personal details and information
+                    {t('profileSettings.updatePersonalDetails')}
                   </p>
                 </div>
 
@@ -367,7 +366,7 @@ const ProfilePage = () => {
                   {/* Full Name */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name *
+                      {t('profileSettings.fullName')} *
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -392,7 +391,7 @@ const ProfilePage = () => {
                   {/* Email Address */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Email Address *
+                      {t('profileSettings.emailAddress')} *
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -417,7 +416,7 @@ const ProfilePage = () => {
                   {/* Phone Number */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone Number
+                      {t('profileSettings.phoneNumber')}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -441,7 +440,7 @@ const ProfilePage = () => {
                   {/* Location */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Location
+                      {t('profileSettings.location')}
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -470,7 +469,7 @@ const ProfilePage = () => {
                       className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
                       <Save className="w-4 h-4" />
-                      {loading ? "Saving..." : "Save Changes"}
+                      {loading ? "Saving..." : t('profileSettings.saveChanges')}
                     </button>
                     <button
                       type="button"
@@ -484,7 +483,7 @@ const ProfilePage = () => {
                       }}
                       className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                     >
-                      Reset
+                      {t('profileSettings.reset')}
                     </button>
                   </div>
                 </form>
@@ -496,10 +495,10 @@ const ProfilePage = () => {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200">
                 <div className="p-6 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">
-                    Change Password
+                    {t('profileSettings.changePassword')}
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Ensure your account is using a strong password
+                    {t('profileSettings.ensureStrongPassword')}
                   </p>
                 </div>
 
@@ -507,7 +506,7 @@ const ProfilePage = () => {
                   {/* Current Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Password *
+                      {t('profileSettings.currentPassword')} *
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -524,7 +523,7 @@ const ProfilePage = () => {
                           })
                         }
                         className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        placeholder="Enter current password"
+                        placeholder={t('profileSettings.enterCurrentPassword')}
                       />
                       <button
                         type="button"
@@ -548,7 +547,7 @@ const ProfilePage = () => {
                   {/* New Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      New Password *
+                      {t('profileSettings.newPassword')} *
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -565,7 +564,7 @@ const ProfilePage = () => {
                           })
                         }
                         className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        placeholder="Enter new password"
+                        placeholder={t('profileSettings.enterNewPassword')}
                         minLength={6}
                       />
                       <button
@@ -586,14 +585,14 @@ const ProfilePage = () => {
                       </button>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
-                      Must be at least 6 characters long
+                      {t('profileSettings.passwordMinLength')}
                     </p>
                   </div>
 
                   {/* Confirm Password */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirm New Password *
+                      {t('profileSettings.confirmNewPassword')} *
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -610,7 +609,7 @@ const ProfilePage = () => {
                           })
                         }
                         className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        placeholder="Confirm new password"
+                        placeholder={t('profileSettings.confirmPassword')}
                         minLength={6}
                       />
                       <button
@@ -640,7 +639,7 @@ const ProfilePage = () => {
                       className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                     >
                       <Shield className="w-4 h-4" />
-                      {loading ? "Updating..." : "Update Password"}
+                      {loading ? "Updating..." : t('profileSettings.updatePassword')}
                     </button>
                     <button
                       type="button"

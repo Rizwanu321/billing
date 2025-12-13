@@ -10,7 +10,7 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["purchase", "payment"], // Simplified: only purchase and payment
+      enum: ["purchase", "payment", "credit_used"], // Simplified: only purchase and payment
       required: true,
     },
     amount: {
@@ -33,7 +33,7 @@ const transactionSchema = new mongoose.Schema(
     balanceAfter: Number,
     paymentMode: {
       type: String,
-      enum: ["cash", "online", "card", "other"],
+      enum: ["cash", "online", "card", "return", "other"],
       default: "cash",
     },
     createdBy: {

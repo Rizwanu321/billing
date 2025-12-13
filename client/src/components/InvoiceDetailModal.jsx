@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import { X, Download, Printer, Calendar, User, CreditCard } from "lucide-react";
 import { generatePDF } from "../api/invoices";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
 const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
   const [invoice, setInvoice] = useState(null);
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -65,7 +67,7 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+      <div className="flex items-center justify-center min-h-screen p-4 text-center">
         {/* Background overlay */}
         <div
           className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75"
@@ -73,11 +75,11 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
         />
 
         {/* Modal panel */}
-        <div className="inline-block w-full max-w-4xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
+        <div className="relative w-full sm:max-w-2xl lg:max-w-4xl my-8 overflow-hidden text-left transition-all transform bg-white rounded-2xl shadow-xl">
           {/* Header */}
           <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 px-6 py-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold text-white">Invoice Details</h3>
+              <h3 className="text-xl font-bold text-white">{t('invoiceDetail.invoiceDetails')}</h3>
               <button
                 onClick={onClose}
                 className="text-white hover:text-gray-200 transition-colors"
@@ -100,26 +102,25 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
                 {/* Invoice Header Info */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
                   <div>
-                    <p className="text-sm text-gray-600">Invoice Number</p>
+                    <p className="text-sm text-gray-600">{t('invoiceDetail.reference')}</p>
                     <p className="font-bold text-lg">{invoice.invoiceNumber}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Date</p>
+                    <p className="text-sm text-gray-600">{t('invoiceDetail.date')}</p>
                     <p className="font-semibold flex items-center">
                       <Calendar className="w-4 h-4 mr-2 text-gray-500" />
                       {new Date(invoice.date).toLocaleDateString()}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Status</p>
+                    <p className="text-sm text-gray-600">{t('invoiceDetail.status')}</p>
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        invoice.status === "paid"
-                          ? "bg-green-100 text-green-800"
-                          : invoice.status === "final"
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${invoice.status === "paid"
+                        ? "bg-green-100 text-green-800"
+                        : invoice.status === "final"
                           ? "bg-blue-100 text-blue-800"
                           : "bg-gray-100 text-gray-800"
-                      }`}
+                        }`}
                     >
                       {invoice.status.toUpperCase()}
                     </span>
@@ -130,10 +131,10 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <h4 className="font-semibold text-gray-700 mb-2 flex items-center">
                     <User className="w-5 h-5 mr-2 text-gray-500" />
-                    Customer Information
+                    {t('invoiceDetail.customerDetails')}
                   </h4>
                   <p className="font-medium">
-                    {invoice.customer?.name || "Walk-in Customer"}
+                    {invoice.customer?.name || t('billingList.walkInCustomer')}
                   </p>
                   {invoice.customer?._id && (
                     <p className="text-sm text-gray-600">
@@ -146,11 +147,11 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
                 <div className="p-4 border border-gray-200 rounded-lg">
                   <h4 className="font-semibold text-gray-700 mb-2 flex items-center">
                     <CreditCard className="w-5 h-5 mr-2 text-gray-500" />
-                    Payment Information
+                    {t('invoiceDetail.payment')}
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600">Payment Method</p>
+                      <p className="text-sm text-gray-600">{t('invoiceDetail.payment')}</p>
                       <p className="font-medium capitalize">
                         {invoice.paymentMethod}
                       </p>
@@ -168,69 +169,71 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
 
                 {/* Items Table */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Item
-                        </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Quantity
-                        </th>
-                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Unit
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Price
-                        </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Subtotal
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {invoice.items.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.product?.name || "Product"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                            {item.quantity}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
-                            {item.unit}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
-                            ₹{item.price.toFixed(2)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
-                            ₹{item.subtotal.toFixed(2)}
-                          </td>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {t('invoiceDetail.itemName')}
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Quantity
+                          </th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unit
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {t('invoiceDetail.unitPrice')}
+                          </th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {t('invoiceDetail.subtotal')}
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {invoice.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                              {item.product?.name || "Product"}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                              {item.quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center">
+                              {item.unit}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                              ₹{item.price.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                              ₹{item.subtotal.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 {/* Totals */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="text-gray-600">{t('invoiceDetail.subtotal')}:</span>
                       <span className="font-medium">
                         ₹{invoice.subtotal.toFixed(2)}
                       </span>
                     </div>
                     {invoice.tax > 0 && (
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Tax:</span>
+                        <span className="text-gray-600">{t('invoiceDetail.tax')}:</span>
                         <span className="font-medium">
                           ₹{invoice.tax.toFixed(2)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-300">
-                      <span>Total:</span>
+                      <span>{t('invoiceDetail.total')}:</span>
                       <span className="text-indigo-600">
                         ₹{invoice.total.toFixed(2)}
                       </span>
@@ -244,27 +247,27 @@ const InvoiceDetailModal = ({ isOpen, onClose, invoiceId }) => {
           {/* Footer Actions */}
           {invoice && (
             <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-              <div className="flex justify-between">
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-between gap-3">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="w-full sm:w-auto px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
                 >
-                  Close
+                  {t('invoiceDetail.close')}
                 </button>
-                <div className="space-x-3">
+                <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <button
                     onClick={handlePrint}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors inline-flex items-center"
+                    className="w-full sm:w-auto px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors inline-flex items-center justify-center font-medium shadow-sm"
                   >
                     <Printer className="w-4 h-4 mr-2" />
-                    Print
+                    {t('invoiceDetail.print')}
                   </button>
                   <button
                     onClick={handleDownloadPDF}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+                    className="w-full sm:w-auto px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center justify-center font-medium shadow-sm shadow-indigo-200"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download PDF
+                    {t('invoiceDetail.downloadPDF')}
                   </button>
                 </div>
               </div>

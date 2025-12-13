@@ -1,28 +1,36 @@
 import React, { useState, useEffect } from "react";
 import CategoryList from "./CategoryList";
 import CategoryModal from "./CategoryModal";
-import SearchBar from "../products/SearchBar";
 import EmptyState from "../products/EmptyState";
-import { Plus, FolderIcon, Grid3X3, List, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Layers, // Changed from LayerTriggers to Layers which is a valid icon
+  LayoutGrid,
+  List as ListIcon,
+  Loader2,
+  Search,
+  Folder,
+  Tag,
+  Clock,
+} from "lucide-react";
 import {
   fetchCategories,
   createCategory,
   updateCategory,
   deleteCategory,
 } from "../../api/categories";
-import { toast } from "react-toastify";
+import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 
 const Categories = () => {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState("grid"); // grid or list
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-  });
+  const [viewMode, setViewMode] = useState("grid");
+  const [formData, setFormData] = useState({ name: "", description: "" });
 
   useEffect(() => {
     loadCategories();
@@ -67,7 +75,7 @@ const Categories = () => {
   const handleDelete = async (id) => {
     try {
       await deleteCategory(id);
-      toast.success("Category deleted successfully");
+      toast.success("Category removed successfully");
       loadCategories();
     } catch (error) {
       console.error("Error deleting category:", error);
@@ -80,134 +88,161 @@ const Categories = () => {
     setFormData({ name: "", description: "" });
   };
 
+  const stats = [
+    {
+      label: t('categories.totalCategories'),
+      value: categories.length,
+      icon: Folder,
+      color: "blue",
+    },
+    {
+      label: t('categories.active'),
+      value: categories.length,
+      icon: Tag,
+      color: "green",
+    },
+    {
+      label: t('categories.newestAdded'),
+      value: categories.length > 0 ? categories[categories.length - 1].name : "-",
+      icon: Clock,
+      color: "purple",
+    },
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
-          <p className="mt-2 text-gray-600">Loading categories...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
+        <p className="text-gray-500 font-medium">{t('categories.loadingCategories')}...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        {/* Mobile Header */}
-        <div className="lg:hidden bg-white rounded-lg shadow-sm p-4 mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h1 className="text-xl font-semibold text-gray-900">Categories</h1>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+    <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+              {t('categories.categories')}
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              {t('categories.manageAndOrganize')}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-blue-500/25 transition-all duration-200"
+          >
+            <Plus className="h-5 w-5 mr-2" />
+            {t('categories.addCategory')}
+          </button>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {stats.map((stat, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm flex items-center justify-between"
             >
-              <Plus className="h-5 w-5" />
+              <div>
+                <p className="text-sm font-medium text-gray-500">{stat.label}</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1 truncate max-w-[150px]">
+                  {stat.value}
+                </p>
+              </div>
+              <div
+                className={`p-3 rounded-lg bg-${stat.color}-50 text-${stat.color}-600`}
+              >
+                <stat.icon className="h-6 w-6" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Search & Layout Actions */}
+        <div className="bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center gap-3">
+          <div className="relative flex-1 w-full sm:w-auto">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-4 w-4 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-4 py-2 bg-transparent border-none focus:ring-0 text-gray-900 placeholder-gray-500 sm:text-sm"
+              placeholder={t('categories.searchCategories')}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="hidden sm:block w-px h-6 bg-gray-200" />
+
+          <div className="flex bg-gray-100 p-1 rounded-lg w-full sm:w-auto">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "grid"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-900"
+                }`}
+            >
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              {t('categories.grid')}
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "list"
+                ? "bg-white text-blue-600 shadow-sm"
+                : "text-gray-500 hover:text-gray-900"
+                }`}
+            >
+              <ListIcon className="h-4 w-4 mr-2" />
+              {t('categories.list')}
             </button>
           </div>
-          <p className="text-sm text-gray-500">
-            Manage your product categories
-          </p>
         </div>
 
-        {/* Desktop Header */}
-        <div className="hidden lg:block bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Categories</h1>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage and organize your product categories
-              </p>
-            </div>
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Category
-            </button>
-          </div>
-        </div>
-
-        {/* Search and View Toggle */}
-        <div className="bg-white rounded-lg lg:rounded-xl shadow-sm p-4 lg:p-6 mb-4 lg:mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <SearchBar
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
-                placeholder="Search categories..."
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`p-2.5 rounded-lg transition-colors ${
-                  viewMode === "grid"
-                    ? "bg-blue-100 text-blue-600"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-                title="Grid View"
-              >
-                <Grid3X3 className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2.5 rounded-lg transition-colors ${
-                  viewMode === "list"
-                    ? "bg-blue-100 text-blue-600"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-                title="List View"
-              >
-                <List className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Categories Content */}
-        {filteredCategories.length === 0 ? (
-          <div className="bg-white rounded-lg lg:rounded-xl shadow-sm p-8 lg:p-12">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 min-h-[400px]">
+          {filteredCategories.length === 0 ? (
             <EmptyState
-              icon={FolderIcon}
-              title="No categories found"
+              icon={Layers}
+              title={searchTerm ? t('categories.noMatchingCategories') : t('categories.noCategoriesYet')}
               message={
                 searchTerm
-                  ? "Try adjusting your search"
-                  : "Get started by adding your first category"
+                  ? t('categories.noCategoriesFoundMatching', { searchTerm })
+                  : t('categories.createFirstCategory')
               }
               action={
                 !searchTerm && (
                   <button
                     onClick={() => setIsModalOpen(true)}
-                    className="mt-4 inline-flex items-center px-4 py-2.5 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                    className="mt-6 inline-flex items-center px-6 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                   >
                     <Plus className="h-5 w-5 mr-2" />
-                    Add Category
+                    {t('categories.createCategory')}
                   </button>
                 )
               }
             />
-          </div>
-        ) : (
-          <CategoryList
-            categories={filteredCategories}
-            viewMode={viewMode}
-            onEdit={(category) => {
-              setCurrentCategory(category);
-              setFormData({
-                name: category.name,
-                description: category.description || "",
-              });
-              setIsModalOpen(true);
-            }}
-            onDelete={handleDelete}
-          />
-        )}
+          ) : (
+            <CategoryList
+              categories={filteredCategories}
+              viewMode={viewMode}
+              onEdit={(category) => {
+                setCurrentCategory(category);
+                setFormData({
+                  name: category.name,
+                  description: category.description || "",
+                });
+                setIsModalOpen(true);
+              }}
+              onDelete={handleDelete}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Category Modal */}
       <CategoryModal
         isOpen={isModalOpen}
         currentCategory={currentCategory}

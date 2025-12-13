@@ -11,8 +11,10 @@ import {
   CheckCircle,
   Wallet,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     amount: "",
     paymentMode: "cash",
@@ -95,10 +97,10 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
   if (!isOpen) return null;
 
   const paymentModes = [
-    { value: "cash", label: "Cash", icon: Banknote },
-    { value: "online", label: "Online", icon: Smartphone },
-    { value: "card", label: "Card", icon: CreditCard },
-    { value: "other", label: "Other", icon: Wallet },
+    { value: "cash", label: t('payment.cash'), icon: Banknote },
+    { value: "online", label: t('payment.online'), icon: Smartphone },
+    { value: "card", label: t('payment.card'), icon: CreditCard },
+    { value: "other", label: t('payment.other'), icon: Wallet },
   ];
 
   return (
@@ -117,10 +119,10 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-semibold text-white">
-                  Add Payment
+                  {t('payment.addPayment')}
                 </h3>
                 <p className="text-blue-100 text-sm mt-1">
-                  Record payment for {customer?.name}
+                  {t('payment.recordPaymentFor', { customerName: customer?.name })}
                 </p>
               </div>
               <button
@@ -135,17 +137,17 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
           {/* Customer Balance Info */}
           <div className="bg-gray-50 border-b border-gray-200 px-6 py-4 flex-shrink-0">
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-1">Current Balance</p>
+              <p className="text-sm text-gray-600 mb-1">{t('payment.currentBalance')}</p>
               <p className={`text-2xl font-bold ${customer?.amountDue > 0 ? "text-red-600" :
-                  customer?.amountDue < 0 ? "text-green-600" :
-                    "text-gray-600"
+                customer?.amountDue < 0 ? "text-green-600" :
+                  "text-gray-600"
                 }`}>
                 {customer?.amountDue < 0 ? "-" : ""}₹{Math.abs(customer?.amountDue || 0).toFixed(2)}
               </p>
               <p className="text-xs text-gray-500 mt-1">
-                {customer?.amountDue > 0 ? "Customer owes you" :
-                  customer?.amountDue < 0 ? "Advance payment" :
-                    "Settled"}
+                {customer?.amountDue > 0 ? t('payment.customerOwesYou') :
+                  customer?.amountDue < 0 ? t('payment.advancePayment') :
+                    t('payment.settled')}
               </p>
             </div>
           </div>
@@ -155,7 +157,7 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
             {/* Amount Input */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Amount <span className="text-red-500">*</span>
+                {t('payment.paymentAmount')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -168,8 +170,8 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                     setFormData({ ...formData, amount: e.target.value })
                   }
                   className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${errors.amount
-                      ? "border-red-300 focus:ring-red-500"
-                      : "border-gray-300 focus:ring-blue-500"
+                    ? "border-red-300 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-blue-500"
                     }`}
                   placeholder="0.00"
                   step="0.01"
@@ -186,8 +188,8 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
             {/* Payment Summary */}
             {paymentSummary && (
               <div className={`mb-6 rounded-lg p-4 border ${paymentSummary.isAdvance
-                  ? "bg-green-50 border-green-200"
-                  : "bg-blue-50 border-blue-200"
+                ? "bg-green-50 border-green-200"
+                : "bg-blue-50 border-blue-200"
                 }`}>
                 <div className="flex items-start space-x-3">
                   <Info className={`w-5 h-5 mt-0.5 ${paymentSummary.isAdvance ? "text-green-600" : "text-blue-600"
@@ -195,29 +197,29 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                   <div className="flex-1">
                     <p className={`text-sm font-medium ${paymentSummary.isAdvance ? "text-green-900" : "text-blue-900"
                       }`}>
-                      Payment Summary
+                      {t('payment.paymentSummary')}
                     </p>
                     <div className="mt-2 space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Payment Amount:</span>
+                        <span className="text-gray-600">{t('payment.paymentAmountLabel')}</span>
                         <span className="font-medium">
                           ₹{paymentSummary.paymentAmount.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-600">Current Balance:</span>
+                        <span className="text-gray-600">{t('payment.currentBalanceLabel')}</span>
                         <span className="font-medium text-gray-700">
                           {paymentSummary.currentDue < 0 ? "-" : ""}₹{Math.abs(paymentSummary.currentDue).toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm pt-1 border-t border-gray-300">
-                        <span className="text-gray-600">New Balance:</span>
+                        <span className="text-gray-600">{t('payment.newBalance')}</span>
                         <span
                           className={`font-semibold ${paymentSummary.newDue > 0
-                              ? "text-red-600"
-                              : paymentSummary.newDue < 0
-                                ? "text-green-600"
-                                : "text-gray-600"
+                            ? "text-red-600"
+                            : paymentSummary.newDue < 0
+                              ? "text-green-600"
+                              : "text-gray-600"
                             }`}
                         >
                           {paymentSummary.newDue < 0 ? "-" : ""}₹{Math.abs(paymentSummary.newDue).toFixed(2)}
@@ -226,7 +228,7 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                       {paymentSummary.isAdvance && (
                         <div className="mt-2 p-2 bg-green-100 rounded">
                           <p className="text-xs text-green-800 font-medium">
-                            ✓ Overpayment of ₹{paymentSummary.advanceAmount.toFixed(2)} will be recorded as advance
+                            {t('payment.overpaymentRecorded', { amount: paymentSummary.advanceAmount.toFixed(2) })}
                           </p>
                         </div>
                       )}
@@ -239,7 +241,7 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
             {/* Payment Mode */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Mode
+                {t('payment.paymentMode')}
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {paymentModes.map((mode) => (
@@ -250,8 +252,8 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                       setFormData({ ...formData, paymentMode: mode.value })
                     }
                     className={`flex items-center justify-center space-x-2 px-4 py-3 border rounded-lg transition-all ${formData.paymentMode === mode.value
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-300 hover:border-gray-400"
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-300 hover:border-gray-400"
                       }`}
                   >
                     <mode.icon className="w-5 h-5" />
@@ -264,7 +266,7 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
             {/* Description */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description (Optional)
+                {t('payment.descriptionOptional')}
               </label>
               <textarea
                 value={formData.description}
@@ -273,7 +275,7 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                 }
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 rows="3"
-                placeholder="Add any notes about this payment..."
+                placeholder={t('payment.addNotesAboutPayment')}
               />
             </div>
 
@@ -295,7 +297,7 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                 className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
                 disabled={loading}
               >
-                Cancel
+                {t('payment.cancel')}
               </button>
               <button
                 type="submit"
@@ -307,7 +309,7 @@ const PaymentModal = ({ isOpen, onClose, customer, onPaymentSuccess }) => {
                 ) : (
                   <>
                     <CheckCircle className="w-5 h-5 mr-2" />
-                    Confirm Payment
+                    {t('payment.confirmPayment')}
                   </>
                 )}
               </button>

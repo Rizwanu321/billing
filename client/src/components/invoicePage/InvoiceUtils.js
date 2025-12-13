@@ -74,7 +74,9 @@ export const printInvoiceUtil = async (invoice, toast) => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
+      toast.success("PDF downloaded successfully!");
     } catch (error) {
+      console.error("PDF Generation Error:", error);
       toast.error("Failed to generate PDF");
     }
   }
