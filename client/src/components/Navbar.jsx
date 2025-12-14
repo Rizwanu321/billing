@@ -75,6 +75,13 @@ const Navbar = ({ onMenuClick, isMobileMenuOpen }) => {
                 BillTrack Pro
               </h1>
             </div>
+
+            {/* Logo for desktop */}
+            <div className="hidden lg:block min-w-0">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent truncate">
+                BillTrack Pro
+              </h1>
+            </div>
           </div>
 
           {/* Right side - Notifications and Profile */}
